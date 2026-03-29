@@ -7,7 +7,7 @@ load_dotenv()
 
 # Configuración de Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-2.0-flash')
+model = genai.GenerativeModel('gemini-flash-latest')
 
 PROMPT_BASE = """
 Eres un analista experto en scalping de criptomonedas.

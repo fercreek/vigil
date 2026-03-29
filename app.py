@@ -79,6 +79,72 @@ def get_backtest_compare():
         "V1-TECH": tracker.get_backtest_session(date_str, version="V1-TECH"),
         "V2-AI": tracker.get_backtest_session(date_str, version="V2-AI")
     })
+@app.route('/api/backtest/monthly')
+def get_backtest_monthly():
+    """Agrega el historial de backtests por mes para la vista mensual."""
+    all_days = tracker.get_backtest_days()
+    if not all_days:
+        return jsonify([])
+    
+    # Obtener todos los días únicos con datos
+    unique_dates = sorted(set(d['date'] for d in all_days), reverse=True)
+    
+    monthly_data = {}
+    
+    for date_str in unique_dates:
+        month_key = date_str[:7]  # 'YYYY-MM'
+        if month_key not in monthly_data:
+            monthly_data[month_key] = {'V1-TECH': {'days':[]}, 'V2-AI': {'days':[]}}
+        
+        for version in ['V1-TECH', 'V2-AI']:
+            trades = tracker.get_backtest_session(date_str, version=version)
+            if not trades:
+                continue
+            
+            won = sum(1 for t in trades if t['result'] == 'WIN_FULL')
+            lost = sum(1 for t in trades if t['result'] == 'LOST')
+            open_eod = sum(1 for t in trades if t['result'] == 'OPEN_EOD')
+            total_pnl = round(sum(t['pnl_usd'] or 0 for t in trades), 2)
+            final_bal = trades[-1]['balance_after'] if trades else 1000
+            win_rate = round(won / (won + lost) * 100, 1) if (won + lost) > 0 else 0
+            
+            monthly_data[month_key][version]['days'].append({
+                'date': date_str,
+                'trades': len(trades),
+                'won': won,
+                'lost': lost,
+                'open_eod': open_eod,
+                'win_rate': win_rate,
+                'pnl': total_pnl,
+                'balance': final_bal
+            })
+    
+    # Calcular totales por mes
+    result = []
+    for month_key in sorted(monthly_data.keys(), reverse=True):
+        month_obj = {'month': month_key, 'V1-TECH': None, 'V2-AI': None}
+        for version in ['V1-TECH', 'V2-AI']:
+            days = monthly_data[month_key][version]['days']
+            if not days:
+                continue
+            total_pnl = round(sum(d['pnl'] for d in days), 2)
+            total_won = sum(d['won'] for d in days)
+            total_lost = sum(d['lost'] for d in days)
+            total_trades = sum(d['trades'] for d in days)
+            win_rate = round(total_won / (total_won + total_lost) * 100, 1) if (total_won + total_lost) > 0 else 0
+            
+            month_obj[version] = {
+                'days_count': len(days),
+                'total_trades': total_trades,
+                'total_won': total_won,
+                'total_lost': total_lost,
+                'win_rate': win_rate,
+                'total_pnl': total_pnl,
+                'days': sorted(days, key=lambda x: x['date'])
+            }
+        result.append(month_obj)
+    
+    return jsonify(result)
 
 if __name__ == '__main__':
     print("🚀 Dashboard de Scalping UI iniciado en http://localhost:5001")
