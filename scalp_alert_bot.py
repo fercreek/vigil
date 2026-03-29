@@ -133,15 +133,17 @@ def get_prices() -> dict:
     r = requests.get(url, timeout=10)
     d = r.json()
     
-    # Obtener indicadores extra
+    # Obtener indicadores (RSI + Bollinger Bands)
     usdt_d = indicators.get_usdt_dominance()
-    eth_rsi_1h = indicators.get_rsi("ETH", "1h")
-    eth_rsi_15m = indicators.get_rsi("ETH", "15m")
-    tao_rsi_1h = indicators.get_rsi("TAO", "1h")
-    tao_rsi_15m = indicators.get_rsi("TAO", "15m")
-    btc_rsi_1h = indicators.get_rsi("BTC", "1h")
-    btc_rsi_15m = indicators.get_rsi("BTC", "15m")
     
+    # Pack de indicadores por moneda
+    eth_rsi, eth_bb_u, eth_bb_m, eth_bb_l = indicators.get_indicators("ETH", "15m") # Usamos 15m para gatillo rápido
+    tao_rsi, tao_bb_u, tao_bb_m, tao_bb_l = indicators.get_indicators("TAO", "15m")
+    btc_rsi, btc_bb_u, btc_bb_m, btc_bb_l = indicators.get_indicators("BTC", "15m")
+    
+    # También necesitamos RSI 1h para la tendencia macro
+    eth_rsi_1h = indicators.get_rsi("ETH", "1h")
+    tao_rsi_1h = indicators.get_rsi("TAO", "1h")
     return {
         "ETH": d["ethereum"]["usd"],
         "TAO": d["bittensor"]["usd"],
@@ -150,60 +152,47 @@ def get_prices() -> dict:
         "TAO_chg": d["bittensor"]["usd_24h_change"],
         "BTC_chg": d["bitcoin"]["usd_24h_change"],
         "USDT_D": usdt_d,
-        "ETH_RSI_1H": eth_rsi_1h,
-        "ETH_RSI_15M": eth_rsi_15m,
-        "TAO_RSI_1H": tao_rsi_1h,
-        "TAO_RSI_15M": tao_rsi_15m,
-        "BTC_RSI_1H": btc_rsi_1h,
-        "BTC_RSI_15M": btc_rsi_15m
+        "ETH_RSI_15M": eth_rsi, "ETH_BB_U": eth_bb_u, "ETH_BB_L": eth_bb_l,
+        "TAO_RSI_15M": tao_rsi, "TAO_BB_U": tao_bb_u, "TAO_BB_L": tao_bb_l,
+        "BTC_RSI_15M": btc_rsi, "BTC_BB_U": btc_bb_u, "BTC_BB_L": btc_bb_l
     }
 
 import tracker
 
-def check_eth(p: float, rsi_1h: float, rsi_15m: float, usdt_d: float):
+def check_eth(p: float, rsi_15m: float, usdt_d: float, bb_u: float, bb_l: float):
     L = LEVELS["ETH"]
     phase = get_phase()
 
     if phase == "SHORT":
-        # Filtro de SHORT: USDT.D > 8.0% o RSI 1H sobrecomprado
+        # ESTRATEGIA V2: Resistencia Dinámica + RSI 60 + Rotura BB Superior
         if p >= L["sl_short"]:
-            alert("eth_sl", f"🔴 ETH SL SHORT ACTIVADO — precio ${p:.2f} sobre $2,045\n¡Revisar posición!")
-        elif p >= L["short_entry_high"] and (usdt_d >= 8.10 or rsi_1h >= 70):
-            msg_id = alert("eth_short", f"🔴 ETH — Entrada SHORT CONFIRMADA\nPrecio: ${p:.2f} | RSI 1H: {rsi_1h:.1f} | USDT.D: {usdt_d:.2f}%\n✅ Trade registrado en sistema.")
+            alert("eth_sl", f"🔴 ETH SL SHORT ACTIVADO — ${p:.2f}")
+        elif p >= L["short_entry_high"] and rsi_15m >= 60 and (bb_u and p >= bb_u):
+            msg_id = alert("eth_short", f"🔴 ETH — V2 SHORT CONFIRMADO\nPrecio: ${p:.2f} | RSI: {rsi_15m:.1f} | BB: Rotura Superior\n✅ Trade registrado.")
             if msg_id:
                 tracker.log_trade("ETH", "SHORT", p, L["target1"], L["target2"], L["sl_short"], msg_id)
         
-        if p <= L["target1"] + 5:
-            alert("eth_t1", f"🟡 ETH Target 1 SHORT — ${p:.2f}\nCerrar *50% posición* en $1,960")
-        if p <= L["target2"] + 3:
-            alert("eth_t2", f"🟢 ETH Target 2 SHORT — ${p:.2f}\nZona $1,930")
-        
-        # Filtro de Cambio a LONG: USDT.D bajando + RSI 1H en recuperación
         if p <= L["long_zone"] and usdt_d < 8.00:
             msg = f"🟢 ETH ZONA LONG ALCANZADA — ${p:.2f}\nUSDT.D: {usdt_d:.2f}% (Bajando)\nCambiando a *MODO LONG*."
             alert("eth_long_switch", msg)
             set_phase("LONG")
     
     elif phase == "LONG":
-        if p <= L["long_zone"] and rsi_1h <= 35:
-             alert("eth_long_entry", f"🟢 ETH Acumulación LONG (${p:.2f}) confirmada por RSI 1H {rsi_1h:.1f}.")
         # Gatillo LONG: RSI 15m cruza arriba de 30 mientras 1h está abajo
-        if rsi_15m >= 30 and rsi_1h <= 40 and p <= L["long_zone"] + 10:
+        if rsi_15m >= 30 and p <= L["long_zone"] + 10:
              msg_id = alert("eth_long_trigger", f"🚀 ETH — Cruce alcista RSI 15m detectado ({rsi_15m:.1f}). ¡ENTRADA LONG!\n✅ Trade registrado en sistema.")
              if msg_id:
                  tracker.log_trade("ETH", "LONG", p, p + 50, L["short_entry_high"], p - 50, msg_id)
 
-def check_tao(p: float, rsi_1h: float, rsi_15m: float, usdt_d: float):
+def check_tao(p: float, rsi_15m: float, usdt_d: float, bb_u: float, bb_l: float):
     L = LEVELS["TAO"]
     phase = get_phase()
 
     if phase == "SHORT":
-        if p >= L["resistance"] and (usdt_d >= 8.10 or rsi_1h >= 70):
-            msg_id = alert("tao_res", f"🔴 TAO — Entrada SHORT CONFIRMADA\nPrecio: ${p:.1f} | RSI 1H: {rsi_1h:.1f}\n✅ Trade registrado.")
+        if p >= L["resistance"] and rsi_15m >= 60 and (bb_u and p >= bb_u):
+            msg_id = alert("tao_res", f"🔴 TAO — V2 SHORT CONFIRMADO\nPrecio: ${p:.1f} | RSI: {rsi_15m:.1f}\n✅ Trade registrado.")
             if msg_id:
                 tracker.log_trade("TAO", "SHORT", p, L["target1"], L["target2"], p + 10, msg_id)
-        if p <= L["target1"] + 2:
-            alert("tao_t1", f"🟡 TAO Target 1 SHORT — ${p:.1f}")
         
         if p <= L["long_zone"] and usdt_d < 8.00:
             msg = f"🟢 TAO ZONA LONG ALCANZADA — ${p:.1f}\nCambiando a *MODO LONG*."
@@ -211,26 +200,17 @@ def check_tao(p: float, rsi_1h: float, rsi_15m: float, usdt_d: float):
             set_phase("LONG")
 
     elif phase == "LONG":
-        if p <= L["long_zone"] and rsi_1h <= 35:
-            alert("tao_long_entry", f"🟢 TAO Acumulación LONG (${p:.1f}) | RSI 1H: {rsi_1h:.1f}")
-        if rsi_15m >= 30 and rsi_1h <= 40 and p <= L["long_zone"] + 5:
-            msg_id = alert("tao_long_trigger", f"🚀 TAO — Cruce alcista RSI 15m detectado ({rsi_15m:.1f}). ¡ENTRADA LONG!\n✅ Trade registrado en sistema.")
+        if rsi_15m <= 40 and (bb_l and p <= bb_l) and p <= L["long_zone"] + 5:
+            msg_id = alert("tao_long_trigger", f"🚀 TAO — V2 LONG CONFIRMADO\nPrecio: ${p:.1f} | RSI: {rsi_15m:.1f}\n✅ Trade registrado.")
             if msg_id:
                 tracker.log_trade("TAO", "LONG", p, p + 15, L["resistance"], L["long_sl"], msg_id)
 
-def check_btc(p: float, rsi: float, usdt_d: float):
+def check_btc(p: float, rsi_15m: float, bb_u: float, bb_l: float):
     L = LEVELS["BTC"]
-    phase = get_phase()
-
-    if phase == "SHORT":
-        if p <= L["support2"] and usdt_d < 7.95:
-            msg = f"🟢 BTC — Zona de reversión alcanzada (${p:,.0f})\nUSDT.D: {usdt_d:.2f}% (Bullish)\nCambiando a *MODO LONG*."
-            alert("btc_long_switch", msg)
-            set_phase("LONG")
-    
-    elif phase == "LONG":
-        if p <= L["support2"] + 500 and rsi_1h <= 35:
-            alert("btc_long_entry", f"🟢 BTC Acumulación LONG (${p:,.0f}) | RSI 1H: {rsi_1h:.1f}")
+    if rsi_15m >= 65 and (bb_u and p >= bb_u):
+        alert("btc_short", f"🟠 BTC — Oportunidad SHORT V2\nPrecio: ${p:,.0f} | RSI: {rsi_15m:.1f}")
+    elif rsi_15m <= 35 and (bb_l and p <= bb_l):
+        alert("btc_long", f"🔵 BTC — Oportunidad LONG V2\nPrecio: ${p:,.0f} | RSI: {rsi_15m:.1f}")
 
 def monitor_open_trades(prices_dict: dict):
     open_trades = tracker.get_open_trades()
@@ -275,7 +255,6 @@ def main():
     
     # Inicializar niveles dinámicos al arrancar
     update_dynamic_levels()
-    last_update_day = datetime.now().day
     
     send_telegram(
         "🤖 *Scalp Alert Bot INICIADO*\n"
@@ -289,19 +268,6 @@ def main():
     while True:
         try:
             prices = get_prices()
-            eth, tao, btc = prices["ETH"], prices["TAO"], prices["BTC"]
-            usdt_d = prices["USDT_D"]
-            eth_rsi_1h, eth_rsi_15m = prices["ETH_RSI_1H"], prices["ETH_RSI_15M"]
-            tao_rsi_1h, tao_rsi_15m = prices["TAO_RSI_1H"], prices["TAO_RSI_15M"]
-            btc_rsi_1h = prices["BTC_RSI_1H"]
-            
-            ts = datetime.now().strftime("%H:%M:%S")
-            print(f"[{ts}] ETH ${eth:.2f} (RSI {eth_rsi_1h:.1f}) | TAO ${tao:.1f} (RSI {tao_rsi_1h:.1f}) | BTC ${btc:,.0f} (RSI {btc_rsi_1h:.1f}) | USDT.D {usdt_d:.2f}%")
-            
-            check_eth(eth, eth_rsi_1h, eth_rsi_15m, usdt_d)
-            check_tao(tao, tao_rsi_1h, tao_rsi_15m, usdt_d)
-            check_btc(btc, btc_rsi_1h, usdt_d)
-            
             # Monitorear operaciones abiertas (Take Profit / Stop Loss)
             monitor_open_trades(prices)
         except Exception as e:
