@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.db
+*.csv
+.env
+phase.txt
+data/

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scalping Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --neon-green: #10b981;
+            --neon-red: #ef4444;
+            --neon-yellow: #f59e0b;
+            --neon-blue: #3b82f6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark), #000000);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: var(--neon-green);
+            background: rgba(16, 185, 129, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--neon-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .stat-card.green { border-bottom: 3px solid var(--neon-green); }
+        .stat-card.yellow { border-bottom: 3px solid var(--neon-yellow); }
+        .stat-card.red { border-bottom: 3px solid var(--neon-red); }
+        .stat-card.blue { border-bottom: 3px solid var(--neon-blue); }
+
+        .stat-title {
+            color: var(--text-dim);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        .stat-value.green { color: var(--neon-green); }
+        .stat-value.red { color: var(--neon-red); }
+
+        .dashboard {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem 1.5rem;
+            color: var(--text-dim);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.95rem;
+        }
+
+        tr:hover td {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-short { background: rgba(239, 68, 68, 0.2); color: var(--neon-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-long { background: rgba(16, 185, 129, 0.2); color: var(--neon-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        .status-open { color: var(--neon-blue); font-weight: 600; text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        .status-partial { color: var(--neon-yellow); font-weight: 600; text-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+        .status-won { color: var(--neon-green); font-weight: 600; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+        .status-lost { color: var(--text-dim); font-weight: 600; text-decoration: line-through; }
+
+        .time-dim { color: var(--text-dim); font-size: 0.85rem; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Scalping Terminal</h1>
+            <div class="live-badge">
+                <span class="dot"></span> Sistema Activo
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="stat-title">Win Rate (Global)</div>
+                <div class="stat-value" id="win-rate">0%</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-title">Hits Completos (TP2)</div>
+                <div class="stat-value green" id="full-won">0</div>
+            </div>
+            <div class="stat-card yellow">
+                <div class="stat-title">Asegurados (TP1)</div>
+                <div class="stat-value" style="color: var(--neon-yellow);" id="partial-won">0</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-title">Stop Loss</div>
+                <div class="stat-value red" id="lost">0</div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hora Entrada</th>
+                            <th>Ticket</th>
+                            <th>Tipo</th>
+                            <th>Entrada</th>
+                            <th>Target 1</th>
+                            <th>Target 2</th>
+                            <th>Cierre</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trades-body">
+                        <!-- Llenado por JS -->
+                        <tr><td colspan="8" style="text-align: center; padding: 2rem;">Cargando operaciones...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function formatTime(dateStr) {
+            if (!dateStr) return "-";
+            const d = new Date(dateStr);
+            return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        async function fetchDashboard() {
+            try {
+                // Obtener Stats
+                const statsResponse = await fetch('/api/stats');
+                const stats = await statsResponse.json();
+                
+                document.getElementById('win-rate').innerText = stats.win_rate + '%';
+                document.getElementById('full-won').innerText = stats.full_won;
+                document.getElementById('partial-won').innerText = stats.partial_won;
+                document.getElementById('lost').innerText = stats.lost;
+
+                // Obtener Trades
+                const tradesResponse = await fetch('/api/trades');
+                const trades = await tradesResponse.json();
+                
+                const tbody = document.getElementById('trades-body');
+                tbody.innerHTML = '';
+
+                if(trades.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #94a3b8;">No hay operaciones registradas aún.</td></tr>';
+                    return;
+                }
+
+                trades.forEach(t => {
+                    const row = document.createElement('tr');
+                    
+                    // Formato de badge para SHORT / LONG
+                    const typeBadge = t.type === 'SHORT' ? `<span class="badge badge-short">📉 SHORT</span>` : `<span class="badge badge-long">📈 LONG</span>`;
+                    
+                    // Estado visual
+                    let statusClass = '';
+                    let statusText = t.status;
+                    if(t.status === 'OPEN') { statusClass = 'status-open'; statusText = '⏳ ABIERTO'; }
+                    else if(t.status === 'PARTIAL_WON') { statusClass = 'status-partial'; statusText = '🟡 TP1 ASEGURADO'; }
+                    else if(t.status === 'FULL_WON') { statusClass = 'status-won'; statusText = '🟢 VICTORIA TOTAL'; }
+                    else if(t.status === 'LOST') { statusClass = 'status-lost'; statusText = '🔴 PÉRDIDA'; }
+
+                    row.innerHTML = `
+                        <td class="time-dim">${formatTime(t.open_time)}</td>
+                        <td><strong>${t.symbol}</strong></td>
+                        <td>${typeBadge}</td>
+                        <td>$${t.entry_price.toLocaleString(undefined, {minimumFractionDigits: 1})}</td>
+                        <td style="color: var(--neon-yellow)">$${t.tp1_price.toLocaleString(undefined, {minimumFractionDigits: 1})}</td>
+                        <td style="color: var(--neon-green)">$${t.tp2_price.toLocaleString(undefined, {minimumFractionDigits: 1})}</td>
+                        <td class="time-dim">${formatTime(t.close_time)}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        // Llamar inicial y luego cada 5 segundos
+        fetchDashboard();
+        setInterval(fetchDashboard, 5000);
+
+    </script>
+</body>
+</html>
