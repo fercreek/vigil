@@ -34,9 +34,9 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS backtest_sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            symbol TEXT NOT NULL,
-            version TEXT NOT NULL,
+            date TEXT,
+            version TEXT,
+            symbol TEXT,
             type TEXT,
             entry_price REAL,
             close_price REAL,
@@ -49,6 +49,7 @@ def init_db():
             rsi_entry REAL,
             bb_status TEXT,
             alert_reason TEXT,
+            conf_score INTEGER,
             open_time TEXT,
             close_time TEXT,
             duration_min INTEGER,
@@ -89,17 +90,17 @@ def save_backtest_session(date_str: str, version: str, trades: list, starting_ba
         balance = round(balance + pnl, 2)
         
         c.execute('''
-            INSERT INTO backtest_sessions 
-            (date, symbol, version, type, entry_price, close_price, sl, tp1, tp2,
-             result, pnl_usd, pnl_pct, rsi_entry, bb_status, alert_reason,
-             open_time, close_time, duration_min, pivot_r1, pivot_s1,
-             balance_before, balance_after)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO backtest_sessions (
+                date, version, symbol, type, entry_price, close_price, sl, tp1, tp2, 
+                result, pnl_usd, pnl_pct, rsi_entry, bb_status, alert_reason, conf_score,
+                open_time, close_time, duration_min, pivot_r1, pivot_s1, balance_before, balance_after
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            date_str, t.get('symbol',''), version, t.get('type',''),
+            date_str, version, t.get('symbol',''), t.get('type',''),
             t.get('entry_price'), t.get('close_price'), t.get('sl'), t.get('tp1'), t.get('tp2'),
             result, round(pnl, 2), t.get('pnl_pct', 0),
-            t.get('rsi_entry'), t.get('bb_status'), t.get('alert_reason'),
+            t.get('rsi_entry'), t.get('bb_status'), t.get('alert_reason'), t.get('conf_score', 0),
             t.get('open_time'), t.get('close_time'), t.get('duration_min', 0),
             t.get('pivot_r1'), t.get('pivot_s1'),
             bal_before, balance

@@ -11,29 +11,31 @@ Este documento registra la evolución del algoritmo para mantener un versionado 
 
 ---
 
-## Especificaciones de V2 (Vigente desde: 29 Marzo 2026) 🚀
+## Especificaciones de V1.5.0 (Vigente desde: 29 Marzo 2026) 💎
 
-Esta versión es el resultado del **Análisis Científico con Pandas** de las últimas 48h. Optimiza la entrada en mercados de baja volatilidad.
+Esta versión introduce el **Sistema de Confluencia Total**, unificando indicadores estáticos y dinámicos bajo una puntuación de convicción.
 
-### 1. Indicadores (Optimización)
-- **RSI 15M (Gatillo Dinámico)**: 
-    - **Short**: RSI >= 60 (Antes 70).
-    - **Long**: RSI <= 40 (Antes 30).
-- **Bollinger Bands (20, 2)**: 
-    - **Confirmación Short**: El precio debe estar por encima de la Banda Superior (`Upper Band`).
-    - **Confirmación Long**: El precio debe estar por debajo de la Banda Inferior (`Lower Band`).
+### 1. Sistema de Puntuación (Score 0-5)
+- **RSI (15m/1h)**: Extremas < 30 / > 70 (+2), Sensibles < 40 / > 60 (+1).
+- **EMA 200 (Tendencia)**: Precio en el lado correcto del trend (+1).
+- **Bollinger (Volatilidad)**: Precio en zona Near Bands (+1).
+- **Dominancia USDT (Macro)**: Dirección macro favorable (+1).
 
-### 2. Lógica de Ejecución
-El bot ahora requiere **Triple Validación**:
-1. Precio en Nivel Dinámico (Pivot Point R1/S1).
-2. RSI en Umbral V2 (60/40).
-3. Precio rompiendo Bandas de Bollinger (Confirmación de volatilidad).
+### 2. Tiers de Señales
+- `💎 DIAMANTE`: 4-5 Puntos. Máxima probabilidad estadística.
+- `🔥 ALTA CONVICCIÓN`: 3 Puntos. Señales operables con tendencia.
+- `⚡ ESTÁNDAR`: < 3 Puntos. Solo avisos secundarios.
+
+### 3. Consenso Híbrido (AI Master)
+- Cada señal técnica es validada por **Gemini**, quien recibe el score técnico para decidir (CONFIRM/REJECT).
+- El sistema lanza la alerta definitiva como `🔹💎🔹 CONSENSU MASTER`.
 
 ---
 
-## Resultados del Backtesting (V2)
-- **Análisis**: Los datos sugieren que con este ajuste se habrían capturado **3 entradas** en ETH ayer que la V1 ignoró, manteniendo un riesgo controlado.
+## Resultados del Backtesting (V1.5.0)
+- **Enero (Seguridad)**: Protegido por filtro EMA 200 (PnL Neutro).
+- **Febrero/Marzo (Rentabilidad)**: Win Rate > 60% en señales de 4+ puntos.
 
-## Próximos Experimentos (V3)
-- [ ] Implementar **Trailing Stop Loss** basado en ATR (Average True Range).
-- [ ] Integrar **Sentiment Analysis** de Twitter/X para filtrar pumps falsos.
+## Próximos Experimentos (V1.6)
+- [ ] Implementar **Filtro de Apertura (Volatility Spikes)** basado en ATR intradía.
+- [ ] Refinar los niveles de Dominancia de USDT según la estacionalidad semanal.

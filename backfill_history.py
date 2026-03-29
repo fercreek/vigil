@@ -13,7 +13,8 @@ import tracker
 
 SYMBOLS = ["ETH/USDT", "BTC/USDT", "TAO/USDT"]
 VERSIONS = ["V1-TECH", "V2-AI"]
-DAYS_BACK = 14  # Generar últimas 2 semanas
+DAYS_BACK = 90  # Generar historial completo (Enero, Febrero, Marzo)
+START_DATE = datetime(2026, 1, 1) # Asegurar que empezamos desde el 1 de Enero
 
 def backfill(force=False):
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)

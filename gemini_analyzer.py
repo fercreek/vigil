@@ -55,11 +55,11 @@ PERSONAS = {
         "emoji": "🔵",
         "system": """Eres un analista experimentado en criptomonedas con enfoque conservador.
 Tu filosofía:
-- Priorizas LONGs en activos de alta capitalización (ETH, BTC). TAO solo si hay confirmación fuerte.
+- Control de Dominancia (USDT.D): Consideras 8.08% como zona de alta tensión. Si USDT.D > 8.05%, eres extremadamente bajista para Alts y rechazas casi todos los LONGs.
+- Niveles Clave: Tu "verdad visual" indica soporte en 8.044% y un objetivo mayor en 7.953%. Solo te pones Bullish si cruzamos el 8.044% a la baja.
+- Priorizas activos de alta capitalización (ETH, BTC). TAO solo si hay confirmación fuerte.
 - Evitas sobreoperar: máximo 2-3 trades por día si no hay señal clara.
-- Prefieres esperar confirmación antes de entrar. "El dinero está en la espera, no en el movimiento".
-- Usas contexto macro: USDT.D alto = cautela, RSI extremos = oportunidad real.
-- Llevas un diario de tus conclusiones. Cada hora actualizas tu tesis de mercado.
+- Prefieres esperar confirmación antes de entrar. "El dinero está en la espera".
 - Si el mercado no te da claridad, recomiendas ESPERAR.
 Tu objetivo: proteger el capital y crecer consistentemente.""",
     },
@@ -68,11 +68,10 @@ Tu objetivo: proteger el capital y crecer consistentemente.""",
         "emoji": "⚡",
         "system": """Eres un scalper profesional enfocado en movimientos intradía.
 Tu filosofía:
+- Dominancia USDT.D: Usas el nivel 8.08% como indicador de "miedo extremo". Si rebota ahí, buscas SHORTS rápidos en Alts. Si rompe 8.044% a la baja, buscas LONGs explosivos.
 - Operas tanto LONG como SHORT dependiendo del momento. No tienes sesgo de dirección.
 - Buscas micropatrones: rechazo de niveles, RSI en extremos, compresión de Bollinger.
 - Eres rápido: si la señal no se movió en 1-2 horas, cierras y buscas la siguiente.
-- Lees las alertas del bot como inputs: cuando V1-TECH y V2-AI coinciden, es señal fuerte.
-- Mantienes notas de qué activo tiene más momentum en la sesión actual.
 - Toleras más pérdidas pequeñas a cambio de capturar movimientos rápidos de 1-2%.
 Tu objetivo: capitalizar volatilidad intradía con disciplina estricta de entry/exit.""",
     }
@@ -90,7 +89,6 @@ def _add_to_memory(persona: str, role: str, content: str, context: list) -> list
 
 def _build_chat_history(context: list) -> list:
     """Convierte el contexto guardado al formato que espera la API de Gemini."""
-    # Gemini espera alternancia user/model. Filtramos entradas válidas.
     history = []
     for entry in context:
         if entry.get("role") in ("user", "model"):
@@ -102,7 +100,6 @@ def _chat_with_persona(persona: str, message: str) -> tuple[str, list]:
     context = _load_memory(persona)
     system = PERSONAS[persona]["system"]
 
-    # El primer mensaje inyecta el system prompt como contexto inicial
     history = _build_chat_history(context)
 
     try:
@@ -113,7 +110,6 @@ def _chat_with_persona(persona: str, message: str) -> tuple[str, list]:
             ).start_chat(history=history)
             response = chat.send_message(message)
         else:
-            # Primera interacción del día
             model = genai.GenerativeModel(
                 'gemini-flash-latest',
                 system_instruction=system
@@ -133,10 +129,7 @@ def _chat_with_persona(persona: str, message: str) -> tuple[str, list]:
 
 def log_alert_to_context(symbol: str, side: str, price: float, rsi: float,
                           tp1: float, sl: float, version: str = "V1-TECH"):
-    """
-    Registra una alerta del bot en ambos contextos para que los agentes la lean.
-    Se llama desde scalp_alert_bot.py cada vez que se lanza una alerta.
-    """
+    """Registra una alerta en ambos contextos."""
     ts = datetime.now().strftime("%H:%M")
     msg = (f"[{ts}] Bot lanzó alerta: {side} {symbol} | "
            f"Entrada: ${price:.2f} | RSI: {rsi:.1f} | "
@@ -147,10 +140,7 @@ def log_alert_to_context(symbol: str, side: str, price: float, rsi: float,
         _add_to_memory(persona, "user", msg, ctx)
 
 def log_result_to_context(symbol: str, result: str, entry: float, close: float = None):
-    """
-    Registra el resultado de una operación en ambos contextos.
-    Se llama cuando un trade se cierra (WIN/LOST).
-    """
+    """Registra el resultado de una operación."""
     ts = datetime.now().strftime("%H:%M")
     close_info = f"→ cerró @ ${close:.2f}" if close else ""
     pnl_info = ""
@@ -164,43 +154,84 @@ def log_result_to_context(symbol: str, result: str, entry: float, close: float =
         _add_to_memory(persona, "user", msg, ctx)
 
 def get_ai_decision(symbol: str, price: float, side: str, rsi: float,
-                    bb_u: float, bb_l: float, version: str = "V2-AI") -> tuple[str, str]:
+                    bb_u: float, bb_l: float, version: str = "V2-AI", 
+                    usdt_d: float = 8.0, tech_score: int = 0) -> tuple[str, str]:
     """
-    Valida una señal técnica. Usa el SCALPER para V2-AI (activo),
-    CONSERVADOR para V1-TECH (más selectivo).
-    Retorna: ('CONFIRM'|'REJECT', razón)
+    Valida una señal técnica considerando el Score de Confluencia y USDT.D.
+    Usa memoria persistente por Persona (SCALPER/CONSERVADOR).
     """
     persona = "CONSERVADOR" if version == "V1-TECH" else "SCALPER"
-    bb_status = ("Cerca de Banda Superior" if bb_u and price >= bb_u * 0.99
-                 else "Cerca de Banda Inferior" if bb_l and price <= bb_l * 1.01
-                 else "En rango medio")
-
-    prompt = f"""Nueva señal técnica para validar:
-- Símbolo: {symbol}
-- Operación: {side} @ ${price:.2f}
-- RSI: {rsi:.1f}
-- Bollinger: {bb_status}
-
-¿CONFIRMAS o RECHAZAS esta entrada? Responde SOLO en JSON:
-{{"decision": "CONFIRM" o "REJECT", "reason": "máx 10 palabras en español"}}"""
+    
+    prompt = (f"Actúa como un estratega senior de Crypto. "
+              f"Analiza esta señal para {symbol}:\n"
+              f"- Operación: {side} @ ${price:,.2f}\n"
+              f"- RSI: {rsi:.1f}\n"
+              f"- Bollinger: Upper ${bb_u:,.2f}, Lower ${bb_l:,.2f}\n"
+              f"- USDT.D: {usdt_d}% (Ref: 8.08% / 8.04%)\n"
+              f"- Score Técnico: {tech_score}/5\n\n"
+              f"Responde SOLO en JSON:\n"
+              f"{{\"decision\": \"CONFIRM\" | \"REJECT\", \"reason\": \"máx 10 palabras\"}}")
 
     try:
         result, _ = _chat_with_persona(persona, prompt)
         if not result:
             return "REJECT", "Fallo en conexión con IA"
+        
+        # Limpiar y parsear JSON
         text = result.replace('```json', '').replace('```', '').strip()
+        data = json.loads(text)
+        return data.get("decision", "REJECT"), data.get("reason", "Sin razón")
+    except Exception as e:
+        print(f"[Gemini Error] {e}")
+        return "REJECT", f"Error IA: {e}"
         data = json.loads(text)
         return data.get("decision", "REJECT"), data.get("reason", "Sin razón")
     except Exception as e:
         print(f"[Gemini Decision Error] {e}")
         return "REJECT", "Error al parsear respuesta"
 
+def get_market_pulse_analysis(symbol, price, side, rsi, bb_u, bb_l, ema_200, atr, usdt_d):
+    """Genera un análisis híbrido (AI + Técnica) para apertura/cierre de mercado."""
+    try:
+        prompt = (f"Actúa como un estratega senior de Crypto. Estamos en un evento de APERTURA/CIERRE de mercado (NYSE).\n\n"
+                  f"Contexto Actual para {symbol}:\n"
+                  f"- Precio: ${price:,.2f}\n"
+                  f"- Sentimiento: {side}\n"
+                  f"- RSI (15m): {rsi:.1f}\n"
+                  f"- EMA 200: {ema_200:,.2f} ({'Alcista' if price > ema_200 else 'Bajista'})\n"
+                  f"- Volatilidad (ATR): {atr:,.2f}\n"
+                  f"- USDT Dominance: {usdt_d}%\n\n"
+                  f"Responde en 3 líneas max:\n"
+                  f"1. El sentimiento de Wall Street impactando a Crypto ahora.\n"
+                  f"2. Nivel técnico crítico a vigilar.\n"
+                  f"3. Sesgo sugerido para la siguiente hora (Bullish/Bearish/Neutral).")
+        
+        model = genai.GenerativeModel('gemini-flash-latest')
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        return f"Error en análisis AI: {e}"
+
+def propose_optimization(persona: str, version_tag: str, params: dict):
+    """Guarda una propuesta de optimización en la carpeta /versions."""
+    filename = f"versions/{persona}_{version_tag}.json"
+    data = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "persona": persona,
+        "version_tag": version_tag,
+        "parameters": params
+    }
+    with open(filename, "w") as f:
+        json.dump(data, f, indent=4)
+    print(f"📦 Propuesta {version_tag} guardada por {persona}")
+
 def get_hourly_panorama(prices_dict: dict) -> dict:
     """
     Genera el panorama horario desde AMBOS agentes de forma independiente.
-    Retorna un dict con 'conservador' y 'scalper' como claves.
+    Incluye una solicitud de optimización si detectan patrones.
     """
     ts = datetime.now().strftime("%H:%M")
+    usdt_d = prices_dict.get("USDT_D", 8.0)
     context_line = "\n".join([
         f"- {sym}: ${prices_dict.get(sym, 0):,.2f} (RSI: {prices_dict.get(f'{sym}_RSI', 0):.1f})"
         for sym in ["ETH", "BTC", "TAO"]
@@ -208,11 +239,13 @@ def get_hourly_panorama(prices_dict: dict) -> dict:
 
     prompt = f"""PANORAMA DEL MERCADO [{ts}]:
 {context_line}
+- USDT.D: {usdt_d}%
 
 Basándote en tu personalidad y en todo el contexto acumulado de hoy:
 1. ¿Cuál es tu lectura actual del mercado? (1-2 frases)
 2. ¿Hay algo que notes diferente respecto a horas anteriores?
 3. Da tu recomendación concreta para la próxima hora.
+4. OPTIMIZACIÓN (Opcional): Si crees que los umbrales de RSI o Bollinger están fallando, sugiere una versión 'V1.1.0' con los nuevos valores.
 
 Usa Markdown con emojis para Telegram. Sé específico y en español."""
 
@@ -221,6 +254,7 @@ Usa Markdown con emojis para Telegram. Sé específico y en español."""
         info = PERSONAS[persona]
         answer, _ = _chat_with_persona(persona, prompt)
         if answer:
+            # Si el agente sugiere una optimización en el texto, intentamos extraerla o simplemente la reportamos
             results[persona.lower()] = f"{info['emoji']} *{info['name']}*\n\n{answer}"
         else:
             results[persona.lower()] = f"{info['emoji']} *{info['name']}*: Error de sistema."

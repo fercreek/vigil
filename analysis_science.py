@@ -61,6 +61,26 @@ def calculate_bollinger_bands(prices, period=20, std_dev=2):
     std = prices.rolling(window=period).std()
     return sma + (std * std_dev), sma - (std * std_dev)
 
+def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0, side="LONG"):
+    score = 0
+    if side == "LONG":
+        if rsi <= 30: score += 2
+        elif rsi <= 40: score += 1
+    else:
+        if rsi >= 70: score += 2
+        elif rsi >= 60: score += 1
+    if (side == "LONG" and p > ema_200) or (side == "SHORT" and p < ema_200): score += 1
+    if (side == "LONG" and p <= bb_l * 1.01) or (side == "SHORT" and p >= bb_u * 0.99): score += 1
+    if (side == "LONG" and usdt_d < 8.05) or (side == "SHORT" and usdt_d > 8.05): score += 1
+    return score
+
+def calculate_atr_series(df, period=14):
+    high_low = df['high'] - df['low']
+    high_close = (df['high'] - df['close'].shift()).abs()
+    low_close = (df['low'] - df['close'].shift()).abs()
+    true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    return true_range.rolling(window=period).mean()
+
 def run_detailed_backtest(symbol="ETH/USDT", target_date_str=None, days_ago=1, version="V1-TECH"):
     """
     Simula trades detallados con nivel de alerta para un día y versión específica.
@@ -100,19 +120,25 @@ def run_detailed_backtest(symbol="ETH/USDT", target_date_str=None, days_ago=1, v
     df_test['date_only'] = df_test.index.normalize()
     df_test = df_test.merge(df_daily_shifted, left_on='date_only', right_index=True, how='left')
     
-    # Calcular indicadores sobre todo el contexto, extraer para el día
-    df_context['rsi'] = calculate_rsi(df_context['close'], period=14)
-    bb_u, bb_l = calculate_bollinger_bands(df_context['close'])
-    df_context['bb_upper'] = bb_u
-    df_context['bb_lower'] = bb_l
+    # 4. Cálculo de Indicadores V1.4.0+ (ATR, Volumen, Confluencia, y Macro 1H/4H)
+    df_test['rsi'] = calculate_rsi(df_test['close'])
+    df_test['bb_upper'], df_test['bb_lower'] = calculate_bollinger_bands(df_test['close'])
     
-    df_test = df_test.join(df_context[['rsi', 'bb_upper', 'bb_lower']], how='left')
-    df_test = df_test.dropna(subset=['r1', 's1', 'rsi'])
+    # EMAs
+    df_test['ema_200'] = df_test['close'].ewm(span=200, adjust=False).mean() # 1H EMA
+    df_4h_ema = df['close'].resample('4h').last().ewm(span=200, adjust=False).mean()
+    df_test['ema_4h'] = df_4h_ema.reindex(df_test.index, method='ffill')
+    
+    # Volatilidad y Volumen
+    df_test['atr'] = calculate_atr_series(df_test)
+    df_test['vol_sma'] = df_test['volume'].rolling(20).mean()
+    
+    df_test = df_test.dropna(subset=['r1', 's1', 'rsi', 'ema_200', 'ema_4h', 'atr'])
     
     if df_test.empty:
         return []
     
-    # 5. Umbrales por versión
+    # 5. Umbrales por versión (V1.3.0 FAST TREND)
     rsi_short = 62 if version == "V1-TECH" else 60
     rsi_long = 38 if version == "V1-TECH" else 40
     
@@ -133,50 +159,73 @@ def run_detailed_backtest(symbol="ETH/USDT", target_date_str=None, days_ago=1, v
             bb_status = "🟢 Cerca Banda Inferior"
         
         if not active_trade:
-            # — ENTRADA SHORT —
-            if price >= r1 and rsi >= rsi_short:
-                sl = round(price * 1.01, 2)
-                sl_dist = sl - price
-                tp1 = round(price - sl_dist * 1.0, 2)  # 1:1 R:R
-                tp2 = round(price - sl_dist * 2.0, 2)  # 2:1 R:R
-                active_trade = {
-                    "symbol": symbol,
-                    "version": version,
-                    "type": "SHORT",
-                    "entry_price": round(price, 2),
-                    "rsi_entry": round(rsi, 1),
-                    "bb_status": bb_status,
-                    "sl": sl,
-                    "tp1": tp1,
-                    "tp2": tp2,
-                    "pivot_r1": round(r1, 2),
-                    "pivot_s1": round(s1, 2),
-                    "open_time": ts.strftime('%H:%M'),
-                    "open_ts": ts,
-                    "alert_reason": f"Precio ${price:.2f} >= R1 ${r1:.2f} | RSI {rsi:.1f} >= {rsi_short}"
-                }
-            # — ENTRADA LONG —
-            elif price <= s1 and rsi <= rsi_long:
-                sl = round(price * 0.99, 2)
-                sl_dist = price - sl
-                tp1 = round(price + sl_dist * 1.0, 2)  # 1:1 R:R
-                tp2 = round(price + sl_dist * 2.0, 2)  # 2:1 R:R
-                active_trade = {
-                    "symbol": symbol,
-                    "version": version,
-                    "type": "LONG",
-                    "entry_price": round(price, 2),
-                    "rsi_entry": round(rsi, 1),
-                    "bb_status": bb_status,
-                    "sl": sl,
-                    "tp1": tp1,
-                    "tp2": tp2,
-                    "pivot_r1": round(r1, 2),
-                    "pivot_s1": round(s1, 2),
-                    "open_time": ts.strftime('%H:%M'),
-                    "open_ts": ts,
-                    "alert_reason": f"Precio ${price:.2f} <= S1 ${s1:.2f} | RSI {rsi:.1f} <= {rsi_long}"
-                }
+            ema_200 = row['ema_200']
+            ema_4h = row['ema_4h']
+            atr = row['atr']
+            vol = row['volume']
+            vol_sma = row['vol_sma']
+            
+            # Filtro Direccional Macro (1H y 4H)
+            trend_1h = "UP" if price > ema_200 else "DOWN"
+            trend_4h = "UP" if price > ema_4h else "DOWN"
+            macro_status = "NEUTRAL"
+            if trend_1h == "UP" and trend_4h == "UP": macro_status = "BULL"
+            elif trend_1h == "DOWN" and trend_4h == "DOWN": macro_status = "BEAR"
+
+            # — ENTRADA SHORT — (Trend + BB + RSI + Volume V1.6.0)
+            if macro_status != "BULL":
+                if price < ema_200 and rsi >= rsi_short and bb_status == "🔴 Cerca Banda Superior" and vol > vol_sma:
+                    sl_dist = max(atr * 1.5, price * 0.005)
+                    sl = round(price + sl_dist, 2)
+                    tp1 = round(price - (sl_dist * 2.0), 2)
+                    tp2 = round(price - (sl_dist * 3.0), 2)
+                    conf_score = calculate_confluence_score(price, rsi, bb_u_val, bb_l_val, ema_200, 8.0, "SHORT")
+                    
+                    active_trade = {
+                        "symbol": symbol,
+                        "version": version,
+                        "type": "SHORT",
+                        "entry_price": round(price, 2),
+                        "rsi_entry": round(rsi, 1),
+                        "bb_status": bb_status,
+                        "sl": sl,
+                        "tp1": tp1,
+                        "tp2": tp2,
+                        "pivot_r1": round(r1, 2),
+                        "pivot_s1": round(s1, 2),
+                        "open_time": ts.strftime('%H:%M'),
+                        "open_ts": ts,
+                        "conf_score": conf_score,
+                        "alert_reason": f"SHORT [V1.6] | Conf: {conf_score}/5 | RSI {rsi:.1f}"
+                    }
+                    continue
+
+            # — ENTRADA LONG — (Trend + BB + RSI + Volume V1.6.0)
+            if macro_status != "BEAR":
+                if price > ema_200 and rsi <= rsi_long and bb_status == "🟢 Cerca Banda Inferior" and vol > vol_sma:
+                    sl_dist = max(atr * 1.5, price * 0.005)
+                    sl = round(price - sl_dist, 2)
+                    tp1 = round(price + (sl_dist * 2.0), 2)
+                    tp2 = round(price + (sl_dist * 3.0), 2)
+                    conf_score = calculate_confluence_score(price, rsi, bb_u_val, bb_l_val, ema_200, 8.0, "LONG")
+                    
+                    active_trade = {
+                        "symbol": symbol,
+                        "version": version,
+                        "type": "LONG",
+                        "entry_price": round(price, 2),
+                        "rsi_entry": round(rsi, 1),
+                        "bb_status": bb_status,
+                        "sl": sl,
+                        "tp1": tp1,
+                        "tp2": tp2,
+                        "pivot_r1": round(r1, 2),
+                        "pivot_s1": round(s1, 2),
+                        "open_time": ts.strftime('%H:%M'),
+                        "open_ts": ts,
+                        "conf_score": conf_score,
+                        "alert_reason": f"LONG [V1.6] | Conf: {conf_score}/5 | RSI {rsi:.1f}"
+                    }
         else:
             t = active_trade
             duration_min = int((ts - t["open_ts"]).total_seconds() / 60)

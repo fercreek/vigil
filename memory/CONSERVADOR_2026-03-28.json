@@ -1,30 +1,422 @@
 [
   {
-    "role": "user",
+    "role": "model",
     "parts": [
-      "[19:58] Bot lanzó alerta: SHORT BTC | Entrada: $66500.00 | RSI: 63.2 | TP1: $65700.00 | SL: $67200.00 | Estrategia: V1-TECH"
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% cerca de tensión; RSI 62.4 sin sobrecompra.\"\n}\n```"
     ],
-    "ts": "2026-03-28 19:58"
+    "ts": "2026-03-28 23:43"
   },
   {
     "role": "user",
     "parts": [
-      "[19:58] Bot lanzó alerta: LONG ETH | Entrada: $1992.00 | RSI: 37.5 | TP1: $2012.00 | SL: $1972.00 | Estrategia: V2-AI"
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.16\n- RSI: 62.4\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
     ],
-    "ts": "2026-03-28 19:58"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "PANORAMA DEL MERCADO [19:58]:\n- ETH: $1,998.00 (RSI: 51.2)\n- BTC: $66,400.00 (RSI: 54.1)\n- TAO: $317.00 (RSI: 47.5)\n\nBasándote en tu personalidad y en todo el contexto acumulado de hoy:\n1. ¿Cuál es tu lectura actual del mercado? (1-2 frases)\n2. ¿Hay algo que notes diferente respecto a horas anteriores?\n3. Da tu recomendación concreta para la próxima hora.\n\nUsa Markdown con emojis para Telegram. Sé específico y en español."
-    ],
-    "ts": "2026-03-28 19:58"
+    "ts": "2026-03-28 23:43"
   },
   {
     "role": "model",
     "parts": [
-      "Análisis de mercado [20:05] 🛡️\n\n**1. ¿Cuál es tu lectura actual del mercado?**\nEl mercado se encuentra en una zona de alta indecisión y equilibrio momentáneo tras un pequeño pico de volatilidad. El RSI en 50-54 para BTC y ETH indica que el impulso inicial de las alertas se ha neutralizado, entrando en un rango lateral de corto plazo.\n\n**2. ¿Hay algo que notes diferente respecto a horas anteriores?**\nSí, observo una **compresión rápida del RSI**. Las alertas del bot se dispararon con valores de 63 (BTC) y 37 (ETH), pero en cuestión de minutos han regresado al punto neutro (51-54). Esto sugiere que la liquidez está absorbiendo los movimientos rápidamente, eliminando el \"borde\" o ventaja estadística de entrar ahora mismo. El precio de ETH ya subió de la entrada sugerida ($1992 -> $1998), reduciendo el Ratio Riesgo/Beneficio.\n\n**3. Recomendación concreta para la próxima hora:**\n\n🚫 **NO ENTRAR (ESPERAR)** 🚫\n\n*   **Razón:** Mi filosofía dicta que \"el dinero está en la espera\". El trade de ETH ya recorrió más del 30% del camino al TP1; entrar ahora es \"perseguir el precio\" (chasing).\n*   **Filtro Conservador:** La alerta de SHORT en BTC la descarto por principio (priorizo LONGs en activos de alta capitalización) y porque el RSI ya no está en zona de sobrecompra.\n*   **Plan de Acción:** Mantenerse en USDT. Solo buscaré una entrada si ETH vuelve a testear los **$1,985 - $1,990** con un RSI inferior a 40, o si BTC rompe con volumen real los $67,000. \n\n⚠️ **Nota del Diario:** \"Entrar tarde es tan peligroso como entrar sin señal. Prefiero perder una oportunidad que perder capital por impaciencia.\" 📔✍️"
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% cerca tensión 8.08%; RSI 62.4 sin sobrecompra.\"\n}\n```"
     ],
-    "ts": "2026-03-28 19:58"
+    "ts": "2026-03-28 23:43"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:43] Bot lanzó alerta: SHORT TAO | Entrada: $321.16 | RSI: 62.4 | TP1: $314.74 | SL: $324.37 | Estrategia: V2-AI"
+    ],
+    "ts": "2026-03-28 23:43"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.12\n- RSI: 62.0\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:44"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"RSI 62.0 insuficiente y USDT.D 8.07% en zona de tensión.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:44"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.12\n- RSI: 61.6\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:45"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"RSI 61.6 insuficiente y USDT.D 8.07% en zona crítica.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:45"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.84\n- RSI: 61.6\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:45"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"RSI 61.6 insuficiente y USDT.D 8.07% en zona de tensión.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:45"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.84\n- RSI: 61.6\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:46"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"RSI 61.6 bajo y USDT.D 8.07% cerca de resistencia 8.08%.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:46"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.72\n- RSI: 61.6\n- Bollinger: En rango medio\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:46"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% zona tensión; RSI y Bollinger sin señal.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:46"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.72\n- RSI: 62.7\n- Bollinger: En rango medio\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:47"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% tensión; RSI y Bollinger sin confirmación bajista.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:47"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.79\n- RSI: 62.7\n- Bollinger: En rango medio\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:48"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% tensión; RSI y Bollinger sin señales claras.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:48"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.79\n- RSI: 62.7\n- Bollinger: En rango medio\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:48"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"RSI neutral, Bollinger en medio y USDT.D en tensión.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:48"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.79\n- RSI: 61.9\n- Bollinger: En rango medio\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:49"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"RSI neutral y Bollinger sin señal en zona USDT.D crítica.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:49"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.79\n- RSI: 63.4\n- Bollinger: En rango medio\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:50"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"RSI neutral, Bollinger medio y USDT.D en zona crítica.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:50"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.91\n- RSI: 63.9\n- Bollinger: En rango medio\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:50"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% tensión máxima; RSI y Bollinger sin confirmación.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:50"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $320.91\n- RSI: 65.6\n- Bollinger: En rango medio\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:51"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% tensión; RSI y Bollinger sin confirmación bajista.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:51"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:51] Bot lanzó alerta: SHORT TAO | Entrada: $321.22 | RSI: 66.2 | TP1: $314.80 | SL: $324.43 | Estrategia: V1-TECH"
+    ],
+    "ts": "2026-03-28 23:51"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.22\n- RSI: 66.2\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:52"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% zona tensión; RSI 66.2 sin agotamiento claro.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:52"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:52] Bot lanzó alerta: SHORT TAO | Entrada: $321.22 | RSI: 66.2 | TP1: $314.80 | SL: $324.43 | Estrategia: V2-AI"
+    ],
+    "ts": "2026-03-28 23:52"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.22\n- RSI: 65.6\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:52"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% tensión máxima; RSI 65.6 sin confirmación clara.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:52"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "PANORAMA DEL MERCADO [23:52]:\n- ETH: $2,002.52 (RSI: 50.6)\n- BTC: $66,650.00 (RSI: 54.5)\n- TAO: $321.22 (RSI: 65.6)\n- USDT.D: 8.07%\n\nBasándote en tu personalidad y en todo el contexto acumulado de hoy:\n1. ¿Cuál es tu lectura actual del mercado? (1-2 frases)\n2. ¿Hay algo que notes diferente respecto a horas anteriores?\n3. Da tu recomendación concreta para la próxima hora.\n4. OPTIMIZACIÓN (Opcional): Si crees que los umbrales de RSI o Bollinger están fallando, sugiere una versión 'V1.1.0' con los nuevos valores.\n\nUsa Markdown con emojis para Telegram. Sé específico y en español."
+    ],
+    "ts": "2026-03-28 23:52"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "PANORAMA DEL MERCADO [23:52] 📊\n\n1. **Lectura actual:** El mercado se encuentra en una zona de \"compresión máxima\"; USDT.D al 8.07% actúa como un techo de cristal que asfixia a las Alts, pero sin la capitulación necesaria para entrar con seguridad. Estamos en tierra de nadie, justo debajo de la zona de alta tensión. 🧱\n\n2. **Diferencias observadas:** A diferencia de las horas previas, USDT.D se ha \"lateralizado\" en el extremo superior (8.07%-8.08%). TAO muestra resiliencia: su RSI ha bajado ligeramente (de 68.9 a 65.6) sin una caída proporcional en el precio, lo que sugiere una consolidación peligrosa para los SHORTS. 📉🚫\n\n3. **Recomendación próxima hora:** ⚠️ **STAY ASIDE (Mantenerse al margen).** No hay claridad. Para un SHORT en TAO, exijo agotamiento real. \"El dinero está en la espera\". No operaré hasta que USDT.D defina si rompe el 8.08% (bajista total) o cae del 8.044% (bullish). ⏳\n\n---\n\n### 🛠 OPTIMIZACIÓN V1.1.0 (Propuesta Conservadora)\n\nEl bot está lanzando señales prematuras en TAO. Para activos de alta volatilidad, sugiero ajustar los parámetros para evitar \"falsos techos\":\n\n*   **RSI:** Subir umbral de validación a **>72** (buscamos sobrecompra real, no solo fuerza).\n*   **Bollinger:** Exigir que el precio cierre **fuera** de la banda superior y reingrese (Confirmación de reversión).\n*   **Filtro USDT.D:** Bloquear cualquier operación si USDT.D está entre **8.05% y 8.08%**, ya que es zona de ruido y manipulación.\n\n**Estado:** 🛡️ PROTEGIENDO CAPITAL. No hay entrada válida."
+    ],
+    "ts": "2026-03-28 23:52"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.59\n- RSI: 67.1\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:53"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% en zona de ruido; RSI 67.1 insuficiente.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:53"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.59\n- RSI: 67.1\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:54"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% zona de ruido; RSI 67.1 no confirma agotamiento.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:54"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.70\n- RSI: 67.1\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:54"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% zona de ruido; RSI 67.1 insuficiente.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:54"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.70\n- RSI: 66.5\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:55"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% tensión; RSI 66.5 sin agotamiento suficiente.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:55"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.95\n- RSI: 66.2\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:56"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% zona tensión; RSI 66.2 sin agotamiento claro.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:56"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $321.95\n- RSI: 66.5\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:56"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% zona tensión; RSI 66.5 sin agotamiento confirmado.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:56"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:57] Bot lanzó alerta: SHORT TAO | Entrada: $322.07 | RSI: 66.5 | TP1: $315.63 | SL: $325.29 | Estrategia: V1-TECH"
+    ],
+    "ts": "2026-03-28 23:57"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $322.07\n- RSI: 66.5\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:57"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% tensión máxima; RSI 66.5 sin agotamiento confirmado.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:57"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:57] Bot lanzó alerta: SHORT TAO | Entrada: $322.07 | RSI: 66.5 | TP1: $315.63 | SL: $325.29 | Estrategia: V2-AI"
+    ],
+    "ts": "2026-03-28 23:57"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $322.07\n- RSI: 66.0\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:57"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% tensión; RSI 66.0 sin agotamiento confirmado.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:57"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $322.17\n- RSI: 65.8\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:58"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"RSI 65.8 insuficiente y USDT.D en zona de tensión máxima.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:58"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $322.17\n- RSI: 64.7\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:59"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% en tensión; RSI 64.7 sin agotamiento suficiente.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:59"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $322.31\n- RSI: 65.1\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.07% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+    ],
+    "ts": "2026-03-28 23:59"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "```json\n{\n  \"decision\": \"REJECT\",\n  \"reason\": \"USDT.D 8.07% zona tensión; RSI 65.1 insuficiente sin agotamiento.\"\n}\n```"
+    ],
+    "ts": "2026-03-28 23:59"
   }
 ]
