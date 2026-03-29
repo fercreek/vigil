@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify
 import tracker
+import analysis_science
 
 app = Flask(__name__)
 
@@ -26,6 +27,15 @@ def get_stats():
 def get_trades():
     trades = tracker.get_all_trades()
     return jsonify(trades)
+
+@app.route('/api/analysis')
+def get_analysis():
+    results = []
+    for s in ["ETH/USDT", "BTC/USDT", "TAO/USDT"]:
+        res = analysis_science.scientific_analysis(s)
+        if res:
+            results.append(res)
+    return jsonify(results)
 
 if __name__ == '__main__':
     print("🚀 Dashboard de Scalping UI iniciado en http://localhost:5001")

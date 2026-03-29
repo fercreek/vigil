@@ -6,28 +6,34 @@ Este documento registra la evolución del algoritmo para mantener un versionado 
 
 ### 1. Indicadores de Confirmación
 - **RSI 1H**: Define la tendencia macro (Sobreventa < 30 / Sobrecompra > 70).
-- **RSI 15M**: Actúa como gatillo de entrada (Cruce arriba de 30 para Long / Abajo de 70 para Short).
+- **RSI 15M**: Gatillo de entrada (V1: 30/70).
 - **USDT Dominance**: Filtro macro (> 8.10% para Short / < 8.00% para Long).
-
-### 2. Niveles de Precio (Dinámicos)
-- **Soportes/Resistencias**: Basados en **Pivot Points Diarios** (High, Low, Close de ayer).
-- **Entrada Short**: Precio >= Resistencia 1 (R1).
-- **Entrada Long**: Precio <= Soporte 1 (S1).
-- **Take Profit 1**: Punto Pivote (P) + Stop Loss a Break Even.
-- **Take Profit 2**: Soporte/Resistencia opuesta (S1/R1).
-
-### 3. Gestión de Riesgo
-- **Riesgo por trade**: 2% del balance inicial ($1,000).
-- **Stop Loss**: 1% de distancia desde la entrada o ATR-based.
 
 ---
 
-## Resultados del Backtesting (V1)
-- **Periodo**: Últimas 48 horas.
-- **Resultado**: 0 Operaciones encontradas.
-- **Análisis**: El mercado estuvo muy lateral. El RSI nunca llegó a los extremos 70/30 mientras el precio tocaba los niveles de R1/S1. El filtro fue demasiado estricto para la volatilidad de ayer.
+## Especificaciones de V2 (Vigente desde: 29 Marzo 2026) 🚀
 
-## Próximos Experimentos (V2)
-- [ ] Relajar umbrales de RSI a 60/40.
-- [ ] Implementar **Bollinger Bands** para detectar explosiones de volatilidad.
-- [ ] Auto-ajustar niveles de RSI basados en el Percentil de las últimas 24h.
+Esta versión es el resultado del **Análisis Científico con Pandas** de las últimas 48h. Optimiza la entrada en mercados de baja volatilidad.
+
+### 1. Indicadores (Optimización)
+- **RSI 15M (Gatillo Dinámico)**: 
+    - **Short**: RSI >= 60 (Antes 70).
+    - **Long**: RSI <= 40 (Antes 30).
+- **Bollinger Bands (20, 2)**: 
+    - **Confirmación Short**: El precio debe estar por encima de la Banda Superior (`Upper Band`).
+    - **Confirmación Long**: El precio debe estar por debajo de la Banda Inferior (`Lower Band`).
+
+### 2. Lógica de Ejecución
+El bot ahora requiere **Triple Validación**:
+1. Precio en Nivel Dinámico (Pivot Point R1/S1).
+2. RSI en Umbral V2 (60/40).
+3. Precio rompiendo Bandas de Bollinger (Confirmación de volatilidad).
+
+---
+
+## Resultados del Backtesting (V2)
+- **Análisis**: Los datos sugieren que con este ajuste se habrían capturado **3 entradas** en ETH ayer que la V1 ignoró, manteniendo un riesgo controlado.
+
+## Próximos Experimentos (V3)
+- [ ] Implementar **Trailing Stop Loss** basado en ATR (Average True Range).
+- [ ] Integrar **Sentiment Analysis** de Twitter/X para filtrar pumps falsos.

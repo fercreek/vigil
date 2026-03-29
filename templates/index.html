@@ -16,6 +16,7 @@
             --neon-red: #ef4444;
             --neon-yellow: #f59e0b;
             --neon-blue: #3b82f6;
+            --neon-purple: #818cf8;
         }
 
         * {
@@ -54,6 +55,37 @@
             margin-bottom: 0.5rem;
         }
 
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--neon-blue);
+            border-bottom: 2px solid var(--neon-blue);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
         .live-badge {
             display: inline-flex;
             align-items: center;
@@ -84,7 +116,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
         }
 
         .stat-card {
@@ -94,12 +126,7 @@
             border-radius: 16px;
             padding: 1.5rem;
             text-align: center;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
         }
 
         .stat-card.green { border-bottom: 3px solid var(--neon-green); }
@@ -109,32 +136,24 @@
 
         .stat-title {
             color: var(--text-dim);
-            font-size: 0.875rem;
+            font-size: 0.825rem;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 0.5rem;
         }
 
         .stat-value {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: 800;
         }
 
-        .stat-value.green { color: var(--neon-green); }
-        .stat-value.red { color: var(--neon-red); }
-
-        .dashboard {
+        .dashboard-box {
             background: var(--glass-bg);
             backdrop-filter: blur(10px);
             border: 1px solid var(--border);
             border-radius: 16px;
-            overflow: hidden;
+            padding: 1.5rem;
             box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
-
-        .table-responsive {
-            width: 100%;
-            overflow-x: auto;
         }
 
         table {
@@ -145,41 +164,49 @@
 
         th {
             background: rgba(0,0,0,0.2);
-            padding: 1rem 1.5rem;
+            padding: 1rem;
             color: var(--text-dim);
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
             border-bottom: 1px solid var(--border);
         }
 
         td {
-            padding: 1rem 1.5rem;
+            padding: 1rem;
             border-bottom: 1px solid rgba(255,255,255,0.05);
-            font-size: 0.95rem;
-        }
-
-        tr:hover td {
-            background: rgba(255,255,255,0.02);
+            font-size: 0.9rem;
         }
 
         .badge {
             padding: 4px 10px;
             border-radius: 6px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            text-transform: uppercase;
         }
 
-        .badge-short { background: rgba(239, 68, 68, 0.2); color: var(--neon-red); border: 1px solid rgba(239, 68, 68, 0.3); }
-        .badge-long { background: rgba(16, 185, 129, 0.2); color: var(--neon-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-short { background: rgba(239, 68, 68, 0.2); color: var(--neon-red); }
+        .badge-long { background: rgba(16, 185, 129, 0.2); color: var(--neon-green); }
 
-        .status-open { color: var(--neon-blue); font-weight: 600; text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
-        .status-partial { color: var(--neon-yellow); font-weight: 600; text-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
-        .status-won { color: var(--neon-green); font-weight: 600; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
-        .status-lost { color: var(--text-dim); font-weight: 600; text-decoration: line-through; }
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
 
-        .time-dim { color: var(--text-dim); font-size: 0.85rem; }
+        .analysis-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .rec-box {
+            background: rgba(129, 140, 248, 0.1);
+            border: 1px solid rgba(129, 140, 248, 0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
 
     </style>
 </head>
@@ -187,116 +214,132 @@
 
     <div class="container">
         <header>
-            <h1>Scalping Terminal</h1>
+            <h1>Scalping Terminal V2</h1>
             <div class="live-badge">
-                <span class="dot"></span> Sistema Activo
+                <span class="dot"></span> Monitorización Científica Activa
             </div>
         </header>
 
-        <div class="stats-grid">
-            <div class="stat-card blue">
-                <div class="stat-title">Win Rate (Global)</div>
-                <div class="stat-value" id="win-rate">0%</div>
-            </div>
-            <div class="stat-card green">
-                <div class="stat-title">Hits Completos (TP2)</div>
-                <div class="stat-value green" id="full-won">0</div>
-            </div>
-            <div class="stat-card yellow">
-                <div class="stat-title">Asegurados (TP1)</div>
-                <div class="stat-value" style="color: var(--neon-yellow);" id="partial-won">0</div>
-            </div>
-            <div class="stat-card red">
-                <div class="stat-title">Stop Loss</div>
-                <div class="stat-value red" id="lost">0</div>
-            </div>
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('live')">Live Scalps</button>
+            <button class="tab-btn" onclick="switchTab('analysis')">Análisis y Reportes (48h)</button>
         </div>
 
-        <div class="dashboard">
-            <div class="table-responsive">
+        <!-- TAB: LIVE SCALPS -->
+        <div id="tab-live" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card blue">
+                    <div class="stat-title">Win Rate</div>
+                    <div class="stat-value" id="win-rate">0%</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-title">Full Won (TP2)</div>
+                    <div class="stat-value" style="color: var(--neon-green);" id="full-won">0</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-title">Stop Loss</div>
+                    <div class="stat-value" style="color: var(--neon-red);" id="lost">0</div>
+                </div>
+            </div>
+
+            <div class="dashboard-box">
                 <table>
                     <thead>
                         <tr>
-                            <th>Hora Entrada</th>
+                            <th>Hora</th>
                             <th>Ticket</th>
                             <th>Tipo</th>
                             <th>Entrada</th>
-                            <th>Target 1</th>
-                            <th>Target 2</th>
-                            <th>Cierre</th>
+                            <th>TP1</th>
+                            <th>TP2</th>
                             <th>Estado</th>
                         </tr>
                     </thead>
-                    <tbody id="trades-body">
-                        <!-- Llenado por JS -->
-                        <tr><td colspan="8" style="text-align: center; padding: 2rem;">Cargando operaciones...</td></tr>
-                    </tbody>
+                    <tbody id="trades-body"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- TAB: ANALYSIS (NEW) -->
+        <div id="tab-analysis" class="tab-content">
+            <div class="analysis-grid" id="analysis-content">
+                <!-- Llenado por JS -->
             </div>
         </div>
     </div>
 
     <script>
-        function formatTime(dateStr) {
-            if (!dateStr) return "-";
-            const d = new Date(dateStr);
-            return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+            
+            if(tab === 'analysis') fetchAnalysis();
         }
 
         async function fetchDashboard() {
             try {
-                // Obtener Stats
-                const statsResponse = await fetch('/api/stats');
-                const stats = await statsResponse.json();
-                
+                const s = await fetch('/api/stats');
+                const stats = await s.json();
                 document.getElementById('win-rate').innerText = stats.win_rate + '%';
                 document.getElementById('full-won').innerText = stats.full_won;
-                document.getElementById('partial-won').innerText = stats.partial_won;
                 document.getElementById('lost').innerText = stats.lost;
 
-                // Obtener Trades
-                const tradesResponse = await fetch('/api/trades');
-                const trades = await tradesResponse.json();
-                
+                const t = await fetch('/api/trades');
+                const trades = await t.json();
                 const tbody = document.getElementById('trades-body');
-                tbody.innerHTML = '';
-
-                if(trades.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #94a3b8;">No hay operaciones registradas aún.</td></tr>';
-                    return;
-                }
-
-                trades.forEach(t => {
-                    const row = document.createElement('tr');
-                    
-                    // Formato de badge para SHORT / LONG
-                    const typeBadge = t.type === 'SHORT' ? `<span class="badge badge-short">📉 SHORT</span>` : `<span class="badge badge-long">📈 LONG</span>`;
-                    
-                    // Estado visual
-                    let statusClass = '';
-                    let statusText = t.status;
-                    if(t.status === 'OPEN') { statusClass = 'status-open'; statusText = '⏳ ABIERTO'; }
-                    else if(t.status === 'PARTIAL_WON') { statusClass = 'status-partial'; statusText = '🟡 TP1 ASEGURADO'; }
-                    else if(t.status === 'FULL_WON') { statusClass = 'status-won'; statusText = '🟢 VICTORIA TOTAL'; }
-                    else if(t.status === 'LOST') { statusClass = 'status-lost'; statusText = '🔴 PÉRDIDA'; }
-
-                    row.innerHTML = `
-                        <td class="time-dim">${formatTime(t.open_time)}</td>
-                        <td><strong>${t.symbol}</strong></td>
-                        <td>${typeBadge}</td>
-                        <td>$${t.entry_price.toLocaleString(undefined, {minimumFractionDigits: 1})}</td>
-                        <td style="color: var(--neon-yellow)">$${t.tp1_price.toLocaleString(undefined, {minimumFractionDigits: 1})}</td>
-                        <td style="color: var(--neon-green)">$${t.tp2_price.toLocaleString(undefined, {minimumFractionDigits: 1})}</td>
-                        <td class="time-dim">${formatTime(t.close_time)}</td>
-                        <td class="${statusClass}">${statusText}</td>
-                    `;
-                    tbody.appendChild(row);
+                tbody.innerHTML = trades.length ? '' : '<tr><td colspan="7">No hay trades.</td></tr>';
+                trades.forEach(tr => {
+                    const row = `<tr>
+                        <td>${new Date(tr.open_time).toLocaleTimeString()}</td>
+                        <td><b>${tr.symbol}</b></td>
+                        <td><span class="badge ${tr.type==='SHORT'?'badge-short':'badge-long'}">${tr.type}</span></td>
+                        <td>$${tr.entry_price}</td>
+                        <td>$${tr.tp1_price}</td>
+                        <td>$${tr.tp2_price}</td>
+                        <td style="color:${tr.status==='LOST'?'var(--neon-red)':'var(--neon-green)'}">${tr.status}</td>
+                    </tr>`;
+                    tbody.innerHTML += row;
                 });
-
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            }
+            } catch(e) {}
         }
+
+        async function fetchAnalysis() {
+            const container = document.getElementById('analysis-content');
+            container.innerHTML = '<p>Ejecutando análisis de Pandas...</p>';
+            try {
+                const r = await fetch('/api/analysis');
+                const data = await r.json();
+                container.innerHTML = '';
+                data.forEach(an => {
+                    container.innerHTML += `
+                    <div class="analysis-card">
+                        <h3>${an.symbol}</h3>
+                        <p style="color:var(--text-dim)">Rango 48h: $${an.price_range[0]} - $${an.price_range[1]}</p>
+                        <hr style="margin:1rem 0; opacity:0.1">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem">
+                            <span>RSI Promedio</span> <b>${an.rsi_avg}</b>
+                        </div>
+                        <div style="display:flex; justify-content:space-between">
+                            <span>Toques R1/S1</span> <b>${an.r1_touches}/${an.s1_touches}</b>
+                        </div>
+                        <div class="rec-box">
+                            <h4 style="color:var(--neon-purple)">Recomendación V2</h4>
+                            <p>SHORT RSI >= ${an.v2_short_rec}</p>
+                            <p>LONG RSI <= ${an.v2_long_rec}</p>
+                        </div>
+                    </div>`;
+                });
+            } catch(e) { container.innerHTML = '<p>Error al cargar análisis.</p>'; }
+        }
+
+        fetchDashboard();
+        setInterval(fetchDashboard, 5000);
+    </script>
+</body>
+</html>
 
         // Llamar inicial y luego cada 5 segundos
         fetchDashboard();
