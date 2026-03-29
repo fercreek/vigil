@@ -123,26 +123,36 @@ def check_strategies(prices: dict):
         # --- ESTRATEGIA V1: TÉCNICA ---
         # Short V1
         if phase == "SHORT" and p >= L.get("resistance", L.get("short_entry_high", 999999)) and rsi >= 62:
-            msg = f"📉 *ALERTA TÉCNICA*\nPrecio: ${p:,.2f} | RSI: {rsi:.1f}\n🎯 Target 1: ${L['target1']}"
+            tp1 = L['target1']
+            sl  = L.get('sl_short', p+100)
+            msg = f"📉 *ALERTA TÉCNICA*\nPrecio: ${p:,.2f} | RSI: {rsi:.1f}\n🎯 Target 1: ${tp1}"
             mid = alert(f"{sym}_v1_short", msg, version="V1-TECH")
-            if mid: tracker.log_trade(sym, "SHORT", p, L['target1'], L.get('target2', p-100), L.get('sl_short', p+100), mid, "V1-TECH")
+            if mid:
+                tracker.log_trade(sym, "SHORT", p, tp1, L.get('target2', p-100), sl, mid, "V1-TECH")
+                gemini_analyzer.log_alert_to_context(sym, "SHORT", p, rsi, tp1, sl, "V1-TECH")
 
         # Long V1
         elif phase == "LONG" and p <= L.get("long_zone", L.get("support2", 0)) and rsi <= 38:
-            msg = f"📈 *ALERTA TÉCNICA*\nPrecio: ${p:,.2f} | RSI: {rsi:.1f}\n🎯 Target 1: ${p+15}"
+            tp1 = p + 15
+            sl  = L.get('long_sl', p-50)
+            msg = f"📈 *ALERTA TÉCNICA*\nPrecio: ${p:,.2f} | RSI: {rsi:.1f}\n🎯 Target 1: ${tp1}"
             mid = alert(f"{sym}_v1_long", msg, version="V1-TECH")
-            if mid: tracker.log_trade(sym, "LONG", p, p+15, L.get('resistance', p+50), L.get('long_sl', p-50), mid, "V1-TECH")
+            if mid:
+                tracker.log_trade(sym, "LONG", p, tp1, L.get('resistance', p+50), sl, mid, "V1-TECH")
+                gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
 
         # --- ESTRATEGIA V2: AI ENHANCED ---
         if (rsi >= 60 or rsi <= 40):
             side = "SHORT" if rsi >= 60 else "LONG"
-            decision, reason = gemini_analyzer.get_ai_decision(sym, p, side, rsi, bb_u, bb_l)
+            decision, reason = gemini_analyzer.get_ai_decision(sym, p, side, rsi, bb_u, bb_l, version="V2-AI")
             if decision == "CONFIRM":
+                tp1 = L['target1'] if side == "SHORT" else p+30
+                sl  = L.get('sl_short', p+100) if side == "SHORT" else L.get('long_sl', p-50)
                 msg = f"💎 *IA CONFIRMADA*\n_{reason}_\nPrecio: ${p:,.2f} | RSI: {rsi:.1f}"
                 mid = alert(f"{sym}_v2_ai_{side}", msg, version="V2-AI")
                 if mid:
-                    tp1 = L['target1'] if side == "SHORT" else p+30
-                    tracker.log_trade(sym, side, p, tp1, L.get('target2', tp1-50), L.get('sl_short', p+100), mid, "V2-AI")
+                    tracker.log_trade(sym, side, p, tp1, L.get('target2', tp1-50), sl, mid, "V2-AI")
+                    gemini_analyzer.log_alert_to_context(sym, side, p, rsi, tp1, sl, "V2-AI")
 
 def monitor_open_trades(prices: dict):
     open_trades = tracker.get_open_trades()
@@ -155,9 +165,11 @@ def monitor_open_trades(prices: dict):
             if curr_p >= t["sl_price"]:
                 tracker.update_trade_status(t["id"], "LOST")
                 alert(f"t_{t['id']}_l", f"🔴 SL TOCADO: {sym} SHORT en ${curr_p:.2f}", version=t["version"], reply_to=reply)
+                gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
             elif curr_p <= t["tp2_price"]:
                 tracker.update_trade_status(t["id"], "FULL_WON")
                 alert(f"t_{t['id']}_w", f"🟢 TP2 ALCANZADO: {sym} SHORT. ¡Victoria!", version=t["version"], reply_to=reply)
+                gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
             elif curr_p <= t["tp1_price"] and t["status"] == "OPEN":
                 tracker.update_trade_status(t["id"], "PARTIAL_WON")
                 tracker.update_sl(t["id"], t["entry_price"]) # BE
@@ -166,9 +178,11 @@ def monitor_open_trades(prices: dict):
             if curr_p <= t["sl_price"]:
                 tracker.update_trade_status(t["id"], "LOST")
                 alert(f"t_{t['id']}_l", f"🔴 SL TOCADO: {sym} LONG en ${curr_p:.2f}", version=t["version"], reply_to=reply)
+                gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
             elif curr_p >= t["tp2_price"]:
                 tracker.update_trade_status(t["id"], "FULL_WON")
                 alert(f"t_{t['id']}_w", f"🟢 TP2 ALCANZADO: {sym} LONG. ¡Victoria!", version=t["version"], reply_to=reply)
+                gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
             elif curr_p >= t["tp1_price"] and t["status"] == "OPEN":
                 tracker.update_trade_status(t["id"], "PARTIAL_WON")
                 tracker.update_sl(t["id"], t["entry_price"]) # BE
@@ -190,12 +204,14 @@ def main():
                 check_strategies(prices)
                 monitor_open_trades(prices)
                 
-                # Insight Horario (cada 3600 segundos)
+                # Insights Horarios: AMBAS PERSONALIDADES (cada 3600 segundos)
                 now = time.time()
                 if now - last_insight_time > 3600:
-                    print("[Robot] Generando panorama horario...")
-                    panorama = gemini_analyzer.get_hourly_panorama(prices)
-                    send_telegram(f"🤖 *PANORAMA DEL ROBOT*\n\n{panorama}")
+                    print("[Robot] Generando panorama horario (Conservador + Scalper)...")
+                    panoramas = gemini_analyzer.get_hourly_panorama(prices)
+                    # Enviar ambas perspectivas por separado
+                    send_telegram(f"🤖 *PANORAMA DEL ROBOT*\n\n{panoramas.get('conservador', 'Sin datos')}")
+                    send_telegram(f"🤖 *PANORAMA DEL ROBOT*\n\n{panoramas.get('scalper', 'Sin datos')}")
                     last_insight_time = now
                     
         except Exception as e: print(f"❌ Main Loop Error: {e}")
