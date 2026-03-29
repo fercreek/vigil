@@ -3,423 +3,563 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scalping Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <title>Scalping Terminal V3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --glass-bg: rgba(30, 41, 59, 0.7);
-            --border: rgba(255, 255, 255, 0.1);
-            --text-main: #f8fafc;
-            --text-dim: #94a3b8;
-            --neon-green: #10b981;
-            --neon-red: #ef4444;
-            --neon-yellow: #f59e0b;
-            --neon-blue: #3b82f6;
-            --neon-purple: #818cf8;
+            --bg-dark: #0a0f1e;
+            --surface: #111827;
+            --surface2: #1e2740;
+            --border: rgba(255,255,255,0.08);
+            --text: #f1f5f9;
+            --muted: #64748b;
+            --green: #10b981;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --blue: #38bdf8;
+            --purple: #818cf8;
+            --pink: #ec4899;
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, var(--bg-dark), #000000);
-            color: var(--text-main);
+            background: var(--bg-dark);
+            color: var(--text);
             min-height: 100vh;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 1.5rem 2rem;
         }
+        .container { max-width: 1300px; margin: 0 auto; }
 
-        .container {
-            width: 100%;
-            max-width: 1200px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            background: linear-gradient(to right, #38bdf8, #818cf8);
+        /* Header */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .logo { font-size: 1.5rem; font-weight: 800; }
+        .logo span {
+            background: linear-gradient(90deg, var(--blue), var(--purple));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
         }
-
-        .nav-tabs {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.5rem;
-        }
-
-        .tab-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-dim);
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            font-weight: 600;
-            transition: color 0.3s;
-        }
-
-        .tab-btn.active {
-            color: var(--neon-blue);
-            border-bottom: 2px solid var(--neon-blue);
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
         .live-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.875rem;
-            color: var(--neon-green);
-            background: rgba(16, 185, 129, 0.1);
-            padding: 4px 12px;
-            border-radius: 20px;
-            border: 1px solid rgba(16, 185, 129, 0.2);
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);
+            padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; color: var(--green);
         }
-
-        .dot {
-            width: 8px;
-            height: 8px;
-            background-color: var(--neon-green);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
+        .dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+            100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+        /* Tabs */
+        .nav-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+        .tab-btn {
+            background: none; border: none; color: var(--muted); font-size: 0.9rem; font-weight: 600;
+            padding: 0.75rem 1.25rem; cursor: pointer; border-bottom: 2px solid transparent;
+            transition: all 0.2s; font-family: 'Inter', sans-serif;
         }
+        .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* Stat cards */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
         .stat-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 1.5rem;
-            text-align: center;
-            transition: transform 0.3s ease;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 1.25rem; position: relative; overflow: hidden;
+        }
+        .stat-card::before { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
+        .stat-card.blue::before { background: var(--blue); }
+        .stat-card.purple::before { background: var(--purple); }
+        .stat-card.green::before { background: var(--green); }
+        .stat-card.red::before { background: var(--red); }
+        .stat-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; }
+        .stat-val { font-size: 2rem; font-weight: 800; }
+        .stat-val.blue { color: var(--blue); }
+        .stat-val.purple { color: var(--purple); }
+
+        /* Cards & Tables */
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th { padding: 0.875rem 1rem; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); text-align: left; }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.875rem; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 3px 9px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; }
+        .badge-short { background: rgba(239,68,68,0.15); color: var(--red); }
+        .badge-long { background: rgba(16,185,129,0.15); color: var(--green); }
+        .badge-v1 { background: rgba(56,189,248,0.12); color: var(--blue); font-size: 0.68rem; }
+        .badge-v2 { background: rgba(129,140,248,0.12); color: var(--purple); font-size: 0.68rem; }
+        .badge-won { background: rgba(16,185,129,0.15); color: var(--green); }
+        .badge-lost { background: rgba(239,68,68,0.15); color: var(--red); }
+        .badge-open { background: rgba(245,158,11,0.15); color: var(--yellow); }
+
+        /* Trade detail card for reports */
+        .trade-card {
+            background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+            padding: 1.25rem; margin-bottom: 1rem; position: relative;
+            border-left: 4px solid var(--muted);
+        }
+        .trade-card.won { border-left-color: var(--green); }
+        .trade-card.lost { border-left-color: var(--red); }
+        .trade-card.open { border-left-color: var(--yellow); }
+        .trade-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+        .trade-card-title { font-size: 1rem; font-weight: 700; }
+        .trade-card-pnl { font-size: 1.25rem; font-weight: 800; }
+        .trade-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; }
+        .meta-item label { display: block; font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
+        .meta-item span { font-size: 0.875rem; font-weight: 600; }
+        .alert-reason { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 0.625rem 0.875rem; font-size: 0.78rem; color: var(--muted); margin-top: 0.875rem; font-family: monospace; }
+
+        /* Report toolbar */
+        .report-toolbar {
+            display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem;
+        }
+        .report-toolbar label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+        .report-toolbar input[type="date"] {
+            background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text); padding: 0.5rem 0.875rem; font-size: 0.875rem; font-family: 'Inter', sans-serif;
+        }
+        .report-toolbar select {
+            background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text); padding: 0.5rem 0.875rem; font-size: 0.875rem; font-family: 'Inter', sans-serif;
+        }
+        .btn-run {
+            background: linear-gradient(90deg, var(--blue), var(--purple)); border: none;
+            color: white; padding: 0.6rem 1.5rem; border-radius: 8px; font-weight: 700;
+            cursor: pointer; font-family: 'Inter', sans-serif; font-size: 0.875rem;
+            transition: opacity 0.2s; white-space: nowrap;
+        }
+        .btn-run:hover { opacity: 0.9; }
+        .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Summary bar */
+        .summary-bar {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;
+        }
+        .summary-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+        .summary-item .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+        .summary-item .value { font-size: 1.5rem; font-weight: 800; margin-top: 0.25rem; }
+
+        /* Split grid */
+        .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .compare-header { font-weight: 700; font-size: 0.95rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        @media (max-width: 768px) { .compare-grid { grid-template-columns: 1fr; } .summary-bar { grid-template-columns: 1fr 1fr; } }
+
+        /* Winner box */
+        .winner-box {
+            background: linear-gradient(90deg, rgba(129,140,248,0.15), rgba(56,189,248,0.1));
+            border: 1px solid rgba(129,140,248,0.3); border-radius: 12px;
+            padding: 1rem 1.5rem; margin-bottom: 1.5rem; font-weight: 700; font-size: 1rem;
+            display: flex; align-items: center; gap: 0.75rem;
         }
 
-        .stat-card.green { border-bottom: 3px solid var(--neon-green); }
-        .stat-card.yellow { border-bottom: 3px solid var(--neon-yellow); }
-        .stat-card.red { border-bottom: 3px solid var(--neon-red); }
-        .stat-card.blue { border-bottom: 3px solid var(--neon-blue); }
+        /* Analysis cards */
+        .analysis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .analysis-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+        .analysis-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; }
+        .analysis-row { display: flex; justify-content: space-between; align-items: center; padding: 0.375rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+        .analysis-row:last-child { border-bottom: none; }
+        .analysis-row label { color: var(--muted); font-size: 0.78rem; }
 
-        .stat-title {
-            color: var(--text-dim);
-            font-size: 0.825rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 0.5rem;
-        }
+        .section-title { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 800;
-        }
+        #loading-report { text-align: center; padding: 3rem; color: var(--muted); font-size: 0.9rem; }
 
-        .dashboard-box {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        th {
-            background: rgba(0,0,0,0.2);
-            padding: 1rem;
-            color: var(--text-dim);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            border-bottom: 1px solid var(--border);
-        }
-
-        td {
-            padding: 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            font-size: 0.9rem;
-        }
-
-        .badge {
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-
-        .badge-short { background: rgba(239, 68, 68, 0.2); color: var(--neon-red); }
-        .badge-long { background: rgba(16, 185, 129, 0.2); color: var(--neon-green); }
-
-        .analysis-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .analysis-card {
-            background: rgba(0,0,0,0.2);
-            border-radius: 12px;
-            padding: 1.5rem;
-            border: 1px solid var(--border);
-        }
-
-        .rec-box {
-            background: rgba(129, 140, 248, 0.1);
-            border: 1px solid rgba(129, 140, 248, 0.2);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-        }
-
-        .section-header {
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--neon-purple);
-            border-left: 4px solid var(--neon-purple);
-            padding-left: 1rem;
-        }
-
-        .backtest-table {
-            width: 100%;
-            background: rgba(0,0,0,0.2);
-            border-radius: 12px;
-            overflow: hidden;
-            margin-top: 2rem;
-        }
+        .reports-layout { display: grid; grid-template-columns: 220px 1fr; gap: 1.5rem; align-items: start; }
+        .saved-sidebar { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; position: sticky; top: 1rem; }
+        .saved-sidebar-title { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 0.75rem; }
+        .saved-day-item { padding: 0.625rem 0.75rem; border-radius: 8px; cursor: pointer; transition: background 0.15s; margin-bottom: 4px; }
+        .saved-day-item:hover { background: var(--surface2); }
+        @media (max-width: 900px) { .reports-layout { grid-template-columns: 1fr; } .saved-sidebar { position: static; } }
     </style>
 </head>
 <body>
+<div class="container">
 
-    <div class="container">
-        <header>
-            <h1>Scalping Terminal V2</h1>
-            <div class="live-badge">
-                <span class="dot"></span> Monitorización Multi-Estrategia Activa
+    <header>
+        <div class="logo">⚡ <span>Scalping Terminal V3</span></div>
+        <div class="live-badge"><span class="dot"></span> Multi-Estrategia Activa</div>
+    </header>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('live', this)">📡 Live Scalps</button>
+        <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reportes & Backtesting</button>
+        <button class="tab-btn" onclick="switchTab('analysis', this)">🔬 Análisis Técnico</button>
+    </div>
+
+    <!-- ─── TAB: LIVE ─── -->
+    <div id="tab-live" class="tab-content active">
+        <div class="stats-row">
+            <div class="stat-card blue">
+                <div class="stat-label">Win Rate V1-TECH</div>
+                <div class="stat-val blue" id="wr-v1">—</div>
             </div>
-        </header>
-
-        <div class="nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('live')">Live Scalps</button>
-            <button class="tab-btn" onclick="switchTab('analysis')">Histórico y Reportes</button>
-        </div>
-
-        <!-- TAB: LIVE SCALPS -->
-        <div id="tab-live" class="tab-content active">
-            <div class="stats-grid">
-                <div class="stat-card v1">
-                    <div class="stat-title">Win Rate V1 (Tech)</div>
-                    <div class="stat-value" id="win-rate-v1" style="color: var(--neon-blue);">0%</div>
-                </div>
-                <div class="stat-card v2">
-                    <div class="stat-title">Win Rate V2 (AI)</div>
-                    <div class="stat-value" id="win-rate-v2" style="color: var(--neon-purple);">0%</div>
-                </div>
-            </div>
-
-            <div class="dashboard-box">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Hora</th>
-                            <th>Ticket</th>
-                            <th>Estrategia</th>
-                            <th>Tipo</th>
-                            <th>Entrada</th>
-                            <th>TP1</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="trades-body"></tbody>
-                </table>
+            <div class="stat-card purple">
+                <div class="stat-label">Win Rate V2-AI</div>
+                <div class="stat-val purple" id="wr-v2">—</div>
             </div>
         </div>
 
-        <!-- TAB: ANALYSIS (NEW & IMPROVED) -->
-        <div id="tab-analysis" class="tab-content">
-            <div class="analysis-grid" id="analysis-content">
-                <!-- Llenado por JS -->
+        <div class="card">
+            <div class="section-title">Señales en vivo</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hora</th><th>Símbolo</th><th>Estrategia</th><th>Tipo</th>
+                        <th>Entrada</th><th>TP1</th><th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="trades-body">
+                    <tr><td colspan="7" style="text-align:center; color:var(--muted); padding:2rem">Esperando señales del bot...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ─── TAB: REPORTS ─── -->
+    <div id="tab-reports" class="tab-content">
+
+        <!-- Toolbar -->
+        <div class="report-toolbar">
+            <label>📅 Día a analizar</label>
+            <input type="date" id="report-date" value="" />
+            <label>Estrategia</label>
+            <select id="report-version">
+                <option value="both">Ambas (V1 + V2)</option>
+                <option value="V1-TECH">🛡️ V1-TECH (Técnica)</option>
+                <option value="V2-AI">🤖 V2-AI (Gemini)</option>
+            </select>
+            <label>Moneda</label>
+            <select id="report-symbol">
+                <option value="all">Todas</option>
+                <option value="ETH/USDT">ETH</option>
+                <option value="BTC/USDT">BTC</option>
+                <option value="TAO/USDT">TAO</option>
+            </select>
+            <button class="btn-run" id="btn-run" onclick="runReport(false)">▶ Generar Reporte</button>
+        </div>
+
+        <div class="reports-layout">
+            <!-- Sidebar: días guardados -->
+            <div class="saved-sidebar">
+                <div class="saved-sidebar-title">💾 Reportes Guardados</div>
+                <div id="saved-days-list">
+                    <div style="color:var(--muted); font-size:0.8rem">Cargando...</div>
+                </div>
             </div>
 
-            <div class="section-header">Resultados Detallados: Simulación del Viernes</div>
-            <div class="dashboard-box">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Hora</th>
-                            <th>Ticket</th>
-                            <th>Tipo</th>
-                            <th>Resultado</th>
-                            <th>PnL Estimado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="backtest-body">
-                        <tr><td colspan="5" style="text-align: center;">Cargando simulación histórica...</td></tr>
-                    </tbody>
-                </table>
+            <!-- Contenido principal del reporte -->
+            <div id="report-content">
+                <div style="text-align:center; padding:3rem; color:var(--muted)">
+                    Selecciona un día del sidebar o elige una fecha y haz clic en <b>"Generar Reporte"</b>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById('tab-' + tab).classList.add('active');
-            
-            if(tab === 'analysis') fetchAnalysis();
-        }
+    <!-- ─── TAB: ANALYSIS ─── -->
+    <div id="tab-analysis" class="tab-content">
+        <div class="analysis-grid" id="analysis-content">
+            <div style="color:var(--muted); padding:2rem">Cargando análisis técnico...</div>
+        </div>
+    </div>
 
-        async function fetchDashboard() {
-            try {
-                // Stats V1
-                const s1 = await fetch('/api/stats?version=V1-TECH');
-                const d1 = await s1.json();
-                document.getElementById('win-rate-v1').innerText = d1.win_rate + '%';
+</div>
 
-                // Stats V2
-                const s2 = await fetch('/api/stats?version=V2-AI');
-                const d2 = await s2.json();
-                document.getElementById('win-rate-v2').innerText = d2.win_rate + '%';
+<script>
+    // ─── Init: set default date to yesterday ────────────────────────────
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    document.getElementById('report-date').value = yesterday.toISOString().split('T')[0];
 
-                const t = await fetch('/api/trades');
-                const trades = await t.json();
-                const tbody = document.getElementById('trades-body');
-                tbody.innerHTML = trades.length ? '' : '<tr><td colspan="7">Cargando señales...</td></tr>';
-                trades.forEach(tr => {
-                    const vBadge = tr.version === 'V1-TECH' ? 
-                        '<span style="color:var(--neon-blue); font-size:0.7rem">🛡️ V1-TECH</span>' : 
-                        '<span style="color:var(--neon-purple); font-size:0.7rem">🤖 V2-AI</span>';
-                    
-                    const row = `<tr>
-                        <td class="time-dim">${new Date(tr.open_time).toLocaleTimeString()}</td>
-                        <td><b>${tr.symbol}</b></td>
-                        <td>${vBadge}</td>
-                        <td><span class="badge ${tr.type==='SHORT'?'badge-short':'badge-long'}">${tr.type}</span></td>
-                        <td>$${tr.entry_price}</td>
-                        <td>$${tr.tp1_price}</td>
-                        <td style="color:${tr.status==='LOST'?'var(--neon-red)':'var(--neon-green)'}">${tr.status}</td>
-                    </tr>`;
-                    tbody.innerHTML += row;
-                });
-            } catch(e) {}
-        }
+    // ─── Tab switching ───────────────────────────────────────────────────
+    function switchTab(tab, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+        if (tab === 'analysis') fetchAnalysis();
+    }
 
-        async function fetchAnalysis() {
-            const container = document.getElementById('analysis-content');
-            const v1Body = document.getElementById('v1-backtest-body');
-            const v2Body = document.getElementById('v2-backtest-body');
-            const winnerBox = document.getElementById('winner-summary');
+    // ─── Live Dashboard ──────────────────────────────────────────────────
+    async function fetchDashboard() {
+        try {
+            const [s1r, s2r, tr] = await Promise.all([
+                fetch('/api/stats?version=V1-TECH'),
+                fetch('/api/stats?version=V2-AI'),
+                fetch('/api/trades')
+            ]);
+            const d1 = await s1r.json();
+            const d2 = await s2r.json();
+            const trades = await tr.json();
+
+            document.getElementById('wr-v1').innerText = d1.win_rate + '%';
+            document.getElementById('wr-v2').innerText = d2.win_rate + '%';
+
+            const tbody = document.getElementById('trades-body');
+            if (!trades.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--muted); padding:2rem">Sin señales aún. El bot está monitoreando...</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            trades.forEach(t => {
+                const vBadge = t.version === 'V1-TECH'
+                    ? '<span class="badge badge-v1">🛡️ V1-TECH</span>'
+                    : '<span class="badge badge-v2">🤖 V2-AI</span>';
+                const statusColor = t.status === 'LOST' ? 'var(--red)' : t.status === 'OPEN' ? 'var(--yellow)' : 'var(--green)';
+                tbody.innerHTML += `<tr>
+                    <td style="color:var(--muted); font-size:0.8rem">${new Date(t.open_time).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td><b>${t.symbol}</b></td>
+                    <td>${vBadge}</td>
+                    <td><span class="badge ${t.type === 'SHORT' ? 'badge-short' : 'badge-long'}">${t.type}</span></td>
+                    <td>$${t.entry_price}</td>
+                    <td>$${t.tp1_price}</td>
+                    <td style="color:${statusColor}; font-weight:600">${t.status}</td>
+                </tr>`;
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    // ─── Report Generator ─────────────────────────────────────────────────
+    async function loadSavedDays() {
+        try {
+            const res = await fetch('/api/backtest/days');
+            const days = await res.json();
+            const list = document.getElementById('saved-days-list');
+            if (!days.length) {
+                list.innerHTML = '<div style="color:var(--muted); font-size:0.8rem; padding:0.5rem">No hay reportes guardados aún.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            // Group by date
+            const byDate = {};
+            days.forEach(d => {
+                if (!byDate[d.date]) byDate[d.date] = [];
+                byDate[d.date].push(d);
+            });
+            Object.entries(byDate).forEach(([date, versions]) => {
+                const vTags = versions.map(v =>
+                    `<span class="badge ${v.version === 'V1-TECH' ? 'badge-v1' : 'badge-v2'}">${v.version} (${v.trades})</span>`
+                ).join(' ');
+                list.innerHTML += `<div class="saved-day-item" onclick="loadDay('${date}')">
+                    <span style="font-weight:600; font-size:0.875rem">${date}</span><br>
+                    <div style="margin-top:4px">${vTags}</div>
+                </div>`;
+            });
+        } catch(e) {}
+    }
+
+    function loadDay(date) {
+        document.getElementById('report-date').value = date;
+        runReport(false);
+    }
+
+    async function runReport(force = false) {
+        const date = document.getElementById('report-date').value;
+        const version = document.getElementById('report-version').value;
+        const symbol = document.getElementById('report-symbol').value;
+        const btn = document.getElementById('btn-run');
+        const container = document.getElementById('report-content');
+
+        if (!date) { alert('Selecciona una fecha'); return; }
+
+        btn.disabled = true;
+        btn.innerText = '⏳ Calculando...';
+        container.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--muted)">
+            🔄 ${force ? 'Recalculando' : 'Cargando'} reporte para <b>${date}</b>...</div>`;
+
+        try {
+            const url = `/api/backtest/compare?date=${date}${force ? '&force=true' : ''}`;
+            const res = await fetch(url);
             
-            container.innerHTML = '<p>Calculando comparación histórica...</p>';
-            v1Body.innerHTML = '<tr><td colspan="4">Cargando...</td></tr>';
-            v2Body.innerHTML = '<tr><td colspan="4">Cargando...</td></tr>';
+            if (!res.ok) {
+                const errText = await res.text();
+                container.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--red)">❌ Error del servidor: ${res.status}<br><small>${errText.substring(0,200)}</small></div>`;
+                btn.disabled = false; btn.innerText = '▶ Generar Reporte'; return;
+            }
             
-            try {
-                // 1. Estadísticas Generales (Pandas)
-                const r = await fetch('/api/analysis');
-                const data = await r.json();
-                container.innerHTML = '';
-                data.forEach(an => {
-                    container.innerHTML += `
-                    <div class="analysis-card">
-                        <h3>${an.symbol}</h3>
-                        <p style="color:var(--text-dim)">Pivots: R1 $${an.v2_short_rec} | S1 $${an.v2_long_rec}</p>
+            const data = await res.json();
+            
+            if (data.error) {
+                container.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--red)">❌ ${data.error}</div>`;
+                btn.disabled = false; btn.innerText = '▶ Generar Reporte'; return;
+            }
+
+            // The API returns flat arrays from DB
+            const v1Trades = data['V1-TECH'] || [];
+            const v2Trades = data['V2-AI'] || [];
+            const versionsToShow = version === 'both' ? ['V1-TECH', 'V2-AI'] : [version];
+            const filterSym = symbol === 'all' ? null : symbol;
+
+            let allTrades = [];
+            if (versionsToShow.includes('V1-TECH')) {
+                v1Trades.forEach(t => { if (!filterSym || t.symbol === filterSym) allTrades.push({...t, _ver: 'V1-TECH'}); });
+            }
+            if (versionsToShow.includes('V2-AI')) {
+                v2Trades.forEach(t => { if (!filterSym || t.symbol === filterSym) allTrades.push({...t, _ver: 'V2-AI'}); });
+            }
+
+            allTrades.sort((a, b) => (a.open_time || '').localeCompare(b.open_time || ''));
+
+            const won = allTrades.filter(t => t.result === 'WIN_FULL').length;
+            const lost = allTrades.filter(t => t.result === 'LOST').length;
+            const totalPnl = allTrades.reduce((acc, t) => acc + (t.pnl_usd || 0), 0);
+            const winRate = (won + lost) > 0 ? Math.round((won / (won + lost)) * 100) : 0;
+            
+            // Balance final: tomar el último balance_after de cada versión
+            const getLastBalance = (v) => {
+                const vTrades = (data[v] || []).filter(t => !filterSym || t.symbol === filterSym);
+                return vTrades.length ? vTrades[vTrades.length - 1].balance_after : 1000;
+            };
+
+            const source = data.source === 'database' ? '💾 Cargado desde BD' : '⚡ Simulación nueva — guardada en BD';
+            const pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+            const pnlSign = totalPnl >= 0 ? '+' : '';
+
+            let html = `
+            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:1rem">${source}</div>
+            <div class="summary-bar">
+                <div class="summary-item"><div class="label">Total Alertas</div><div class="value">${allTrades.length}</div></div>
+                <div class="summary-item"><div class="label">✅ Win Rate</div><div class="value" style="color:var(--green)">${winRate}%</div></div>
+                <div class="summary-item"><div class="label">PnL (1% riesgo)</div><div class="value" style="color:${pnlColor}">${pnlSign}$${totalPnl.toFixed(2)}</div></div>`;
+
+            if (version === 'both') {
+                const b1 = getLastBalance('V1-TECH');
+                const b2 = getLastBalance('V2-AI');
+                html += `<div class="summary-item"><div class="label">Balance V1 | V2</div>
+                    <div style="margin-top:0.25rem">
+                        <span style="color:var(--blue); font-weight:700; font-size:1.1rem">$${b1}</span>
+                        <span style="color:var(--muted); margin:0 6px">vs</span>
+                        <span style="color:var(--purple); font-weight:700; font-size:1.1rem">$${b2}</span>
+                    </div></div>`;
+            } else {
+                const bal = getLastBalance(version);
+                html += `<div class="summary-item"><div class="label">Balance Final ($1,000)</div><div class="value" style="color:${bal >= 1000 ? 'var(--green)' : 'var(--red)'}">$${bal}</div></div>`;
+            }
+            html += `</div>`;
+
+            html += `<div style="text-align:right; margin-bottom:1rem">
+                <button class="btn-run" style="background:var(--surface2); font-size:0.75rem; padding:0.4rem 1rem;" onclick="runReport(true)">🔄 Recalcular</button>
+            </div>`;
+
+            if (!allTrades.length) {
+                html += `<div style="text-align:center; padding:3rem; color:var(--muted)">
+                    ⚠️ Sin señales para <b>${date}</b>. La estrategia no generó entradas ese día.<br>
+                    <small>Puede que no haya datos CSV descargados para esa fecha.</small></div>`;
+            } else {
+                html += `<div class="section-title">Diario de Alertas — ${date}</div>`;
+                allTrades.forEach(t => {
+                    const isWon = t.result === 'WIN_FULL';
+                    const isLost = t.result === 'LOST';
+                    const cardClass = isWon ? 'won' : isLost ? 'lost' : 'open';
+                    const resultBadge = isWon ? '<span class="badge badge-won">✅ GANADO</span>'
+                        : isLost ? '<span class="badge badge-lost">❌ PERDIDO</span>'
+                        : '<span class="badge badge-open">⏳ ABIERTO AL CIERRE</span>';
+                    const pnlUsd = t.pnl_usd || 0;
+                    const pnlTxt = pnlUsd !== 0 ? `${pnlUsd >= 0 ? '+' : ''}$${pnlUsd.toFixed(2)}` : '—';
+                    const pnlC = pnlUsd > 0 ? 'var(--green)' : pnlUsd < 0 ? 'var(--red)' : 'var(--muted)';
+                    const vBadge = t._ver === 'V1-TECH'
+                        ? '<span class="badge badge-v1">🛡️ V1-TECH</span>'
+                        : '<span class="badge badge-v2">🤖 V2-AI</span>';
+                    const typeBadge = `<span class="badge ${t.type === 'SHORT' ? 'badge-short' : 'badge-long'}">${t.type}</span>`;
+                    const balEvol = t.balance_after ? `$${t.balance_before} → <b style="color:${t.balance_after >= t.balance_before ? 'var(--green)' : 'var(--red)'}">$${t.balance_after}</b>` : '—';
+
+                    html += `
+                    <div class="trade-card ${cardClass}">
+                        <div class="trade-card-header">
+                            <div>
+                                <div class="trade-card-title">${t.symbol} &nbsp; ${typeBadge} &nbsp; ${vBadge}</div>
+                                <div style="margin-top:0.4rem; font-size:0.8rem; color:var(--muted)">
+                                    ${t.open_time || '—'} → ${t.close_time || '—'} &nbsp;|&nbsp; ${t.duration_min || 0} min
+                                </div>
+                            </div>
+                            <div style="text-align:right">
+                                ${resultBadge}
+                                <div class="trade-card-pnl" style="color:${pnlC}; margin-top:0.4rem">${pnlTxt}</div>
+                                <div style="font-size:0.72rem; color:var(--muted); margin-top:2px">Cuenta: ${balEvol}</div>
+                            </div>
+                        </div>
+                        <div class="trade-meta-grid">
+                            <div class="meta-item"><label>Entrada</label><span>$${t.entry_price || '—'}</span></div>
+                            <div class="meta-item"><label>Cierre</label><span>$${t.close_price || '—'}</span></div>
+                            <div class="meta-item"><label>Stop Loss</label><span style="color:var(--red)">$${t.sl || '—'}</span></div>
+                            <div class="meta-item"><label>TP1</label><span style="color:var(--yellow)">$${t.tp1 || '—'}</span></div>
+                            <div class="meta-item"><label>TP2 (Full)</label><span style="color:var(--green)">$${t.tp2 || '—'}</span></div>
+                            <div class="meta-item"><label>RSI al entrar</label><span>${t.rsi_entry || '—'}</span></div>
+                            <div class="meta-item"><label>Bollinger</label><span>${t.bb_status || '—'}</span></div>
+                            <div class="meta-item"><label>Pivot R1 | S1</label><span>$${t.pivot_r1 || '—'} | $${t.pivot_s1 || '—'}</span></div>
+                        </div>
+                        <div class="alert-reason">🔔 Señal: ${t.alert_reason || '—'}</div>
                     </div>`;
                 });
+            }
 
-                // 2. Simulación Comparativa
-                const cRes = await fetch('/api/backtest/compare');
-                const cData = await cRes.json();
-                
-                let pnlV1 = 0, pnlV2 = 0;
-                v1Body.innerHTML = '';
-                v2Body.innerHTML = '';
-
-                // Llenar V1
-                for(let sym in cData["V1-TECH"]) {
-                    cData["V1-TECH"][sym].forEach(tr => {
-                        pnlV1 += tr.pnl;
-                        v1Body.innerHTML += `<tr>
-                            <td class="time-dim">${tr.time}</td>
-                            <td>${sym}</td>
-                            <td style="color:${tr.res==='WIN'?'var(--neon-green)':'var(--neon-red)'}">${tr.res}</td>
-                            <td>$${tr.pnl}</td>
-                        </tr>`;
-                    });
-                }
-
-                // Llenar V2
-                for(let sym in cData["V2-AI"]) {
-                    cData["V2-AI"][sym].forEach(tr => {
-                        pnlV2 += tr.pnl;
-                        v2Body.innerHTML += `<tr>
-                            <td class="time-dim">${tr.time}</td>
-                            <td>${sym}</td>
-                            <td style="color:${tr.res==='WIN'?'var(--neon-green)':'var(--neon-red)'}">${tr.res}</td>
-                            <td>$${tr.pnl}</td>
-                        </tr>`;
-                    });
-                }
-
-                if(!v1Body.innerHTML) v1Body.innerHTML = '<tr><td colspan="4">Sin trades el viernes.</td></tr>';
-                if(!v2Body.innerHTML) v2Body.innerHTML = '<tr><td colspan="4">Sin trades el viernes.</td></tr>';
-
-                // Mostrar Ganador
-                winnerBox.style.display = 'block';
-                if (pnlV2 > pnlV1) {
-                    winnerBox.innerHTML = `🏆 GANADOR DEL VIERNES: Estrategia V2 (AI) con $${pnlV2} USD (vs V1 $${pnlV1})`;
-                } else if (pnlV1 > pnlV2) {
-                    winnerBox.innerHTML = `🏆 GANADOR DEL VIERNES: Estrategia V1 (Tech) con $${pnlV1} USD (vs V2 $${pnlV2})`;
-                } else {
-                    winnerBox.innerHTML = `🤝 EMPATE DEL VIERNES: Ambas cerraron con $${pnlV1} USD`;
-                }
-
-            } catch(e) { console.error(e); }
+            container.innerHTML = html;
+            loadSavedDays(); // Refrescar sidebar
+        } catch(e) {
+            console.error(e);
+            container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--red)">❌ Error al generar el reporte.</div>';
         }
+        btn.disabled = false;
+        btn.innerText = '▶ Generar Reporte';
+    }
 
-        fetchDashboard();
-        setInterval(fetchDashboard, 5000);
-    </script>
+    // ─── Technical Analysis tab ──────────────────────────────────────────
+    async function fetchAnalysis() {
+        const container = document.getElementById('analysis-content');
+        try {
+            const r = await fetch('/api/analysis');
+            const data = await r.json();
+            container.innerHTML = '';
+            if (!data.length) {
+                container.innerHTML = '<div style="color:var(--muted)">No hay datos CSV disponibles. El bot debe descargar históricos primero.</div>';
+                return;
+            }
+            data.forEach(an => {
+                container.innerHTML += `
+                <div class="analysis-card">
+                    <h3>${an.symbol}</h3>
+                    <div class="analysis-row"><label>Rango 48h</label><span>$${an.price_range[0]} — $${an.price_range[1]}</span></div>
+                    <div class="analysis-row"><label>RSI Promedio</label><span>${an.rsi_avg}</span></div>
+                    <div class="analysis-row"><label>RSI Max / Min</label><span>${an.rsi_max} / ${an.rsi_min}</span></div>
+                    <div class="analysis-row"><label>Toques R1 (Short)</label><span style="color:var(--red)">${an.r1_touches}</span></div>
+                    <div class="analysis-row"><label>Toques S1 (Long)</label><span style="color:var(--green)">${an.s1_touches}</span></div>
+                    <div class="analysis-row" style="margin-top:0.5rem; font-weight:700">
+                        <label style="color:var(--purple)">RSI recomendado SHORT</label>
+                        <span style="color:var(--purple)">≥ ${an.v2_short_rec}</span>
+                    </div>
+                    <div class="analysis-row">
+                        <label style="color:var(--blue)">RSI recomendado LONG</label>
+                        <span style="color:var(--blue)">≤ ${an.v2_long_rec}</span>
+                    </div>
+                </div>`;
+            });
+        } catch(e) {
+            container.innerHTML = '<div style="color:var(--muted)">Error cargando análisis.</div>';
+        }
+    }
+
+    // Init
+    fetchDashboard();
+    setInterval(fetchDashboard, 5000);
+    loadSavedDays();
+
+    // Auto-carga si viene de URL directa /report/<date>
+    const preloadDate = "{{ preload_date or '' }}";
+    if (preloadDate) {
+        document.getElementById('report-date').value = preloadDate;
+        // Activar pestaña de reportes
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('tab-reports').classList.add('active');
+        setTimeout(() => runReport(false), 300);
+    }
+</script>
 </body>
 </html>

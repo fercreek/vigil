@@ -56,67 +56,181 @@ def scientific_analysis(symbol="ETH/USDT"):
         "v2_long_rec": round(v2_long, 0)
     }
 
-def run_detailed_backtest(symbol="ETH/USDT", days_ago=1, version="V1-TECH"):
-    """Simula trades detallados para un día y una versión específica."""
+def calculate_bollinger_bands(prices, period=20, std_dev=2):
+    sma = prices.rolling(window=period).mean()
+    std = prices.rolling(window=period).std()
+    return sma + (std * std_dev), sma - (std * std_dev)
+
+def run_detailed_backtest(symbol="ETH/USDT", target_date_str=None, days_ago=1, version="V1-TECH"):
+    """
+    Simula trades detallados con nivel de alerta para un día y versión específica.
+    Acepta target_date_str (YYYY-MM-DD) o days_ago (int).
+    """
     filename = f"data/{symbol.replace('/', '_')}_1h_365d.csv"
     if not os.path.exists(filename): return []
     
     df = pd.read_csv(filename, parse_dates=['timestamp'], index_col='timestamp')
     
-    # 1. Ventana (Día solicitado)
-    today = datetime.now()
-    target_date = (today - timedelta(days=days_ago)).replace(hour=0, minute=0, second=0, microsecond=0)
+    # 1. Determinar el día objetivo
+    if target_date_str:
+        try:
+            target_date = datetime.strptime(target_date_str, "%Y-%m-%d")
+        except ValueError:
+            target_date = datetime.now() - timedelta(days=1)
+    else:
+        target_date = datetime.now() - timedelta(days=days_ago)
+    target_date = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
     end_date = target_date + timedelta(days=1)
     
-    # Contexto 24h antes para Pivots
-    df_context = df[df.index < end_date].tail(500).copy()
+    # 2. Contexto para indicadores (24h previas + el día)
+    df_context = df[df.index < end_date].tail(720).copy()
+    
+    # 3. Calcular Pivots Diarios del día anterior
     df_daily = df_context.resample('1D').agg({'high': 'max', 'low': 'min', 'close': 'last'})
     df_daily['p'] = (df_daily['high'] + df_daily['low'] + df_daily['close']) / 3
     df_daily['r1'] = (2 * df_daily['p']) - df_daily['low']
     df_daily['s1'] = (2 * df_daily['p']) - df_daily['high']
     df_daily_shifted = df_daily[['p', 'r1', 's1']].shift(1)
     
-    # 2. Dataset de prueba
+    # 4. Dataset de prueba: solo el día objetivo
     df_test = df[(df.index >= target_date) & (df.index < end_date)].copy()
+    if df_test.empty:
+        return []
+    
     df_test['date_only'] = df_test.index.normalize()
     df_test = df_test.merge(df_daily_shifted, left_on='date_only', right_index=True, how='left')
-    df_test['rsi'] = calculate_rsi(df_test['close'], period=14)
-    df_test = df_test.dropna()
     
-    # 3. Umbrales por versión
+    # Calcular indicadores sobre todo el contexto, extraer para el día
+    df_context['rsi'] = calculate_rsi(df_context['close'], period=14)
+    bb_u, bb_l = calculate_bollinger_bands(df_context['close'])
+    df_context['bb_upper'] = bb_u
+    df_context['bb_lower'] = bb_l
+    
+    df_test = df_test.join(df_context[['rsi', 'bb_upper', 'bb_lower']], how='left')
+    df_test = df_test.dropna(subset=['r1', 's1', 'rsi'])
+    
+    if df_test.empty:
+        return []
+    
+    # 5. Umbrales por versión
     rsi_short = 62 if version == "V1-TECH" else 60
     rsi_long = 38 if version == "V1-TECH" else 40
     
     simulated_trades = []
     active_trade = None
     
-    for date, row in df_test.iterrows():
-        p, r1, s1, rsi = row['close'], row['r1'], row['s1'], row['rsi']
+    for ts, row in df_test.iterrows():
+        price = row['close']
+        r1, s1, rsi = row['r1'], row['s1'], row['rsi']
+        bb_u_val = row.get('bb_upper', None)
+        bb_l_val = row.get('bb_lower', None)
+        
+        # Determinar estado Bollinger
+        bb_status = "En rango medio"
+        if bb_u_val and price >= bb_u_val * 0.99:
+            bb_status = "🔴 Cerca Banda Superior"
+        elif bb_l_val and price <= bb_l_val * 1.01:
+            bb_status = "🟢 Cerca Banda Inferior"
         
         if not active_trade:
-            # Entrada
-            if p >= r1 and rsi >= rsi_short:
-                active_trade = {"type": "SHORT", "entry": p, "sl": p * 1.01, "tp": s1, "time": date}
-            elif p <= s1 and rsi <= rsi_long:
-                active_trade = {"type": "LONG", "entry": p, "sl": p * 0.99, "tp": r1, "time": date}
+            # — ENTRADA SHORT —
+            if price >= r1 and rsi >= rsi_short:
+                sl = round(price * 1.01, 2)
+                tp1 = round((price + s1) / 2, 2)  # Mitad del camino a S1
+                tp2 = round(s1, 2)
+                active_trade = {
+                    "symbol": symbol,
+                    "version": version,
+                    "type": "SHORT",
+                    "entry_price": round(price, 2),
+                    "rsi_entry": round(rsi, 1),
+                    "bb_status": bb_status,
+                    "sl": sl,
+                    "tp1": tp1,
+                    "tp2": tp2,
+                    "pivot_r1": round(r1, 2),
+                    "pivot_s1": round(s1, 2),
+                    "open_time": ts.strftime('%H:%M'),
+                    "open_ts": ts,
+                    "alert_reason": f"Precio ${price:.2f} >= R1 ${r1:.2f} | RSI {rsi:.1f} >= {rsi_short}"
+                }
+            # — ENTRADA LONG —
+            elif price <= s1 and rsi <= rsi_long:
+                sl = round(price * 0.99, 2)
+                tp1 = round((price + r1) / 2, 2)
+                tp2 = round(r1, 2)
+                active_trade = {
+                    "symbol": symbol,
+                    "version": version,
+                    "type": "LONG",
+                    "entry_price": round(price, 2),
+                    "rsi_entry": round(rsi, 1),
+                    "bb_status": bb_status,
+                    "sl": sl,
+                    "tp1": tp1,
+                    "tp2": tp2,
+                    "pivot_r1": round(r1, 2),
+                    "pivot_s1": round(s1, 2),
+                    "open_time": ts.strftime('%H:%M'),
+                    "open_ts": ts,
+                    "alert_reason": f"Precio ${price:.2f} <= S1 ${s1:.2f} | RSI {rsi:.1f} <= {rsi_long}"
+                }
         else:
-            # Salida
             t = active_trade
+            duration_min = int((ts - t["open_ts"]).total_seconds() / 60)
+            
+            def close_trade(result, close_price, pnl_usd):
+                pnl_pct = round(((close_price - t['entry_price']) / t['entry_price']) * 100 * (-1 if t['type'] == 'SHORT' else 1), 2)
+                simulated_trades.append({
+                    **{k: v for k, v in t.items() if k != 'open_ts'},
+                    "result": result,
+                    "close_time": ts.strftime('%H:%M'),
+                    "close_price": round(close_price, 2),
+                    "duration_min": duration_min,
+                    "pnl_usd": pnl_usd,
+                    "pnl_pct": pnl_pct,
+                })
+            
             if t['type'] == "SHORT":
-                if p >= t['sl']:
-                    simulated_trades.append({"time": t['time'].strftime('%H:%M'), "type": "SHORT", "res": "LOST", "pnl": -20, "v": version})
+                if price >= t['sl']:
+                    close_trade("LOST", price, -20)
                     active_trade = None
-                elif p <= t['tp']:
-                    simulated_trades.append({"time": t['time'].strftime('%H:%M'), "type": "SHORT", "res": "WIN", "pnl": 30, "v": version})
+                elif price <= t['tp1'] and 'tp1_hit' not in t:
+                    t['tp1_hit'] = True  # Anotamos que TP1 fue tocado, no cerramos
+                elif price <= t['tp2']:
+                    close_trade("WIN_FULL", price, 50)
                     active_trade = None
             elif t['type'] == "LONG":
-                if p <= t['sl']:
-                    simulated_trades.append({"time": t['time'].strftime('%H:%M'), "type": "LONG", "res": "LOST", "pnl": -20, "v": version})
+                if price <= t['sl']:
+                    close_trade("LOST", price, -20)
                     active_trade = None
-                elif p >= t['tp']:
-                    simulated_trades.append({"time": t['time'].strftime('%H:%M'), "type": "LONG", "res": "WIN", "pnl": 30, "v": version})
+                elif price >= t['tp1'] and 'tp1_hit' not in t:
+                    t['tp1_hit'] = True
+                elif price >= t['tp2']:
+                    close_trade("WIN_FULL", price, 50)
                     active_trade = None
-                    
+    
+    # Cerrar trade abierto al final del día
+    if active_trade and not df_test.empty:
+        last_price = df_test.iloc[-1]['close']
+        last_ts = df_test.index[-1]
+        duration_min = int((last_ts - active_trade["open_ts"]).total_seconds() / 60)
+        pnl_open = 0
+        if active_trade['type'] == 'SHORT':
+            pnl_open = round((active_trade['entry_price'] - last_price) / active_trade['entry_price'] * 100, 2)
+        else:
+            pnl_open = round((last_price - active_trade['entry_price']) / active_trade['entry_price'] * 100, 2)
+        
+        simulated_trades.append({
+            **{k: v for k, v in active_trade.items() if k != 'open_ts'},
+            "result": "OPEN_EOD",  # End of Day
+            "close_time": last_ts.strftime('%H:%M'),
+            "close_price": round(last_price, 2),
+            "duration_min": duration_min,
+            "pnl_usd": 0,
+            "pnl_pct": pnl_open,
+        })
+    
     return simulated_trades
 
 if __name__ == "__main__":
