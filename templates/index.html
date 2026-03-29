@@ -233,29 +233,25 @@
         <header>
             <h1>Scalping Terminal V2</h1>
             <div class="live-badge">
-                <span class="dot"></span> Monitorización Científica Activa
+                <span class="dot"></span> Monitorización Multi-Estrategia Activa
             </div>
         </header>
 
         <div class="nav-tabs">
             <button class="tab-btn active" onclick="switchTab('live')">Live Scalps</button>
-            <button class="tab-btn" onclick="switchTab('analysis')">Análisis y Reportes (48h)</button>
+            <button class="tab-btn" onclick="switchTab('analysis')">Histórico y Reportes</button>
         </div>
 
         <!-- TAB: LIVE SCALPS -->
         <div id="tab-live" class="tab-content active">
             <div class="stats-grid">
-                <div class="stat-card blue">
-                    <div class="stat-title">Win Rate</div>
-                    <div class="stat-value" id="win-rate">0%</div>
+                <div class="stat-card v1">
+                    <div class="stat-title">Win Rate V1 (Tech)</div>
+                    <div class="stat-value" id="win-rate-v1" style="color: var(--neon-blue);">0%</div>
                 </div>
-                <div class="stat-card green">
-                    <div class="stat-title">Full Won (TP2)</div>
-                    <div class="stat-value" style="color: var(--neon-green);" id="full-won">0</div>
-                </div>
-                <div class="stat-card red">
-                    <div class="stat-title">Stop Loss</div>
-                    <div class="stat-value" style="color: var(--neon-red);" id="lost">0</div>
+                <div class="stat-card v2">
+                    <div class="stat-title">Win Rate V2 (AI)</div>
+                    <div class="stat-value" id="win-rate-v2" style="color: var(--neon-purple);">0%</div>
                 </div>
             </div>
 
@@ -265,10 +261,10 @@
                         <tr>
                             <th>Hora</th>
                             <th>Ticket</th>
+                            <th>Estrategia</th>
                             <th>Tipo</th>
                             <th>Entrada</th>
                             <th>TP1</th>
-                            <th>TP2</th>
                             <th>Estado</th>
                         </tr>
                     </thead>
@@ -316,24 +312,32 @@
 
         async function fetchDashboard() {
             try {
-                const s = await fetch('/api/stats');
-                const stats = await s.json();
-                document.getElementById('win-rate').innerText = stats.win_rate + '%';
-                document.getElementById('full-won').innerText = stats.full_won;
-                document.getElementById('lost').innerText = stats.lost;
+                // Stats V1
+                const s1 = await fetch('/api/stats?version=V1-TECH');
+                const d1 = await s1.json();
+                document.getElementById('win-rate-v1').innerText = d1.win_rate + '%';
+
+                // Stats V2
+                const s2 = await fetch('/api/stats?version=V2-AI');
+                const d2 = await s2.json();
+                document.getElementById('win-rate-v2').innerText = d2.win_rate + '%';
 
                 const t = await fetch('/api/trades');
                 const trades = await t.json();
                 const tbody = document.getElementById('trades-body');
-                tbody.innerHTML = trades.length ? '' : '<tr><td colspan="7">No hay trades.</td></tr>';
+                tbody.innerHTML = trades.length ? '' : '<tr><td colspan="7">Cargando señales...</td></tr>';
                 trades.forEach(tr => {
+                    const vBadge = tr.version === 'V1-TECH' ? 
+                        '<span style="color:var(--neon-blue); font-size:0.7rem">🛡️ V1-TECH</span>' : 
+                        '<span style="color:var(--neon-purple); font-size:0.7rem">🤖 V2-AI</span>';
+                    
                     const row = `<tr>
-                        <td>${new Date(tr.open_time).toLocaleTimeString()}</td>
+                        <td class="time-dim">${new Date(tr.open_time).toLocaleTimeString()}</td>
                         <td><b>${tr.symbol}</b></td>
+                        <td>${vBadge}</td>
                         <td><span class="badge ${tr.type==='SHORT'?'badge-short':'badge-long'}">${tr.type}</span></td>
                         <td>$${tr.entry_price}</td>
                         <td>$${tr.tp1_price}</td>
-                        <td>$${tr.tp2_price}</td>
                         <td style="color:${tr.status==='LOST'?'var(--neon-red)':'var(--neon-green)'}">${tr.status}</td>
                     </tr>`;
                     tbody.innerHTML += row;

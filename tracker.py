@@ -25,14 +25,14 @@ def init_db():
     conn.commit()
     conn.close()
 
-def log_trade(symbol: str, type: str, entry: float, tp1: float, tp2: float, sl: float, msg_id: str = None):
+def log_trade(symbol: str, type: str, entry: float, tp1: float, tp2: float, sl: float, msg_id: str = None, version: str = "V1-TECH"):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     c.execute('''
-        INSERT INTO trades (symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time)
-        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?)
-    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now))
+        INSERT INTO trades (symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, strategy_version)
+        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?)
+    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now, version))
     conn.commit()
     trade_id = c.lastrowid
     conn.close()
@@ -41,8 +41,7 @@ def log_trade(symbol: str, type: str, entry: float, tp1: float, tp2: float, sl: 
 def get_open_trades():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # Obtenemos trades OPEN o PARTIAL_WON (ya tocaron TP1 pero siguen vivos para TP2 o SL de ganancia)
-    c.execute("SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id FROM trades WHERE status IN ('OPEN', 'PARTIAL_WON')")
+    c.execute("SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, strategy_version FROM trades WHERE status IN ('OPEN', 'PARTIAL_WON')")
     trades = c.fetchall()
     conn.close()
     
@@ -51,7 +50,7 @@ def get_open_trades():
         result.append({
             "id": t[0], "symbol": t[1], "type": t[2], 
             "entry_price": t[3], "tp1_price": t[4], "tp2_price": t[5], 
-            "sl_price": t[6], "status": t[7], "msg_id": t[8]
+            "sl_price": t[6], "status": t[7], "msg_id": t[8], "version": t[9]
         })
     return result
 
@@ -59,7 +58,6 @@ def update_trade_status(trade_id: int, status: str):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # Si se cierra completo, añadimos close_time, sino solo actualizamos estado
     if status in ['FULL_WON', 'LOST', 'PARTIAL_CLOSED']:
         c.execute("UPDATE trades SET status = ?, close_time = ? WHERE id = ?", (status, now, trade_id))
     else:
@@ -74,16 +72,27 @@ def update_sl(trade_id: int, new_sl: float):
     conn.commit()
     conn.close()
 
-def get_win_rate():
+def get_win_rate(version: str = None):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM trades WHERE status = 'FULL_WON'")
+    base_query = "SELECT COUNT(*) FROM trades WHERE status = ? "
+    params_fw = ['FULL_WON']
+    params_pw = ['PARTIAL_WON'] # Simplificamos
+    params_l = ['LOST']
+
+    if version:
+        base_query += "AND strategy_version = ?"
+        params_fw.append(version)
+        params_pw.append(version)
+        params_l.append(version)
+
+    c.execute(base_query, params_fw)
     full_won = c.fetchone()[0]
     
-    c.execute("SELECT COUNT(*) FROM trades WHERE status IN ('PARTIAL_WON', 'PARTIAL_CLOSED')")
+    c.execute(base_query.replace("status = ?", "status IN ('PARTIAL_WON', 'PARTIAL_CLOSED')"), params_pw)
     partial_won = c.fetchone()[0]
     
-    c.execute("SELECT COUNT(*) FROM trades WHERE status = 'LOST'")
+    c.execute(base_query, params_l)
     lost = c.fetchone()[0]
     conn.close()
     
@@ -93,7 +102,7 @@ def get_win_rate():
 def get_all_trades():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, open_time, close_time FROM trades ORDER BY id DESC")
+    c.execute("SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, open_time, close_time, strategy_version FROM trades ORDER BY id DESC")
     trades = c.fetchall()
     conn.close()
     
@@ -102,7 +111,8 @@ def get_all_trades():
         result.append({
             "id": t[0], "symbol": t[1], "type": t[2], 
             "entry_price": t[3], "tp1_price": t[4], "tp2_price": t[5], 
-            "sl_price": t[6], "status": t[7], "open_time": t[8], "close_time": t[9]
+            "sl_price": t[6], "status": t[7], "open_time": t[8], "close_time": t[9],
+            "version": t[10]
         })
     return result
 

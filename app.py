@@ -10,7 +10,8 @@ def index():
 
 @app.route('/api/stats')
 def get_stats():
-    full_won, partial_won, lost, total = tracker.get_win_rate()
+    version = request.args.get('version') # Opcional: ?version=V1-TECH
+    full_won, partial_won, lost, total = tracker.get_win_rate(version)
     win_rate = 0
     if total > 0:
         win_rate = ((full_won + partial_won) / total) * 100
