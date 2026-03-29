@@ -175,8 +175,12 @@ def monitor_open_trades(prices: dict):
                 alert(f"t_{t['id']}_p", f"🟡 TP1 ASEGURADO: {sym} LONG. BE activado.", version=t["version"], reply_to=reply)
 
 def main():
-    print("🚀 Scalp Alert Bot V2 (AI Enhanced) - INICIANDO")
+    print("🚀 Scalp Alert Bot V3 (AI Panorama) - INICIANDO")
     update_dynamic_levels()
+    
+    # Control de tiempo para insights horarios
+    last_insight_time = 0 
+    
     send_telegram("🤖 *Scalp Bot Multi-Estrategia Online*\n🛡️ V1-TECH: Activa\n🤖 V2-AI: Activa\n📡 CoinGecko Guard: Activo")
     
     while True:
@@ -185,6 +189,15 @@ def main():
             if prices:
                 check_strategies(prices)
                 monitor_open_trades(prices)
+                
+                # Insight Horario (cada 3600 segundos)
+                now = time.time()
+                if now - last_insight_time > 3600:
+                    print("[Robot] Generando panorama horario...")
+                    panorama = gemini_analyzer.get_hourly_panorama(prices)
+                    send_telegram(f"🤖 *PANORAMA DEL ROBOT*\n\n{panorama}")
+                    last_insight_time = now
+                    
         except Exception as e: print(f"❌ Main Loop Error: {e}")
         time.sleep(CHECK_INTERVAL)
 

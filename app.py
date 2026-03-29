@@ -1,6 +1,7 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import tracker
 import analysis_science
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -38,18 +39,16 @@ def get_analysis():
             results.append(res)
     return jsonify(results)
 
-@app.route('/api/backtest/friday')
-def get_friday_backtest():
-    # Hoy es Sábado 28. Viernes fue hace 1 día.
-    # Para ser exacto, calculamos los días hasta el viernes anterior.
-    today_weekday = datetime.now().weekday() # 0=Lunes, 4=Viernes, 5=Sábado
+@app.route('/api/backtest/compare')
+def get_backtest_compare():
+    today_weekday = datetime.now().weekday()
     days_to_friday = (today_weekday - 4) % 7
-    if days_to_friday == 0: days_to_friday = 7 # Si hoy es viernes, queremos el anterior
+    if days_to_friday == 0: days_to_friday = 7
     
-    results = {}
+    results = {"V1-TECH": {}, "V2-AI": {}}
     for s in ["ETH/USDT", "BTC/USDT", "TAO/USDT"]:
-        trades = analysis_science.run_detailed_backtest(s, days_ago=days_to_friday)
-        results[s] = trades
+        results["V1-TECH"][s] = analysis_science.run_detailed_backtest(s, days_ago=days_to_friday, version="V1-TECH")
+        results["V2-AI"][s] = analysis_science.run_detailed_backtest(s, days_ago=days_to_friday, version="V2-AI")
     return jsonify(results)
 
 if __name__ == '__main__':

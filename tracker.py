@@ -75,25 +75,28 @@ def update_sl(trade_id: int, new_sl: float):
 def get_win_rate(version: str = None):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    base_query = "SELECT COUNT(*) FROM trades WHERE status = ? "
-    params_fw = ['FULL_WON']
-    params_pw = ['PARTIAL_WON'] # Simplificamos
-    params_l = ['LOST']
-
-    if version:
-        base_query += "AND strategy_version = ?"
-        params_fw.append(version)
-        params_pw.append(version)
-        params_l.append(version)
-
-    c.execute(base_query, params_fw)
-    full_won = c.fetchone()[0]
     
-    c.execute(base_query.replace("status = ?", "status IN ('PARTIAL_WON', 'PARTIAL_CLOSED')"), params_pw)
+    def count_status(status_val, v):
+        q = "SELECT COUNT(*) FROM trades WHERE status = ?"
+        p = [status_val]
+        if v:
+            q += " AND strategy_version = ?"
+            p.append(v)
+        c.execute(q, p)
+        return c.fetchone()[0]
+
+    full_won = count_status('FULL_WON', version)
+    
+    # Para Partial Won (especial)
+    q_pw = "SELECT COUNT(*) FROM trades WHERE status IN ('PARTIAL_WON', 'PARTIAL_CLOSED')"
+    p_pw = []
+    if version:
+        q_pw += " AND strategy_version = ?"
+        p_pw.append(version)
+    c.execute(q_pw, p_pw)
     partial_won = c.fetchone()[0]
     
-    c.execute(base_query, params_l)
-    lost = c.fetchone()[0]
+    lost = count_status('LOST', version)
     conn.close()
     
     total = full_won + partial_won + lost

@@ -347,11 +347,16 @@
 
         async function fetchAnalysis() {
             const container = document.getElementById('analysis-content');
-            const bBody = document.getElementById('backtest-body');
-            container.innerHTML = '<p>Ejecutando análisis de Pandas...</p>';
+            const v1Body = document.getElementById('v1-backtest-body');
+            const v2Body = document.getElementById('v2-backtest-body');
+            const winnerBox = document.getElementById('winner-summary');
+            
+            container.innerHTML = '<p>Calculando comparación histórica...</p>';
+            v1Body.innerHTML = '<tr><td colspan="4">Cargando...</td></tr>';
+            v2Body.innerHTML = '<tr><td colspan="4">Cargando...</td></tr>';
             
             try {
-                // 1. Estadísticas Generales
+                // 1. Estadísticas Generales (Pandas)
                 const r = await fetch('/api/analysis');
                 const data = await r.json();
                 container.innerHTML = '';
@@ -359,47 +364,58 @@
                     container.innerHTML += `
                     <div class="analysis-card">
                         <h3>${an.symbol}</h3>
-                        <p style="color:var(--text-dim)">Rango 48h: $${an.price_range[0]} - $${an.price_range[1]}</p>
-                        <hr style="margin:1rem 0; opacity:0.1">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem">
-                            <span>RSI Promedio</span> <b>${an.rsi_avg}</b>
-                        </div>
-                        <div style="display:flex; justify-content:space-between">
-                            <span>Toques R1/S1</span> <b>${an.r1_touches}/${an.s1_touches}</b>
-                        </div>
-                        <div class="rec-box">
-                            <h4 style="color:var(--neon-purple)">Recomendación V2</h4>
-                            <p>SHORT RSI >= ${an.v2_short_rec}</p>
-                            <p>LONG RSI <= ${an.v2_long_rec}</p>
-                        </div>
+                        <p style="color:var(--text-dim)">Pivots: R1 $${an.v2_short_rec} | S1 $${an.v2_long_rec}</p>
                     </div>`;
                 });
 
-                // 2. Simulación de Viernes
-                const bRes = await fetch('/api/backtest/friday');
-                const bData = await bRes.json();
-                bBody.innerHTML = '';
+                // 2. Simulación Comparativa
+                const cRes = await fetch('/api/backtest/compare');
+                const cData = await cRes.json();
                 
-                let foundAny = false;
-                for (let sym in bData) {
-                    bData[sym].forEach(trade => {
-                        foundAny = true;
-                        const pnlColor = trade.res === 'WIN' ? 'var(--neon-green)' : 'var(--neon-red)';
-                        bBody.innerHTML += `<tr>
-                            <td class="time-dim">${trade.time}</td>
-                            <td><b>${sym}</b></td>
-                            <td><span class="badge ${trade.type==='SHORT'?'badge-short':'badge-long'}">${trade.type}</span></td>
-                            <td style="color:${pnlColor}; font-weight:600">${trade.res === 'WIN' ? '✅ ACIERTO' : '❌ ERROR'}</td>
-                            <td style="color:${pnlColor}">$${trade.pnl > 0 ? '+' : ''}${trade.pnl}</td>
+                let pnlV1 = 0, pnlV2 = 0;
+                v1Body.innerHTML = '';
+                v2Body.innerHTML = '';
+
+                // Llenar V1
+                for(let sym in cData["V1-TECH"]) {
+                    cData["V1-TECH"][sym].forEach(tr => {
+                        pnlV1 += tr.pnl;
+                        v1Body.innerHTML += `<tr>
+                            <td class="time-dim">${tr.time}</td>
+                            <td>${sym}</td>
+                            <td style="color:${tr.res==='WIN'?'var(--neon-green)':'var(--neon-red)'}">${tr.res}</td>
+                            <td>$${tr.pnl}</td>
                         </tr>`;
                     });
                 }
-                if (!foundAny) bBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hubo entradas activadas el viernes con la estrategia actual.</td></tr>';
 
-            } catch(e) { 
-                container.innerHTML = '<p>Error al cargar análisis.</p>'; 
-                bBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Error al cargar simulación.</td></tr>';
-            }
+                // Llenar V2
+                for(let sym in cData["V2-AI"]) {
+                    cData["V2-AI"][sym].forEach(tr => {
+                        pnlV2 += tr.pnl;
+                        v2Body.innerHTML += `<tr>
+                            <td class="time-dim">${tr.time}</td>
+                            <td>${sym}</td>
+                            <td style="color:${tr.res==='WIN'?'var(--neon-green)':'var(--neon-red)'}">${tr.res}</td>
+                            <td>$${tr.pnl}</td>
+                        </tr>`;
+                    });
+                }
+
+                if(!v1Body.innerHTML) v1Body.innerHTML = '<tr><td colspan="4">Sin trades el viernes.</td></tr>';
+                if(!v2Body.innerHTML) v2Body.innerHTML = '<tr><td colspan="4">Sin trades el viernes.</td></tr>';
+
+                // Mostrar Ganador
+                winnerBox.style.display = 'block';
+                if (pnlV2 > pnlV1) {
+                    winnerBox.innerHTML = `🏆 GANADOR DEL VIERNES: Estrategia V2 (AI) con $${pnlV2} USD (vs V1 $${pnlV1})`;
+                } else if (pnlV1 > pnlV2) {
+                    winnerBox.innerHTML = `🏆 GANADOR DEL VIERNES: Estrategia V1 (Tech) con $${pnlV1} USD (vs V2 $${pnlV2})`;
+                } else {
+                    winnerBox.innerHTML = `🤝 EMPATE DEL VIERNES: Ambas cerraron con $${pnlV1} USD`;
+                }
+
+            } catch(e) { console.error(e); }
         }
 
         fetchDashboard();

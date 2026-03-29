@@ -55,7 +55,41 @@ def get_ai_decision(symbol, price, side, rsi, bb_u, bb_l):
         print(f"[Gemini Error] {e}")
         return "REJECT", "Fallo en conexión con IA"
 
+def get_hourly_panorama(prices_dict):
+    """Genera un análisis estratégico global cada hora."""
+    # Extraer datos relevantes para el prompt
+    context = ""
+    for sym in ["ETH", "TAO", "BTC"]:
+        p = prices_dict.get(sym, 0)
+        rsi = prices_dict.get(f"{sym}_RSI", 0)
+        context += f"- {sym}: ${p:,.2f} (RSI 15m: {rsi:.1f})\n"
+
+    prompt = f"""
+    Eres un Robot Analista de Scalping (Estratégico y Directo). 
+    PANORAMA ACTUAL:
+    {context}
+    
+    TAREA:
+    1. Resume el sentimiento (Bullish/Bearish/Neutral) del mercado en general.
+    2. Da 3 tips cortos (máx 15 palabras c/u) para operar en la próxima hora.
+    3. Usa un tono futurista pero profesional.
+    
+    Formatea con Markdown para Telegram (Usa negritas, emojis de robot).
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"[Gemini Panorama Error] {e}")
+        return "🤖 *ERROR DE SISTEMA*: No pude procesar el panorama en este momento."
+
 if __name__ == "__main__":
     # Prueba rápida
     dec, reason = get_ai_decision("ETH", 2000, "SHORT", 65, 2010, 1950)
     print(f"Decisión: {dec} | Razón: {reason}")
+    
+    # Prueba panorama
+    mock_data = {"ETH": 2000, "ETH_RSI": 65, "BTC": 65000, "BTC_RSI": 50, "TAO": 300, "TAO_RSI": 40}
+    print("\n--- Panorama Test ---")
+    print(get_hourly_panorama(mock_data))
