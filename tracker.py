@@ -66,19 +66,23 @@ def save_backtest_session(date_str: str, version: str, trades: list, starting_ba
     """Persiste los resultados de una simulación en la BD."""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # Limpiar el día/versión existente para re-generar limpio
     c.execute("DELETE FROM backtest_sessions WHERE date = ? AND version = ?", (date_str, version))
     
     balance = starting_balance
-    risk_per_trade = starting_balance * 0.01  # 1% de la cuenta
+    RISK = starting_balance * 0.01  # $10 por trade (1%)
     
     for t in trades:
         bal_before = balance
-        # Calcular PnL real basado en R:R dinámico
-        if t.get('result') == 'WIN_FULL':
-            pnl = risk_per_trade * 1.5  # 1.5:1 R:R
-        elif t.get('result') == 'LOST':
-            pnl = -risk_per_trade
+        result = t.get('result', '')
+        
+        # PnL real: WIN=2:1 R:R, LOST=1:1 riesgo, OPEN_EOD=movimiento real
+        if result == 'WIN_FULL':
+            pnl = RISK * 2.0          # +$20 (2:1 R:R)
+        elif result == 'LOST':
+            pnl = -RISK               # -$10
+        elif result == 'OPEN_EOD':
+            # Usar el pnl_usd calculado por la simulación (movimiento real)
+            pnl = round(t.get('pnl_usd', 0), 2)
         else:
             pnl = 0
         
@@ -94,7 +98,7 @@ def save_backtest_session(date_str: str, version: str, trades: list, starting_ba
         ''', (
             date_str, t.get('symbol',''), version, t.get('type',''),
             t.get('entry_price'), t.get('close_price'), t.get('sl'), t.get('tp1'), t.get('tp2'),
-            t.get('result'), round(pnl, 2), t.get('pnl_pct', 0),
+            result, round(pnl, 2), t.get('pnl_pct', 0),
             t.get('rsi_entry'), t.get('bb_status'), t.get('alert_reason'),
             t.get('open_time'), t.get('close_time'), t.get('duration_min', 0),
             t.get('pivot_r1'), t.get('pivot_s1'),

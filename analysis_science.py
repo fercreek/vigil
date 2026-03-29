@@ -136,8 +136,9 @@ def run_detailed_backtest(symbol="ETH/USDT", target_date_str=None, days_ago=1, v
             # — ENTRADA SHORT —
             if price >= r1 and rsi >= rsi_short:
                 sl = round(price * 1.01, 2)
-                tp1 = round((price + s1) / 2, 2)  # Mitad del camino a S1
-                tp2 = round(s1, 2)
+                sl_dist = sl - price
+                tp1 = round(price - sl_dist * 1.0, 2)  # 1:1 R:R
+                tp2 = round(price - sl_dist * 2.0, 2)  # 2:1 R:R
                 active_trade = {
                     "symbol": symbol,
                     "version": version,
@@ -157,8 +158,9 @@ def run_detailed_backtest(symbol="ETH/USDT", target_date_str=None, days_ago=1, v
             # — ENTRADA LONG —
             elif price <= s1 and rsi <= rsi_long:
                 sl = round(price * 0.99, 2)
-                tp1 = round((price + r1) / 2, 2)
-                tp2 = round(r1, 2)
+                sl_dist = price - sl
+                tp1 = round(price + sl_dist * 1.0, 2)  # 1:1 R:R
+                tp2 = round(price + sl_dist * 2.0, 2)  # 2:1 R:R
                 active_trade = {
                     "symbol": symbol,
                     "version": version,
@@ -198,7 +200,7 @@ def run_detailed_backtest(symbol="ETH/USDT", target_date_str=None, days_ago=1, v
                 elif price <= t['tp1'] and 'tp1_hit' not in t:
                     t['tp1_hit'] = True  # Anotamos que TP1 fue tocado, no cerramos
                 elif price <= t['tp2']:
-                    close_trade("WIN_FULL", price, 50)
+                    close_trade("WIN_FULL", price, 20)
                     active_trade = None
             elif t['type'] == "LONG":
                 if price <= t['sl']:
@@ -207,28 +209,29 @@ def run_detailed_backtest(symbol="ETH/USDT", target_date_str=None, days_ago=1, v
                 elif price >= t['tp1'] and 'tp1_hit' not in t:
                     t['tp1_hit'] = True
                 elif price >= t['tp2']:
-                    close_trade("WIN_FULL", price, 50)
+                    close_trade("WIN_FULL", price, 20)
                     active_trade = None
     
-    # Cerrar trade abierto al final del día
+    # Cerrar trade abierto al final del día con PnL real (unrealized)
     if active_trade and not df_test.empty:
         last_price = df_test.iloc[-1]['close']
         last_ts = df_test.index[-1]
         duration_min = int((last_ts - active_trade["open_ts"]).total_seconds() / 60)
-        pnl_open = 0
-        if active_trade['type'] == 'SHORT':
-            pnl_open = round((active_trade['entry_price'] - last_price) / active_trade['entry_price'] * 100, 2)
-        else:
-            pnl_open = round((last_price - active_trade['entry_price']) / active_trade['entry_price'] * 100, 2)
+        entry = active_trade['entry_price']
+        direction = 1 if active_trade['type'] == 'LONG' else -1
+        move_pct = (last_price - entry) / entry * direction
+        # PnL real basado en posición: riesgo=$10, SL=1%, por ende posición=$1000
+        pnl_real = round(move_pct * 1000, 2)  # gana/pierde en proporción al movimiento
+        pnl_pct = round(move_pct * 100, 2)
         
         simulated_trades.append({
             **{k: v for k, v in active_trade.items() if k != 'open_ts'},
-            "result": "OPEN_EOD",  # End of Day
+            "result": "OPEN_EOD",
             "close_time": last_ts.strftime('%H:%M'),
             "close_price": round(last_price, 2),
             "duration_min": duration_min,
-            "pnl_usd": 0,
-            "pnl_pct": pnl_open,
+            "pnl_usd": pnl_real,  # PnL real del movimiento del día
+            "pnl_pct": pnl_pct,
         })
     
     return simulated_trades
