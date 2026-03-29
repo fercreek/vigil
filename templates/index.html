@@ -208,6 +208,23 @@
             margin-top: 1rem;
         }
 
+        .section-header {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--neon-purple);
+            border-left: 4px solid var(--neon-purple);
+            padding-left: 1rem;
+        }
+
+        .backtest-table {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 2rem;
+        }
     </style>
 </head>
 <body>
@@ -260,10 +277,28 @@
             </div>
         </div>
 
-        <!-- TAB: ANALYSIS (NEW) -->
+        <!-- TAB: ANALYSIS (NEW & IMPROVED) -->
         <div id="tab-analysis" class="tab-content">
             <div class="analysis-grid" id="analysis-content">
                 <!-- Llenado por JS -->
+            </div>
+
+            <div class="section-header">Resultados Detallados: Simulación del Viernes</div>
+            <div class="dashboard-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Ticket</th>
+                            <th>Tipo</th>
+                            <th>Resultado</th>
+                            <th>PnL Estimado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="backtest-body">
+                        <tr><td colspan="5" style="text-align: center;">Cargando simulación histórica...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -308,8 +343,11 @@
 
         async function fetchAnalysis() {
             const container = document.getElementById('analysis-content');
+            const bBody = document.getElementById('backtest-body');
             container.innerHTML = '<p>Ejecutando análisis de Pandas...</p>';
+            
             try {
+                // 1. Estadísticas Generales
                 const r = await fetch('/api/analysis');
                 const data = await r.json();
                 container.innerHTML = '';
@@ -332,19 +370,36 @@
                         </div>
                     </div>`;
                 });
-            } catch(e) { container.innerHTML = '<p>Error al cargar análisis.</p>'; }
+
+                // 2. Simulación de Viernes
+                const bRes = await fetch('/api/backtest/friday');
+                const bData = await bRes.json();
+                bBody.innerHTML = '';
+                
+                let foundAny = false;
+                for (let sym in bData) {
+                    bData[sym].forEach(trade => {
+                        foundAny = true;
+                        const pnlColor = trade.res === 'WIN' ? 'var(--neon-green)' : 'var(--neon-red)';
+                        bBody.innerHTML += `<tr>
+                            <td class="time-dim">${trade.time}</td>
+                            <td><b>${sym}</b></td>
+                            <td><span class="badge ${trade.type==='SHORT'?'badge-short':'badge-long'}">${trade.type}</span></td>
+                            <td style="color:${pnlColor}; font-weight:600">${trade.res === 'WIN' ? '✅ ACIERTO' : '❌ ERROR'}</td>
+                            <td style="color:${pnlColor}">$${trade.pnl > 0 ? '+' : ''}${trade.pnl}</td>
+                        </tr>`;
+                    });
+                }
+                if (!foundAny) bBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hubo entradas activadas el viernes con la estrategia actual.</td></tr>';
+
+            } catch(e) { 
+                container.innerHTML = '<p>Error al cargar análisis.</p>'; 
+                bBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Error al cargar simulación.</td></tr>';
+            }
         }
 
         fetchDashboard();
         setInterval(fetchDashboard, 5000);
-    </script>
-</body>
-</html>
-
-        // Llamar inicial y luego cada 5 segundos
-        fetchDashboard();
-        setInterval(fetchDashboard, 5000);
-
     </script>
 </body>
 </html>

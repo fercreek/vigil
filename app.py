@@ -37,6 +37,20 @@ def get_analysis():
             results.append(res)
     return jsonify(results)
 
+@app.route('/api/backtest/friday')
+def get_friday_backtest():
+    # Hoy es Sábado 28. Viernes fue hace 1 día.
+    # Para ser exacto, calculamos los días hasta el viernes anterior.
+    today_weekday = datetime.now().weekday() # 0=Lunes, 4=Viernes, 5=Sábado
+    days_to_friday = (today_weekday - 4) % 7
+    if days_to_friday == 0: days_to_friday = 7 # Si hoy es viernes, queremos el anterior
+    
+    results = {}
+    for s in ["ETH/USDT", "BTC/USDT", "TAO/USDT"]:
+        trades = analysis_science.run_detailed_backtest(s, days_ago=days_to_friday)
+        results[s] = trades
+    return jsonify(results)
+
 if __name__ == '__main__':
     print("🚀 Dashboard de Scalping UI iniciado en http://localhost:5001")
     app.run(debug=True, port=5001)
