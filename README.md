@@ -1,50 +1,45 @@
-# Zenith Trading Suite 🤖🏛️ (V2.1.0 Dual Engine)
+# Zenith Trading Suite 🛡️🏛️ (V10.0 Sentiment-AI Pivot)
 
-Esta es una suite de trading algorítmico de élite diseñada para operar en **Binance** con máxima estabilidad. El sistema combina análisis técnico institucional con el razonamiento avanzado de **Gemini AI** para ofrecer una ventaja competitiva en el mercado.
+Esta es una suite de trading algorítmico de grado institucional diseñada para operar en **Binance** con máxima precisión. El sistema combina análisis técnico híbrido, un motor de **Consenso IA Dual** (Gordon & Aiden) y un tablero de control interactivo vía Telegram.
 
-## ✨ ¿Qué hace esta versión? (Zenith V2.1.0)
+## 🚀 ¿Qué hay de nuevo en V10.0?
 
-El sistema ha evolucionado a una arquitectura de **Motor Dual** que cubre todo el espectro del mercado:
+En esta versión, hemos alcanzado la madurez operativa mediante el pivote estratégico de activos y la integración de psicología de mercado avanzada:
 
-### 1. ⚡ Scalp Alert Engine (15m)
-- **Estrategia**: Captura de rebotes rápidos y micro-tendencias.
-- **Indicadores**: RSI, Bandas de Bollinger, EMA 200 y ATR dinámico.
-- **Filtro AI**: Validación instantánea por los agentes *Conservador* y *Scalper*.
+### 1. ⚡ SOL / BTC / TAO Pivot
+- **Adiós ETH**: Hemos pivotado de Ethereum a **Solana (SOL)** por su mayor volatilidad y alineación con las micro-tendencias de alta beta.
+- **Enfoque Alpha**: Concentramos el motor en **Bitcoin**, **Solana** y **Bittensor (TAO)** para maximizar el Win Rate.
 
-### 2. 🏛️ Zenith Swing Engine (H4)
-- **Estrategia**: Seguimiento de tendencia institucional de alta probabilidad.
-- **Indicadores**: Nube de Ichimoku (Kumo Breakout) y Order Blocks (SMC).
-- **AI Bias**: El agente *Institutional Strategist* define la dirección semanal para filtrar ruidos.
+### 2. 🎭 AI Consensus Debate (Gordon vs Aiden)
+- **Gordon (Wall Street Whale)**: Aporta la visión institucional, cínica y protectora del capital (conservador).
+- **Aiden (Gen Z Guru)**: Aporta la visión tecnológica, agresiva y experta en IA y narrativa cripto.
+- **Debate en Tiempo Real**: Cada alerta incluye un debate entre estas dos personalidades para darte una perspectiva 360° antes de entrar.
 
-### 3. 📱 Interfaz Contextual (Telegram)
-- **Botones Dinámicos**: El menú de Telegram se adapta en tiempo real. Si abres una operación manual, los botones de LONG/SHORT desaparecen y son reemplazados por un botón de **Cierre con PnL**.
-- **Seguridad**: Bloqueo automático de entradas duplicadas para proteger tu capital.
+### 3. 📈 Zenith Suite V6 (TradingView Native)
+- **Indicador Consolidado**: Un script todo-en-uno para cuentas básicas de TradingView que sincroniza la lógica del bot (EMA 200, Bollinger, RSI, ATR) directamente en tu gráfico.
 
-### 4. 🛠️ Modo Hot Reload (Dev Mode)
-- **Agilidad**: Usa `python3 dev.py` para que el sistema se reinicie automáticamente al detectar cualquier cambio en el código. ¡Cero tiempos muertos!
+### 4. 📱 Smart Manual Controls
+- **Toggle Automático**: Una sola posición activa por símbolo. Si abres una nueva, el bot cierra la anterior automáticamente.
+- **ATR Targets**: Sugerencia de TP/SL dinámicos en cada comando manual según la volatilidad del momento.
 
 ---
 
-## 🚀 Cómo correr la Suite
+## 🛠️ Cómo arrancar la Suite
 
-### A. Modo Producción (Estable)
-Lanza todo el sistema (Dashboard + Scalp + Swing) con un solo comando:
+### A. Modo Producción
+Lanza el ecosistema completo (Dashboard + Bot):
 ```bash
-python3 main.py
+./venv/bin/python main.py
 ```
 
-### B. Modo Desarrollo (Hot Reload)
-Usa el monitor inteligente para que los cambios se apliquen al instante:
-```bash
-python3 dev.py
-```
+### B. Estructura de Documentos
+- [🏛️ Zenith Manifesto](docs/ZENITH_MANIFESTO_V10.md): La filosofía y evolución técnica (V1-V10).
+- [⌨️ Guía de Comandos](docs/COMMAND_REFERENCE.md): Manual completo de interacción con Telegram.
+- [📊 Pine Script Setup](docs/PINE_SCRIPT_GUIDE.md): Cómo instalar Zenith en TradingView.
 
 ---
 
-## ☁️ Despliegue en la Nube (Replit Ready)
-1. Configura tus **Secrets** (`TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID`, `GEMINI_API_KEY`).
-2. El orquestador `main.py` está optimizado para mantener la web viva 24/7.
-3. El sistema incluye un **Escudo de Estabilidad (V2.1)** que sanitiza todos los datos nulos, garantizando que el bot no se detenga por fallos de red externos.
+## ☁️ Despliegue en Replit
+El sistema incluye un **Escudo de Estabilidad (V10)** que protege contra fallos de red y sanitiza datos de API, ideal para ejecución 24/7 en la nube.
 
----
-¡El sistema Zenith es ahora una solución completa de nivel profesional para el trading algorítmico! 📈🏛️🚀
+¡Bienvenido a la era de la IA Sensata en el Trading! 🛰️🛡️🎭🚀
