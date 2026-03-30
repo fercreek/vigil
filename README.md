@@ -1,31 +1,50 @@
-# Trading Scalp Bot 🤖📈
+# Zenith Trading Suite 🤖🏛️ (V2.1.0 Dual Engine)
 
-Este es un bot de trading de alta precisión diseñado para monitorear activos como **ETH, BTC y TAO**, enviando alertas directas a Telegram cuando encuentra oportunidades de "Scalping" (operaciones rápidas).
+Esta es una suite de trading algorítmico de élite diseñada para operar en **Binance** con máxima estabilidad. El sistema combina análisis técnico institucional con el razonamiento avanzado de **Gemini AI** para ofrecer una ventaja competitiva en el mercado.
 
-## ¿Qué hicimos recientemente? (Estrategia V1.6)
+## ✨ ¿Qué hace esta versión? (Zenith V2.1.0)
 
-Anteriormente, el bot tomaba decisiones demasiado deprisa basándose solo en gráficas de 15 minutos, lo que a veces causaba que compráramos cuando el mercado general estaba cayendo.
+El sistema ha evolucionado a una arquitectura de **Motor Dual** que cubre todo el espectro del mercado:
 
-Para solucionar esto, implementamos el **Bloqueo Direccional (Filtro Macro)**:
-1. Ahora el bot primero "mira desde arriba": Revisa la tendencia general del mercado en gráficas grandes (1 Hora y 4 Horas).
-2. Si la tendencia general de 4 horas está **BAJISTA**, el bot se bloquea inteligentemente y **solo buscará operaciones de venta (SHORT)** en gráficas de 15 minutos, ignorando cualquier rebote engañoso.
-3. Si la tendencia es **ALCISTA**, **solo buscará operaciones de compra (LONG)**.
+### 1. ⚡ Scalp Alert Engine (15m)
+- **Estrategia**: Captura de rebotes rápidos y micro-tendencias.
+- **Indicadores**: RSI, Bandas de Bollinger, EMA 200 y ATR dinámico.
+- **Filtro AI**: Validación instantánea por los agentes *Conservador* y *Scalper*.
 
-*Resultado*: Ya no operamos "LONG y SHORT" a la vez. Operamos **100% a favor de la corriente del mercado**, subiendo enormemente nuestra tasa de acierto y protegiendo el dinero.
+### 2. 🏛️ Zenith Swing Engine (H4)
+- **Estrategia**: Seguimiento de tendencia institucional de alta probabilidad.
+- **Indicadores**: Nube de Ichimoku (Kumo Breakout) y Order Blocks (SMC).
+- **AI Bias**: El agente *Institutional Strategist* define la dirección semanal para filtrar ruidos.
 
-## ¿Qué significan las Alertas en Telegram?
+### 3. 📱 Interfaz Contextual (Telegram)
+- **Botones Dinámicos**: El menú de Telegram se adapta en tiempo real. Si abres una operación manual, los botones de LONG/SHORT desaparecen y son reemplazados por un botón de **Cierre con PnL**.
+- **Seguridad**: Bloqueo automático de entradas duplicadas para proteger tu capital.
 
-Cuando el bot encuentra una oportunidad alineada con el mercado, envía un mensaje como este:
+### 4. 🛠️ Modo Hot Reload (Dev Mode)
+- **Agilidad**: Usa `python3 dev.py` para que el sistema se reinicie automáticamente al detectar cualquier cambio en el código. ¡Cero tiempos muertos!
 
-- 💎 **DIAMANTE (Score 4/5)**: Es una calificación de calidad. Significa que múltiples indicadores (RSI, Volatilidad, Tendencia) están perfectamente alineados.
-- 🌍 **MACRO ALCISTA / BAJISTA**: Te confirma que la operación está respaldada por la temporalidad de 4 horas y 1 hora.
-- 🎯 **TP1 y SL**: Te da exactamente dónde tomar la ganancia inicial y dónde poner el límite de pérdida para proteger tu cuenta automáticamente.
-- 🤖 **CONSENSUS IA**: Si ves este ícono, significa que además de los cálculos matemáticos, la Inteligencia Artificial de Gemini aprobó la operación analizando el sentimiento del mercado.
+---
 
-## Cómo encender el bot
+## 🚀 Cómo correr la Suite
 
-1. Activa el entorno virtual: `source venv/bin/activate`
-2. Ejecuta el bot de alertas: `python scalp_alert_bot.py`
-3. Ejecuta el Dashboard web (si deseas ver el historial): `python app.py`
+### A. Modo Producción (Estable)
+Lanza todo el sistema (Dashboard + Scalp + Swing) con un solo comando:
+```bash
+python3 main.py
+```
 
-¡Déjalo correr y espera las notificaciones en tu Telegram!
+### B. Modo Desarrollo (Hot Reload)
+Usa el monitor inteligente para que los cambios se apliquen al instante:
+```bash
+python3 dev.py
+```
+
+---
+
+## ☁️ Despliegue en la Nube (Replit Ready)
+1. Configura tus **Secrets** (`TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID`, `GEMINI_API_KEY`).
+2. El orquestador `main.py` está optimizado para mantener la web viva 24/7.
+3. El sistema incluye un **Escudo de Estabilidad (V2.1)** que sanitiza todos los datos nulos, garantizando que el bot no se detenga por fallos de red externos.
+
+---
+¡El sistema Zenith es ahora una solución completa de nivel profesional para el trading algorítmico! 📈🏛️🚀

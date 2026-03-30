@@ -1,7 +1,19 @@
+# Local State
+last_update_id.txt
+phase.txt
+
+# Database & Data
+trades.db
+memory/
+data/
+migracion_nube.zip
+
+# Python env
 venv/
 __pycache__/
-*.db
-*.csv
-.env
-phase.txt
-data/
+*.pyc
+
+# IDE / OS
+.DS_Store
+.replit
+.gemini/
