@@ -28,7 +28,7 @@ def get_trades():
 @app.route('/api/analysis')
 def get_analysis():
     results = []
-    for s in ["ETH/USDT", "BTC/USDT", "TAO/USDT"]:
+    for s in ["SOL/USDT", "BTC/USDT", "TAO/USDT"]:
         res = analysis_science.scientific_analysis(s)
         if res:
             results.append(res)
@@ -47,7 +47,7 @@ def get_backtest_compare():
     if not date_str:
         date_str = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
 
-    SYMBOLS = ["ETH/USDT", "BTC/USDT", "TAO/USDT"]
+    SYMBOLS = ["SOL/USDT", "BTC/USDT", "TAO/USDT"]
     VERSIONS = ["V1-TECH", "V2-AI"]
 
     # Verificar si ya existe en DB (y no se fuerza recálculo)

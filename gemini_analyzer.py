@@ -446,3 +446,27 @@ if __name__ == "__main__":
 
     print("\n--- Resumen de Contextos ---")
     print(get_context_summary())
+
+def get_market_sentiment(prices: dict) -> dict:
+    """Retorna un diagnóstico de sentimiento global con opiniones de Gordon y Aiden."""
+    prompt = (
+        f"Analiza estos datos de mercado actuales:\n"
+        f"USDT.D: {prices.get('USDT_D', 'N/A')}% | BTC: ${prices.get('BTC', 0):,.2f} | SOL: ${prices.get('SOL', 0):,.2f}\n\n"
+        f"1. Define el BIAS global (BULLISH/BEARISH/NEUTRAL).\n"
+        f"2. Da una opinión de 12 palabras de GORDON (Wall Street Whale) 🎩.\n"
+        f"3. Da una opinión de 12 palabras de AIDEN (Gen Z Guru) ⚡.\n\n"
+        f"Formato JSON: "
+        '{"bias": "...", "gordon": "...", "aiden": "..."}'
+    )
+    
+    try:
+        response, _ = _chat_with_persona("EXPERT_ADVISOR", prompt)
+        import json
+        import re
+        # Limpieza de JSON de Gemini
+        match = re.search(r'\{.*\}', response, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+        return {"bias": "NEUTRAL", "gordon": "Mercado incierto.", "aiden": "Vibras mixtas."}
+    except Exception:
+        return {"bias": "NEUTRAL", "gordon": "Sin datos.", "aiden": "Sin datos."}

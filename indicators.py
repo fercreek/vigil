@@ -4,7 +4,7 @@ import requests
 
 import time
 
-# Binance para BTC, ETH y TAO
+# Binance para BTC, SOL y TAO
 binance = ccxt.binance()
 
 # --- CACHE LOCAL PARA INDICADORES ---

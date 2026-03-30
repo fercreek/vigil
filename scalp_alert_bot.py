@@ -86,7 +86,7 @@ def sanitize_dict(d: dict) -> dict:
 
 # ─── CONFIGURACIÓN DE NIVELES ──────────────────────────────────────────────
 LEVELS = {
-    "ETH": {"short_entry_high": 2037, "sl_short": 2045, "target1": 1960, "target2": 1930, "long_zone": 1905},
+    "SOL": {"short_entry_high": 182, "sl_short": 188, "target1": 165, "target2": 160, "long_zone": 158},
     "TAO": {"resistance": 320, "target1": 290, "target2": 270, "long_zone": 265, "long_sl": 238},
     "BTC": {"resistance": 68283, "support1": 65000, "support2": 62987}
 }
@@ -298,7 +298,7 @@ def get_prices() -> dict:
     res["BTC_D"] = GLOBAL_CACHE["global_metrics"]["btc_d"]
 
     # 3. Datos Técnicos (TTL_INDICATORS para reducir carga)
-    for sym in ["ETH", "TAO", "BTC"]:
+    for sym in ["SOL", "TAO", "BTC"]:
         last_ind_update = GLOBAL_CACHE["last_update"]["indicators"].get(sym, 0)
         
         if now - last_ind_update > TTL_INDICATORS:
@@ -344,7 +344,7 @@ def check_market_pulse(prices):
     event = "APERTURA" if is_open else "CIERRE"
     print(f"📡 [Market Pulse] Detectado evento de {event}")
     
-    for sym in ["ETH", "BTC"]:
+    for sym in ["SOL", "BTC"]:
         p, rsi = prices[sym], prices[f"{sym}_RSI"]
         bb_u, bb_l = prices[f"{sym}_BB_U"], prices[f"{sym}_BB_L"]
         ema_200 = prices[f"{sym}_EMA_200"]
@@ -369,7 +369,7 @@ def check_strategies(prices: dict):
     phase = get_phase()
     usdt_d = prices.get("USDT_D", 8.0)
     
-    for sym in ["ETH", "TAO", "BTC"]:
+    for sym in ["SOL", "TAO", "BTC"]:
         p = prices.get(sym, 0.0)
         rsi = prices.get(f"{sym}_RSI", 50.0)
         
@@ -629,7 +629,7 @@ def monitor_open_trades(prices: dict):
                        f"• Motivo: El precio superó el techo proyectado.")
                 alert(f"t_{t['id']}_l", msg, version=t["version"], reply_to=reply)
                 gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
-            elif curr_p <= t["tp2_price"]:
+            elif t["tp2_price"] > 0 and curr_p <= t["tp2_price"]:
                 tracker.update_trade_status(t["id"], "FULL_WON")
                 msg = (f"🟢 <b>TP2 ALCANZADO (STRIKE!)</b>\n\n"
                        f"🪙 {sym} SHORT\n"
@@ -640,7 +640,7 @@ def monitor_open_trades(prices: dict):
                        f"✨ El indicador predijo el retroceso correctamente.")
                 alert(f"t_{t['id']}_w", msg, version=t["version"], reply_to=reply)
                 gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
-            elif curr_p <= t["tp1_price"] and t["status"] == "OPEN":
+            elif t["tp1_price"] > 0 and curr_p <= t["tp1_price"] and t["status"] == "OPEN":
                 tracker.update_trade_status(t["id"], "PARTIAL_WON")
                 tracker.update_sl(t["id"], t["entry_price"]) # BE
                 alert(f"t_{t['id']}_p", f"🟡 <b>TP1 ASEGURADO</b>\nBE Activado | Riesgo eliminado.", version=t["version"], reply_to=reply)
@@ -656,7 +656,7 @@ def monitor_open_trades(prices: dict):
                        f"• Motivo: Soporte perforado, el impulso falló.")
                 alert(f"t_{t['id']}_l", msg, version=t["version"], reply_to=reply)
                 gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
-            elif curr_p >= t["tp2_price"]:
+            elif t["tp2_price"] > 0 and curr_p >= t["tp2_price"]:
                 tracker.update_trade_status(t["id"], "FULL_WON")
                 msg = (f"🟢 <b>TP2 ALCANZADO (STRIKE!)</b>\n\n"
                        f"🪙 {sym} LONG\n"
@@ -667,7 +667,7 @@ def monitor_open_trades(prices: dict):
                        f"✨ Rebote técnico capturado con éxito.")
                 alert(f"t_{t['id']}_w", msg, version=t["version"], reply_to=reply)
                 gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
-            elif curr_p >= t["tp1_price"] and t["status"] == "OPEN":
+            elif t["tp1_price"] > 0 and curr_p >= t["tp1_price"] and t["status"] == "OPEN":
                 tracker.update_trade_status(t["id"], "PARTIAL_WON")
                 tracker.update_sl(t["id"], t["entry_price"]) # BE
                 alert(f"t_{t['id']}_p", f"🟡 <b>TP1 ASEGURADO</b>\nBE Activado | Riesgo eliminado.", version=t["version"], reply_to=reply)
@@ -706,7 +706,7 @@ def check_user_queries(prices: dict):
             
             if text.startswith("/analyze"):
                 sym = text.replace("/analyze", "").strip().upper()
-                if sym in ["ETH", "BTC", "TAO"]:
+                if sym in ["SOL", "BTC", "TAO"]:
                     print(f"🧠 Activando Agente Experto para {sym}...")
                     send_telegram(f"🔍 <b>Analizando {sym} intensivamente...</b> Espera un momento.")
                     advice = gemini_analyzer.get_expert_advice(sym, prices)
@@ -715,14 +715,24 @@ def check_user_queries(prices: dict):
                     send_telegram(safe_html(advice))
                     print(f"✅ Análisis enviado a Telegram.")
                 else:
-                    send_telegram("❌ Símbolo no reconocido. Usa: <code>/analyze ETH</code>, <code>BTC</code> o <code>TAO</code>.")
+                    send_telegram("❌ Símbolo no reconocido. Usa: <code>/analyze SOL</code>, <code>BTC</code> o <code>TAO</code>.")
             elif text.startswith("/status") or "Status de Mercado" in text:
-                print("📊 Generando reporte de estado...")
-                status_msg = "📊 <b>ESTADO ACTUAL DEL MERCADO</b>\n\n"
-                for s in ["ETH", "BTC", "TAO"]:
+                print("📊 Generando reporte de estado con sentimiento AI...")
+                sentiment = gemini_analyzer.get_market_sentiment(prices)
+                bias_emoji = "🟢" if sentiment["bias"] == "BULLISH" else "🔴" if sentiment["bias"] == "BEARISH" else "🟡"
+                
+                status_msg = (f"📊 <b>ESTADO DEL MERCADO</b> {bias_emoji}\n"
+                              f"Sentimiento: <b>{sentiment['bias']}</b>\n\n")
+                
+                for s in ["SOL", "BTC", "TAO"]:
                     p = (prices.get(s) or 0.0)
                     rsi = (prices.get(f"{s}_RSI") or 0.0)
                     status_msg += f"• <b>{s}</b>: ${(p or 0.0):,.2f} | RSI: {(rsi or 0.0):.1f}\n"
+                
+                status_msg += (f"\n🎙️ <b>OPINIÓN DE EXPERTOS:</b>\n"
+                               f"🎩 <b>Gordon</b>: \"{sentiment['gordon']}\"\n"
+                               f"⚡ <b>Aiden</b>: \"{sentiment['aiden']}\"")
+                
                 send_telegram(status_msg, keyboard=get_main_menu())
                 
             elif text.startswith("/audit") or "Auditoría" in text:
@@ -737,19 +747,44 @@ def check_user_queries(prices: dict):
                     f"🎯 <i>Objetivo Pro: Profit Factor > 1.75</i>"
                 )
                 send_telegram(audit_msg, keyboard=get_main_menu())
-            elif "TAO LONG" in text or "TAO SHORT" in text:
-                side = "LONG" if "LONG" in text else "SHORT"
-                last_trade = tracker.get_last_open_trade("TAO")
-                
-                if last_trade:
-                    send_telegram(f"⚠️ <b>Ya tienes una operación abierta en TAO</b> ({last_trade['type']}).\nCierra la actual antes de abrir una nueva.", keyboard=get_main_menu("TAO"))
-                else:
-                    p = (prices.get("TAO") or 0.0)
+            elif "LONG" in text or "SHORT" in text:
+                # Soporte para formato "/BTC LONG" o simplemente "/BTC LONG" (limpieza de comando)
+                clean_text = text.replace("/", "").upper()
+                sym = next((s for s in ["SOL", "BTC", "TAO"] if s in clean_text), None)
+                if sym:
+                    side = "LONG" if "LONG" in clean_text else "SHORT"
+                    p = (prices.get(sym) or 0.0)
+                    atr = (prices.get(f"{sym}_ATR") or p * 0.01)
+                    
+                    # 1. Lógica de Toggle: Cerrar previa si existe
+                    last_trade = tracker.get_last_open_trade(sym)
+                    if last_trade:
+                        entry = last_trade["entry_price"]
+                        pnl_pct = ((p - entry) / entry) * 100
+                        if last_trade["type"] == "SHORT": pnl_pct = -pnl_pct
+                        tracker.update_trade_status(last_trade["id"], "WON" if pnl_pct > 0 else "LOST")
+                        send_telegram(f"🔄 <b>Cerrando {sym} {last_trade['type']} previo</b> (PnL: {pnl_pct:+.2f}%) para abrir nueva posición.", reply_to=last_trade["msg_id"])
+                    
+                    # 2. Cálculo de Targets Dinámicos (1.5x ATR)
+                    sl_dist = max(atr * 1.5, p * 0.005)
+                    sl = round(p - sl_dist if side == "LONG" else p + sl_dist, 2)
+                    tp1 = round(p + (sl_dist * 2.0) if side == "LONG" else p - (sl_dist * 2.0), 2)
+                    tp2 = round(p + (sl_dist * 3.5) if side == "LONG" else p - (sl_dist * 3.5), 2)
+                    
                     if p > 0:
-                        mid = send_telegram(f"🚀 <b>TAO {side} MANUAL</b>\nEntrada: ${p:,.2f}\n\n<i>Monitoreando PnL...</i>", keyboard=get_main_menu("TAO"))
-                        tracker.log_trade("TAO", side, p, 0, 0, 0, mid, version="MANUAL")
+                        msg = (f"🚀 <b>{sym} {side} MANUAL</b>\n"
+                               f"Entrada: ${p:,.2f}\n\n"
+                               f"🎯 <b>TARGETS SUGERIDOS:</b>\n"
+                               f"• TP1: <b>${tp1:,.2f}</b> (2:1)\n"
+                               f"• TP2: <b>${tp2:,.2f}</b> (3.5:1)\n"
+                               f"🛑 SL: <b>${sl:,.2f}</b>\n\n"
+                               f"<i>Monitoreando PnL...</i>")
+                        mid = send_telegram(msg, keyboard=get_main_menu(sym))
+                        tracker.log_trade(sym, side, p, tp1, tp2, sl, mid, version="MANUAL", rsi=prices.get(f"{sym}_RSI", 50))
                     else:
-                        send_telegram("❌ No se pudo obtener el precio de TAO para la entrada manual.")
+                        send_telegram(f"❌ No se pudo obtener el precio de {sym} para la entrada manual.")
+                else:
+                    send_telegram("❌ Símbolo no reconocido para trade manual. Usa BTC/SOL/TAO.")
             
             elif "CERRAR TAO" in text or "CLOSE TAO" in text:
                 last_trade = tracker.get_last_open_trade("TAO")
