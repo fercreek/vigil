@@ -230,7 +230,7 @@
                 <thead>
                     <tr>
                         <th>Hora</th><th>Símbolo</th><th>Estrategia</th><th>Tipo</th>
-                        <th>Entrada</th><th>TP1</th><th>Estado</th>
+                        <th>Entrada</th><th>📊 Detalle Técnico</th><th>🌊 Wave</th><th>Estado</th>
                     </tr>
                 </thead>
                 <tbody id="trades-body">
@@ -405,14 +405,30 @@
                 const vBadge = t.version === 'V1-TECH'
                     ? '<span class="badge badge-v1">🛡️ V1-TECH</span>'
                     : '<span class="badge badge-v2">🤖 V2-AI</span>';
+                
                 const statusColor = t.status === 'LOST' ? 'var(--red)' : t.status === 'OPEN' ? 'var(--yellow)' : 'var(--green)';
+                
+                // Technical Snapshot Badges (V1.6.1)
+                const rsiVal = t.rsi_entry || t.rsi || 0;
+                const rsiColor = rsiVal <= 35 ? 'var(--green)' : rsiVal >= 65 ? 'var(--red)' : 'var(--muted)';
+                const rsiBadge = `<span class="badge" style="background:rgba(255,255,255,0.05); border:1px solid ${rsiColor}">RSI: ${rsiVal.toFixed(1)}</span>`;
+                
+                const bbBadge = t.bb_status 
+                    ? `<span class="badge" style="background:rgba(255,255,255,0.05); border:1px solid var(--muted); font-size:0.65rem">${t.bb_status.replace('🔴 ','').replace('🟢 ','')}</span>`
+                    : '';
+                
+                const waveTxt = t.elliott || t.elliott_wave || '—';
+                const waveColor = waveTxt.includes('Onda 3') ? '#38BDF8' : 'var(--muted)';
+                const waveBadge = `<span class="badge" style="background:rgba(56,189,248,0.1); border:1px solid ${waveColor}; color:${waveColor}">${waveTxt}</span>`;
+
                 tbody.innerHTML += `<tr>
                     <td style="color:var(--muted); font-size:0.8rem">${new Date(t.open_time).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'})}</td>
                     <td><b>${t.symbol}</b></td>
                     <td>${vBadge}</td>
                     <td><span class="badge ${t.type === 'SHORT' ? 'badge-short' : 'badge-long'}">${t.type}</span></td>
                     <td>$${t.entry_price}</td>
-                    <td>$${t.tp1_price}</td>
+                    <td><div style="display:flex; gap:4px">${rsiBadge}${bbBadge}</div></td>
+                    <td>${waveBadge}</td>
                     <td style="color:${statusColor}; font-weight:600">${t.status}</td>
                 </tr>`;
             });
@@ -595,6 +611,7 @@
                             <div class="meta-item"><label>RSI al entrar</label><span>${t.rsi_entry || '—'}</span></div>
                             <div class="meta-item"><label>Bollinger</label><span>${t.bb_status || '—'}</span></div>
                             <div class="meta-item"><label>Pivot R1 | S1</label><span>$${t.pivot_r1 || '—'} | $${t.pivot_s1 || '—'}</span></div>
+                            <div class="meta-item"><label>🌊 Fase Elliott</label><span style="color:#38BDF8; font-weight:700">${t.elliott_wave || t.elliott || 'Analizando...'}</span></div>
                         </div>
                         <div class="alert-reason">🔔 Señal: ${t.alert_reason || '—'}</div>
                     </div>`;

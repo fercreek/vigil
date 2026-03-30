@@ -1,0 +1,49 @@
+import threading
+import os
+from dotenv import load_dotenv
+from app import app
+import scalp_alert_bot
+
+# Cargamos .env para ejecución local (Replit usa Secrets de sistema)
+load_dotenv()
+
+def run_flask():
+    """Ejecuta el Dashboard Web en el puerto 8080 (requerido por Replit)."""
+    # Replit usa el puerto 8080 por defecto para mostrar la web
+    port = int(os.environ.get("PORT", 8080))
+    print(f"🌐 Dashboard Web iniciado en puerto {port}")
+    app.run(host='0.0.0.0', port=port)
+def run_bot():
+    """Ejecuta el bucle principal del Scalp Alert Bot."""
+    print("🤖 Scalp Alert Bot iniciado en segundo plano")
+    try:
+        scalp_alert_bot.main()
+    except Exception as e:
+        print(f"❌ Error crítico en el Bot: {e}")
+
+import swing_bot
+
+def run_swing_bot():
+    """Ejecuta el bucle principal del Zenith Swing Bot (H4)."""
+    print("🏛️ Zenith Swing Bot iniciado en segundo plano")
+    try:
+        swing_bot.run_zenith_swing()
+    except Exception as e:
+        print(f"❌ Error crítico en Zenith Swing Bot: {e}")
+
+if __name__ == "__main__":
+    print("🚀 --- INICIANDO SISTEMA HÍBRIDO (V2.0 DUAL ENGINE) ---")
+    
+    # 1. Hilo para el Scalp Alert Bot (15m)
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
+    
+    # 2. Hilo para el Zenith Swing Bot (H4)
+    swing_thread = threading.Thread(target=run_swing_bot)
+    swing_thread.daemon = True
+    swing_thread.start()
+    
+    # 3. Hilo principal para Flask (Keep-Alive)
+    run_flask()
+# Hot Reload Test
