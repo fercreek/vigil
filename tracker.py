@@ -20,15 +20,32 @@ def init_db():
             msg_id TEXT,
             open_time TEXT,
             close_time TEXT,
-            strategy_version TEXT DEFAULT 'V1-TECH'
+            strategy_version TEXT DEFAULT 'V1-TECH',
+            rsi_entry REAL,
+            bb_status TEXT,
+            atr REAL,
+            elliott_wave TEXT,
+            conf_score INTEGER
         )
     ''')
-    # Migrate: add strategy_version if missing
-    try:
-        c.execute("ALTER TABLE trades ADD COLUMN strategy_version TEXT DEFAULT 'V1-TECH'")
-        conn.commit()
-    except Exception:
-        pass
+    # Migrate: add columns if missing
+    columns = [
+        ("strategy_version", "TEXT DEFAULT 'V1-TECH'"),
+        ("rsi_entry", "REAL"),
+        ("bb_status", "TEXT"),
+        ("atr", "REAL"),
+        ("elliott_wave", "TEXT"),
+        ("conf_score", "INTEGER"),
+        ("ai_analysis", "TEXT"),
+        ("macro_bias", "TEXT"),
+        ("inst_score", "INTEGER")
+    ]
+    for col, type_def in columns:
+        try:
+            c.execute(f"ALTER TABLE trades ADD COLUMN {col} {type_def}")
+        except Exception:
+            pass
+    conn.commit()
 
     # Tabla de sesiones de backtesting (resultados persistidos por día)
     c.execute('''
@@ -57,9 +74,14 @@ def init_db():
             pivot_s1 REAL,
             balance_before REAL,
             balance_after REAL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            elliott_wave TEXT DEFAULT 'Analizando...'
         )
     ''')
+    try:
+        c.execute("ALTER TABLE backtest_sessions ADD COLUMN elliott_wave TEXT DEFAULT 'Analizando...'")
+    except:
+        pass
     conn.commit()
     conn.close()
 
@@ -93,9 +115,10 @@ def save_backtest_session(date_str: str, version: str, trades: list, starting_ba
             INSERT INTO backtest_sessions (
                 date, version, symbol, type, entry_price, close_price, sl, tp1, tp2, 
                 result, pnl_usd, pnl_pct, rsi_entry, bb_status, alert_reason, conf_score,
-                open_time, close_time, duration_min, pivot_r1, pivot_s1, balance_before, balance_after
+                open_time, close_time, duration_min, pivot_r1, pivot_s1, balance_before, balance_after,
+                elliott_wave
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             date_str, version, t.get('symbol',''), t.get('type',''),
             t.get('entry_price'), t.get('close_price'), t.get('sl'), t.get('tp1'), t.get('tp2'),
@@ -103,7 +126,8 @@ def save_backtest_session(date_str: str, version: str, trades: list, starting_ba
             t.get('rsi_entry'), t.get('bb_status'), t.get('alert_reason'), t.get('conf_score', 0),
             t.get('open_time'), t.get('close_time'), t.get('duration_min', 0),
             t.get('pivot_r1'), t.get('pivot_s1'),
-            bal_before, balance
+            bal_before, balance,
+            t.get('elliott', 'Analizando...')
         ))
     conn.commit()
     conn.close()
@@ -136,14 +160,17 @@ def get_backtest_days():
     conn.close()
     return rows
 
-def log_trade(symbol: str, type: str, entry: float, tp1: float, tp2: float, sl: float, msg_id: str = None, version: str = "V1-TECH"):
+def log_trade(symbol, type, entry, tp1, tp2, sl, msg_id, version="V1-TECH", rsi=0.0, bb="", atr=0.0, elliott="", score=0, ai_analysis="", macro_bias="", inst_score=0):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     c.execute('''
-        INSERT INTO trades (symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, strategy_version)
-        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?)
-    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now, version))
+        INSERT INTO trades (
+            symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, strategy_version,
+            rsi_entry, bb_status, atr, elliott_wave, conf_score, ai_analysis, macro_bias, inst_score
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now, version, rsi, bb, atr, elliott, score, ai_analysis, macro_bias, inst_score))
     conn.commit()
     trade_id = c.lastrowid
     conn.close()
@@ -152,7 +179,12 @@ def log_trade(symbol: str, type: str, entry: float, tp1: float, tp2: float, sl: 
 def get_open_trades():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, strategy_version FROM trades WHERE status IN ('OPEN', 'PARTIAL_WON')")
+    c.execute('''
+        SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, strategy_version,
+               rsi_entry, bb_status, atr, elliott_wave, conf_score
+        FROM trades 
+        WHERE status IN ('OPEN', 'PARTIAL_WON')
+    ''')
     trades = c.fetchall()
     conn.close()
     
@@ -161,7 +193,8 @@ def get_open_trades():
         result.append({
             "id": t[0], "symbol": t[1], "type": t[2], 
             "entry_price": t[3], "tp1_price": t[4], "tp2_price": t[5], 
-            "sl_price": t[6], "status": t[7], "msg_id": t[8], "version": t[9]
+            "sl_price": t[6], "status": t[7], "msg_id": t[8], "version": t[9],
+            "rsi_entry": t[10], "bb_status": t[11], "atr": t[12], "elliott": t[13], "conf_score": t[14]
         })
     return result
 
@@ -213,22 +246,77 @@ def get_win_rate(version: str = None):
     total = full_won + partial_won + lost
     return full_won, partial_won, lost, total
 
-def get_all_trades():
+def get_audit_metrics():
+    """Calcula métricas profesionales de auditoría (Profit Factor, Win Rate, PnL Total)."""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, open_time, close_time, strategy_version FROM trades ORDER BY id DESC")
+    
+    # 1. Obtener todos los trades cerrados con PnL (simulando 1% riesgo por trade)
+    # Usaremos una aproximación basada en el Win/Loss
+    c.execute("SELECT status, type FROM trades WHERE status IN ('FULL_WON', 'LOST', 'PARTIAL_CLOSED')")
     trades = c.fetchall()
     conn.close()
     
-    result = []
-    for t in trades:
-        result.append({
-            "id": t[0], "symbol": t[1], "type": t[2], 
-            "entry_price": t[3], "tp1_price": t[4], "tp2_price": t[5], 
-            "sl_price": t[6], "status": t[7], "open_time": t[8], "close_time": t[9],
-            "version": t[10]
-        })
-    return result
+    wins = 0
+    losses = 0
+    gross_profit = 0.0
+    gross_loss = 0.0
+    
+    for status, side in trades:
+        if status == 'FULL_WON':
+            wins += 1
+            gross_profit += 2.0 # R:R 1:2
+        elif status == 'LOST':
+            losses += 1
+            gross_loss += 1.0 # Riesgo 1.0
+        elif status == 'PARTIAL_CLOSED':
+            wins += 1
+            gross_profit += 1.0 # R:R 1:1 aproximado
+            
+    win_rate = (wins / len(trades) * 100) if trades else 0
+    profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0)
+    
+    return {
+        "total_trades": len(trades),
+        "wins": wins,
+        "losses": losses,
+        "win_rate": f"{win_rate:.1f}%",
+        "profit_factor": f"{profit_factor:.2f}",
+        "status": "PROFESSIONAL" if profit_factor > 1.75 else "BULLISH" if profit_factor > 1.1 else "NEUTRAL"
+    }
+
+def get_all_trades(limit=50):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, close_time, strategy_version,
+               rsi_entry, bb_status, atr, elliott_wave, conf_score
+        FROM trades 
+        ORDER BY id DESC LIMIT ?
+    ''', (limit,))
+    cols = [desc[0] for desc in c.description]
+    rows = [dict(zip(cols, row)) for row in c.fetchall()]
+    conn.close()
+    return rows
+
+def get_last_open_trade(symbol: str):
+    """Recupera el trade más reciente en estado OPEN o PARTIAL_WON para un símbolo."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        SELECT id, symbol, type, entry_price, status, open_time, msg_id
+        FROM trades 
+        WHERE symbol = ? AND status IN ('OPEN', 'PARTIAL_WON')
+        ORDER BY id DESC LIMIT 1
+    ''', (symbol,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
+            "id": row[0], "symbol": row[1], "type": row[2],
+            "entry_price": row[3], "status": row[4], "open_time": row[5], "msg_id": row[6]
+        }
+    return None
 
 # Inicializar BD al cargar el módulo
 init_db()
