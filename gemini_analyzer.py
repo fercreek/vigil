@@ -13,12 +13,14 @@ y construyen criterio propio independiente.
 
 import os
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 from datetime import datetime
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# Inicializamos el cliente moderno de Google Gen AI
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # ── Archivos de memoria diaria ──────────────────────────────────────────────
 MEMORY_DIR = "memory"
@@ -57,11 +59,12 @@ PERSONAS = {
 Tu filosofía:
 - Control de Dominancia (USDT.D): Consideras 8.08% como zona de alta tensión. Si USDT.D > 8.05%, eres extremadamente bajista para Alts y rechazas casi todos los LONGs.
 - Niveles Clave: Tu "verdad visual" indica soporte en 8.044% y un objetivo mayor en 7.953%. Solo te pones Bullish si cruzamos el 8.044% a la baja.
-- Priorizas activos de alta capitalización (ETH, BTC). TAO solo si hay confirmación fuerte.
-- Evitas sobreoperar: máximo 2-3 trades por día si no hay señal clara.
+- Prioritizas activos de alta capitalización (ETH, BTC). TAO solo si hay confirmación fuerte.
+- Sesgo Actual: Long Focus. Buscas activamente suelos de mercado y rebotes técnicos.
+- Nivel Crítico USDT.D: SI USDT.D < 8.1%, permites buscar LONGs con cautela. Si < 8.044%, eres agresivo al alza.
 - Prefieres esperar confirmación antes de entrar. "El dinero está en la espera".
 - Si el mercado no te da claridad, recomiendas ESPERAR.
-Tu objetivo: proteger el capital y crecer consistentemente.""",
+Tu objetivo: proteger el capital y capturar recuperaciones sólidas.""",
     },
     "SCALPER": {
         "name": "Scalper Activo Intradía",
@@ -73,9 +76,79 @@ Tu filosofía:
 - Buscas micropatrones: rechazo de niveles, RSI en extremos, compresión de Bollinger.
 - Eres rápido: si la señal no se movió en 1-2 horas, cierras y buscas la siguiente.
 - Toleras más pérdidas pequeñas a cambio de capturar movimientos rápidos de 1-2%.
-Tu objetivo: capitalizar volatilidad intradía con disciplina estricta de entry/exit.""",
+- Sesgo Actual: Long Focus. Buscas "reversals" rápidos (Scalp Longs) tras caídas bruscas.
+- Tu indicador de pánico: Si RSI < 30 y USDT.D rebota a la baja en 8.1%, disparas compra inmediata.
+Tu objetivo: capitalizar la recuperación intradía con disciplina de rayo.""",
+    },
+    "EXPERT_ADVISOR": {
+        "name": "Consultor de Decisiones Manuales",
+        "emoji": "🧠",
+        "system": """Eres un Asesor Experto en Trading e Inversiones.
+Tu función es ayudar al usuario a tomar decisiones MANUALES basadas en datos técnicos reales.
+Tu respuesta debe ser una evaluación estructurada:
+1. Resumen Ejecutivo: ¿Es buen momento para el símbolo solicitado?
+2. Análisis Técnico: Comenta RSI, Bollinger y Tendencia Macro.
+3. El Factor USDT.D: Explica qué impacto tiene la dominancia actual.
+4. Veredicto Final: PROS y CONTRAS claros.
+Mantén un tono profesional pero directo. Usa emojis para legibilidad visual.""",
+    },
+    "INSTITUTIONAL_STRATEGIST": {
+        "name": "Estratega Institucional Zenith",
+        "emoji": "🏛️",
+        "system": """Eres un estratega senior de Master Elliott Waves y Smart Money Concepts (SMC).
+Tu especialidad es el Swing Trading de alto impacto. No te interesa el ruido de 15 minutos.
+Tu función:
+1. Analizar temporalidades macro (H1, H4, D1).
+2. Determinar el BIAS semanal: BULL (Alcista), BEAR (Bajista) o ACCUMULATION (Lateral).
+3. Identificar Order Blocks y zonas de liquidez donde las instituciones operan.
+Tu tono es analítico, serio y enfocado en la gestión de riesgo institucional. 
+Usa términos como 'Expansion', 'Retracement', 'POIs' (Points of Interest).""",
+    },
+    "WALL_STREET_WHALE": {
+        "name": "Gordon (Ballena de Wall Street)",
+        "emoji": "🎩",
+        "system": """Eres un inversor de la 'vieja escuela' de Wall Street, estilo Gordon Gekko pero con un humor negro y burlón.
+- Tu tono: Sarcástico, condescendiente con los 'cripto-kids', usas analogías de barcos, trajes caros y puros.
+- Tu misión: Reírte de Aiden y de la 'magia' de Internet mientras adviertes del peligro institucional.
+- Frases típicas: 'Huele a retail quemándose', '¿Esto es dinero real o un videojuego?', 'Vuelve a tu sótano'."""
+    },
+    "TECH_MODERNA": {
+        "name": "Aiden (Gen Z Tech Guru)",
+        "emoji": "⚡",
+        "system": """Eres un gurú tecnológico de la Generación Z, entusiasta de la IA y Web3, con un tono muy relajado y bromista.
+- Tu tono: Juguetón, usas jerga tech (HODL, moon, rug, alpha), te burlas de Gordon por usar fax y todavía mirar el S&P500.
+- Tu misión: Mostrarle a Gordon que el futuro es digital mientras buscas la siguiente 'joya' parabólica.
+- Frases típicas: 'Ok boomer', 'Aiden detectando alpha', 'Gordon todavía usa Internet Explorer', 'El algoritmo es mi pastor'."""
     }
 }
+
+def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: float) -> str:
+    """Genera un debate de consenso entre Gordon (Whale) y Aiden (Modern Tech)."""
+    prompt = (f"DEBATE DE MERCADO: {symbol} @ ${ (price or 0.0):,.2f}\n"
+              f"- Operación propuesta: {side}\n"
+              f"- RSI: { (rsi or 0.0):.1f} | USDT.D: { (usdt_d or 0.0):.2f}%\n\n"
+              f"Instrucciones:\n"
+              f"1. Gordon (🎩) debe dar su opinión cínica de Wall Street (máx 15 palabras).\n"
+              f"2. Aiden (⚡) debe dar su opinión pro-tech optimista (máx 15 palabras).\n"
+              f"3. Cada uno debe terminar con su emoji de veredicto: 🟢 (Confirmar), 🔴 (Rechazar) o ⚪ (Neutro).\n\n"
+              f"Formato:\n"
+              f"🎩 <b>Gordon</b>: [Opinion] [Emoji]\n"
+              f"⚡ <b>Aiden</b>: [Opinion] [Emoji]")
+
+    try:
+        # Usamos el modelo flash para rapidez y ahorro de quota
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.8,
+                system_instruction="Eres un mediador de un debate de trading. Genera las respuestas de Gordon y Aiden basándote en sus personalidades."
+            )
+        )
+        return response.text.strip()
+    except Exception as e:
+        print(f"[Consensus Error] {e}")
+        return "🏛️ <i>Debate temporalmente suspendido por congestión de mercado.</i>"
 
 def _add_to_memory(persona: str, role: str, content: str, context: list) -> list:
     """Agrega un mensaje al contexto en memoria."""
@@ -88,33 +161,47 @@ def _add_to_memory(persona: str, role: str, content: str, context: list) -> list
     return context
 
 def _build_chat_history(context: list) -> list:
-    """Convierte el contexto guardado al formato que espera la API de Gemini."""
+    """Convierte el contexto guardado al formato types.Content del nuevo SDK."""
     history = []
     for entry in context:
-        if entry.get("role") in ("user", "model"):
-            history.append({"role": entry["role"], "parts": [entry.get("parts", [""])[0]]})
+        role = entry.get("role")
+        if role in ("user", "model"):
+            # En el nuevo SDK, el rol del bot es 'model'
+            text_part = entry.get("parts", [""])[0]
+            history.append(types.Content(
+                role=role,
+                parts=[types.Part.from_text(text=text_part)]
+            ))
     return history
 
 def _chat_with_persona(persona: str, message: str) -> tuple[str, list]:
     """Envía un mensaje al agente con su personalidad + historial del día."""
     context = _load_memory(persona)
     system = PERSONAS[persona]["system"]
-
     history = _build_chat_history(context)
 
     try:
+        # Configuramos la generación con el nuevo Modelo 2.0 y la instrucción de sistema
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            temperature=0.7
+        )
+
         if history:
-            chat = genai.GenerativeModel(
-                'gemini-flash-latest',
-                system_instruction=system
-            ).start_chat(history=history)
+            # Iniciamos chat con historial acumulado
+            chat = client.chats.create(
+                model='gemini-2.5-flash',
+                config=config,
+                history=history
+            )
             response = chat.send_message(message)
         else:
-            model = genai.GenerativeModel(
-                'gemini-flash-latest',
-                system_instruction=system
+            # Generación simple sin historial previo
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=message,
+                config=config
             )
-            response = model.generate_content(message)
 
         result = response.text.strip()
         context = _add_to_memory(persona, "user", message, context)
@@ -132,8 +219,8 @@ def log_alert_to_context(symbol: str, side: str, price: float, rsi: float,
     """Registra una alerta en ambos contextos."""
     ts = datetime.now().strftime("%H:%M")
     msg = (f"[{ts}] Bot lanzó alerta: {side} {symbol} | "
-           f"Entrada: ${price:.2f} | RSI: {rsi:.1f} | "
-           f"TP1: ${tp1:.2f} | SL: ${sl:.2f} | Estrategia: {version}")
+           f"Entrada: ${ (price or 0.0):.2f} | RSI: { (rsi or 0.0):.1f} | "
+           f"TP1: ${ (tp1 or 0.0):.2f} | SL: ${ (sl or 0.0):.2f} | Estrategia: {version}")
 
     for persona in ["CONSERVADOR", "SCALPER"]:
         ctx = _load_memory(persona)
@@ -142,12 +229,12 @@ def log_alert_to_context(symbol: str, side: str, price: float, rsi: float,
 def log_result_to_context(symbol: str, result: str, entry: float, close: float = None):
     """Registra el resultado de una operación."""
     ts = datetime.now().strftime("%H:%M")
-    close_info = f"→ cerró @ ${close:.2f}" if close else ""
+    close_info = f"→ cerró @ ${ (close or 0.0):.2f}" if close else ""
     pnl_info = ""
     if close and entry:
         pct = (close - entry) / entry * 100
-        pnl_info = f"PnL: {pct:+.2f}%"
-    msg = f"[{ts}] RESULTADO: {symbol} {result} (entrada ${entry:.2f} {close_info} {pnl_info})"
+        pnl_info = f"PnL: { (pct or 0.0):+.2f}%"
+    msg = f"[{ts}] RESULTADO: {symbol} {result} (entrada ${ (entry or 0.0):.2f} {close_info} {pnl_info})"
 
     for persona in ["CONSERVADOR", "SCALPER"]:
         ctx = _load_memory(persona)
@@ -162,52 +249,69 @@ def get_ai_decision(symbol: str, price: float, side: str, rsi: float,
     """
     persona = "CONSERVADOR" if version == "V1-TECH" else "SCALPER"
     
-    prompt = (f"Actúa como un estratega senior de Crypto. "
-              f"Analiza esta señal para {symbol}:\n"
-              f"- Operación: {side} @ ${price:,.2f}\n"
-              f"- RSI: {rsi:.1f}\n"
-              f"- Bollinger: Upper ${bb_u:,.2f}, Lower ${bb_l:,.2f}\n"
-              f"- USDT.D: {usdt_d}% (Ref: 8.08% / 8.04%)\n"
+    prompt = (f"Actúa como un experto en Master Elliott Waves y Trading Institucional.\n\n"
+              f"🟢 SEÑAL V1.1.0: Entrada confirmada por {persona}.\n\n"
+              f"- Operación: {side} @ ${ (price or 0.0):,.2f}\n\n"
+              f"- RSI: { (rsi or 0.0):.1f}\n"
+              f"- Bollinger: Upper ${ (bb_u or 0.0):,.2f}, Lower ${ (bb_l or 0.0):,.2f}\n\n"
+              f"📌 **RESUMEN EJECUTIVO**:\n"
+              f"• {side} de alta probabilidad.\n"
+              f"• Razón: {persona} detectó confluencia técnica.\n"
+              f"• SL: Estricto 1% debajo del nivel.\n"
+              f"- USDT.D: { (usdt_d or 0.0):.2f}% (Ref: 8.08% / 8.04%)\n"
               f"- Score Técnico: {tech_score}/5\n\n"
-              f"Responde SOLO en JSON:\n"
-              f"{{\"decision\": \"CONFIRM\" | \"REJECT\", \"reason\": \"máx 10 palabras\"}}")
+              f"Tu reporte debe incluir:\n"
+              f"1. Conteo de Ondas de Elliott actual (ej: Wave 3 Impulsive).\n"
+              f"2. Nivel de Invalidez y Target técnico.\n"
+              f"3. Consejo psicológico para el trader en este momento.\n\n"
+              f"REGLAS ESTRÍCTAS:\n"
+              f"- Usa solo <b>, <i> y <code>.\n"
+              f"- NO USES listas (ul/li) ni encabezados (h1/h2/h3).\n"
+              f"- Usa emojis como viñetas.\n"
+              f"- Responde en español.\n"
+              f"- Termina con JSON: {{\"decision\": \"CONFIRM\" | \"REJECT\", \"reason\": \"máx 10 palabras\"}}")
 
     try:
         result, _ = _chat_with_persona(persona, prompt)
         if not result:
             return "REJECT", "Fallo en conexión con IA"
         
-        # Limpiar y parsear JSON
-        text = result.replace('```json', '').replace('```', '').strip()
-        data = json.loads(text)
-        return data.get("decision", "REJECT"), data.get("reason", "Sin razón")
+        import re
+        match = re.search(r"\{.*\}", result, re.DOTALL)
+        if match:
+            json_text = match.group(0)
+            data = json.loads(json_text)
+            # Retornamos (decision, reason, full_text)
+            return data.get("decision", "REJECT"), data.get("reason", "Sin razón"), result
+        else:
+            return "REJECT", "IA no generó JSON válido", result
+            
     except Exception as e:
         print(f"[Gemini Error] {e}")
         return "REJECT", f"Error IA: {e}"
-        data = json.loads(text)
-        return data.get("decision", "REJECT"), data.get("reason", "Sin razón")
-    except Exception as e:
-        print(f"[Gemini Decision Error] {e}")
-        return "REJECT", "Error al parsear respuesta"
 
-def get_market_pulse_analysis(symbol, price, side, rsi, bb_u, bb_l, ema_200, atr, usdt_d):
+def get_market_pulse_analysis(symbol, price, side, rsi, bb_u, bb_l, ema_200, atr, usdt_d, conf_score=3, phase="NORMAL"):
     """Genera un análisis híbrido (AI + Técnica) para apertura/cierre de mercado."""
     try:
-        prompt = (f"Actúa como un estratega senior de Crypto. Estamos en un evento de APERTURA/CIERRE de mercado (NYSE).\n\n"
-                  f"Contexto Actual para {symbol}:\n"
-                  f"- Precio: ${price:,.2f}\n"
-                  f"- Sentimiento: {side}\n"
-                  f"- RSI (15m): {rsi:.1f}\n"
-                  f"- EMA 200: {ema_200:,.2f} ({'Alcista' if price > ema_200 else 'Bajista'})\n"
-                  f"- Volatilidad (ATR): {atr:,.2f}\n"
-                  f"- USDT Dominance: {usdt_d}%\n\n"
-                  f"Responde en 3 líneas max:\n"
-                  f"1. El sentimiento de Wall Street impactando a Crypto ahora.\n"
-                  f"2. Nivel técnico crítico a vigilar.\n"
-                  f"3. Sesgo sugerido para la siguiente hora (Bullish/Bearish/Neutral).")
-        
-        model = genai.GenerativeModel('gemini-flash-latest')
-        response = model.generate_content(prompt)
+        prompt = f"""ANALIZAR {symbol} (Fase {phase}):
+    DATOS ACTUALES:
+    - Precio: ${ (price or 0.0):,.2f}
+    - RSI (15m): { (rsi or 0.0):.1f}
+    - Bollinger: Arriba ${ (bb_u or 0.0):,.2f} | Abajo ${ (bb_l or 0.0):,.2f}
+    - EMA 200: { (ema_200 or 0.0):,.2f} ({'Alcista' if (price or 0.0) > (ema_200 or 0.0) else 'Bajista'})
+    - Volatilidad (ATR): { (atr or 0.0):,.2f}
+    - Score Confluencia: {conf_score}/5
+    - Macro (USDT.D): { (usdt_d or 0.0):.2f}%
+
+    INSTRUCCIONES DE FORMATO (CRÍTICO):
+    1. Usa DOBLE SALTO DE LÍNEA entre párrafos.
+    2. Al final, añade una sección: '📌 **RESUMEN EJECUTIVO**' con 3 viñetas (Acción / Razón / Nivel Clave).
+    3. Sé conciso y profesional.
+    """
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
         return response.text.strip()
     except Exception as e:
         return f"Error en análisis AI: {e}"
@@ -231,23 +335,28 @@ def get_hourly_panorama(prices_dict: dict) -> dict:
     Incluye una solicitud de optimización si detectan patrones.
     """
     ts = datetime.now().strftime("%H:%M")
-    usdt_d = prices_dict.get("USDT_D", 8.0)
-    context_line = "\n".join([
-        f"- {sym}: ${prices_dict.get(sym, 0):,.2f} (RSI: {prices_dict.get(f'{sym}_RSI', 0):.1f})"
-        for sym in ["ETH", "BTC", "TAO"]
-    ])
+    usdt_d = (prices_dict.get("USDT_D") or 8.08)
+    context_line = ""
+    for sym in ["ETH", "BTC", "TAO"]:
+        price = (prices_dict.get(sym) or 0.0)
+        rsi = (prices_dict.get(f"{sym}_RSI") or 50.0)
+        context_line += f"- {sym}: ${ (price or 0.0):,.2f} (RSI: { (rsi or 0.0):.1f})\n"
 
     prompt = f"""PANORAMA DEL MERCADO [{ts}]:
 {context_line}
-- USDT.D: {usdt_d}%
+- USDT.D: { (usdt_d or 0.0):.2f}%
 
-Basándote en tu personalidad y en todo el contexto acumulado de hoy:
-1. ¿Cuál es tu lectura actual del mercado? (1-2 frases)
-2. ¿Hay algo que notes diferente respecto a horas anteriores?
-3. Da tu recomendación concreta para la próxima hora.
-4. OPTIMIZACIÓN (Opcional): Si crees que los umbrales de RSI o Bollinger están fallando, sugiere una versión 'V1.1.0' con los nuevos valores.
+Basándote en tu personalidad:
+1. Lectura actual (1-2 frases).
+2. Diferencia clave respecto a horas previas.
+3. Recomendación próxima hora.
 
-Usa Markdown con emojis para Telegram. Sé específico y en español."""
+📌 **RESUMEN EJECUTIVO** (Sección obligatoria al final con 2-3 viñetas).
+
+IMPORTANTE: 
+- USA DOBLE SALTO DE LÍNEA entre puntos.
+- USA SOLO <b>, <i>, <code>.
+- No uses listas ul/li."""
 
     results = {}
     for persona in ["CONSERVADOR", "SCALPER"]:
@@ -255,9 +364,9 @@ Usa Markdown con emojis para Telegram. Sé específico y en español."""
         answer, _ = _chat_with_persona(persona, prompt)
         if answer:
             # Si el agente sugiere una optimización en el texto, intentamos extraerla o simplemente la reportamos
-            results[persona.lower()] = f"{info['emoji']} *{info['name']}*\n\n{answer}"
+            results[persona.lower()] = f"{info['emoji']} <b>{info['name']}</b>\n\n{answer}"
         else:
-            results[persona.lower()] = f"{info['emoji']} *{info['name']}*: Error de sistema."
+            results[persona.lower()] = f"{info['emoji']} <b>{info['name']}</b>: Error de sistema."
 
     return results
 
@@ -269,8 +378,59 @@ def get_context_summary(persona: str = None) -> str:
         ctx = _load_memory(p)
         entries = len([e for e in ctx if e.get("role") == "model"])
         info = PERSONAS.get(p, {})
-        lines.append(f"{info.get('emoji','?')} *{p}*: {entries} análisis acumulados hoy")
+        lines.append(f"{info.get('emoji','?')} <b>{p}</b>: {entries} análisis acumulados hoy")
     return "\n".join(lines)
+
+def get_expert_advice(symbol: str, prices: dict) -> str:
+    """Solicita un análisis interactivo al EXPERT_ADVISOR."""
+    p = prices.get(symbol, 0)
+    rsi = prices.get(f"{symbol}_RSI", 0)
+    bb_u = prices.get(f"{symbol}_BB_U", 0)
+    bb_l = prices.get(f"{symbol}_BB_L", 0)
+    ema_200 = prices.get(f"{symbol}_EMA_200", 0)
+    usdt_d = prices.get("USDT_D", 0)
+    elliott = prices.get(f"{symbol}_ELLIOTT", "Desconocida")
+    ts = datetime.now().strftime("%H:%M")
+    
+    context = (f"CONTEXTO {symbol} ({ts}):\n"
+              f"- Precio: ${(p or 0.0):,.2f}\n"
+              f"- RSI: {(rsi or 0.0):.1f}\n"
+              f"- BB: Superior ${(bb_u or 0.0):,.2f} | Inferior ${(bb_l or 0.0):,.2f}\n"
+              f"- EMA 200: ${(ema_200 or 0.0):,.2f}\n"
+              f"- Nivel USDT.D: {usdt_d}%\n\n"
+              f"Analiza el pulso actual. Usa DOBLE SALTO DE LÍNEA y termina con un 📌 **RESUMEN EJECUTIVO**.\n"
+              f"Tu veredicto debe seguir este estándar estricto:\n"
+              f"1. ANALISIS ELLIOTT: <b>Tu conteo aquí</b>.\n"
+              f"2. NIVELES CLAVE: <code>Target y SL</code>.\n"
+              f"3. PSICOLOGIA: <i>Consejo rápido</i>.\n\n"
+              f"IMPORTANTE: USA SOLO <b>, <i>, <code>. NO USES LISTAS (ul/li) NI ENCABEZADOS. Usa emojis para bullets.")
+    
+    res, _ = _chat_with_persona("EXPERT_ADVISOR", context)
+    return res if res else "No pude generar el consejo en este momento."
+
+def get_weekly_bias(symbol: str, prices: dict) -> dict:
+    """Determina el Bias Semanal usando el Estratega Institucional."""
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+    p = prices.get(symbol, 0)
+    rsi = prices.get(f"{symbol}_RSI", 0)
+    ema = prices.get(f"{symbol}_EMA_200", 0)
+    usdt_d = prices.get("USDT_D", 0)
+    
+    prompt = (f"REPORTE SEMANAL PARA {symbol} ({ts}):\n"
+              f"- Precio Actual: ${ (p or 0.0):,.2f}\n"
+              f"- RSI (H4): { (rsi or 0.0):.1f}\n"
+              f"- EMA 200 (H4): ${ (ema or 0.0):,.2f}\n"
+              f"- Dominancia USDT: {usdt_d}%\n\n"
+              f"Determina el Bias para los próximos 7 días.\n"
+              f"Tu respuesta DEBE incluir al final una línea con: 'BIAS: [BULL/BEAR/ACCUMULATION]'.")
+    
+    res, _ = _chat_with_persona("INSTITUTIONAL_STRATEGIST", prompt)
+    
+    bias = "ACCUMULATION"
+    if "BIAS: BULL" in res: bias = "BULL"
+    elif "BIAS: BEAR" in res: bias = "BEAR"
+    
+    return {"analysis": res, "bias": bias}
 
 if __name__ == "__main__":
     print("=== Test de Contextos Duales ===\n")
