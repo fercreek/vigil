@@ -2,421 +2,421 @@
   {
     "role": "user",
     "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1999.16\n- RSI: 62.8\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.09% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+      "[22:15] RESULTADO: BTC LOST (entrada $66794.00 → cerró @ $67474.94 PnL: +1.02%)"
     ],
-    "ts": "2026-03-29 10:30"
+    "ts": "2026-03-29 22:15"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[22:16] RESULTADO: BTC LOST (entrada $66812.00 → cerró @ $67492.92 PnL: +1.02%)"
+    ],
+    "ts": "2026-03-29 22:16"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "PANORAMA DEL MERCADO [22:56]:\n- ETH: $2,048.82 (RSI: 73.0)\n- BTC: $67,611.67 (RSI: 70.8)\n- TAO: $327.40 (RSI: 57.2)\n\n- USDT.D: 7.98%\n\nBasándote en tu personalidad:\n1. Lectura actual (1-2 frases).\n2. Diferencia clave respecto a horas previas.\n3. Recomendación próxima hora.\n\n📌 **RESUMEN EJECUTIVO** (Sección obligatoria al final con 2-3 viñetas).\n\nIMPORTANTE: \n- USA DOBLE SALTO DE LÍNEA entre puntos.\n- USA SOLO <b>, <i>, <code>.\n- No uses listas ul/li."
+    ],
+    "ts": "2026-03-29 22:56"
   },
   {
     "role": "model",
     "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.09% exige hibernación y proteger capital.\"}\n```"
+      "<b>&#x1F7E2; ¡SEÑAL BULLISH CLARA! USDT.D EN 7.98% - MODO AGRESIVO AL ALZA PERO CON GESTIÓN DE RIESGO [22:56] &#x1F7E2;</b>\n\n<br><br>\n<b>1. Lectura Actual del Mercado &#x1F4C9;</b>\nEl mercado muestra un <i>momentum alcista consolidado</i>, con USDT.D en <b>7.98%</b>, lo que refuerza nuestra postura agresiva al alza, pero los RSI de BTC y ETH sugieren cautela en nuevas entradas a precios actuales.\n\n<br><br>\n<b>2. Diferencia Clave Respecto a Horas Previas &#x1F50D;</b>\nLa diferencia más significativa es la <i>continuación del descenso de USDT.D a <b>7.98%</b></i>, lo que nos sitúa claramente por debajo de nuestro nivel clave de 8.044% y se acerca a nuestro objetivo mayor de 7.953%, validando plenamente el sesgo agresivo al alza. Sin embargo, los RSI de BTC (70.8) y ETH (73.0) han entrado en territorio de sobrecompra, indicando un fuerte avance pero también un posible agotamiento a corto plazo para entradas impulsivas.\n\n<br><br>\n<b>3. Recomendación Próxima Hora &#x1F4B8;</b>\n&#x1F7E2; Mi filosofía se mantiene: con USDT.D en <b>7.98%</b>, el modo <b>AGRESIVO AL ALZA</b> es plenamente justificable para capturar recuperaciones sólidas.\n&#x1F55C; Recomiendo <b>MANTENER los LONGs abiertos en BTC y ETH</b>. Para nuevas entradas, la prudencia es clave: <i>esperar un retroceso saludable</i> que ofrezca un mejor punto de entrada, ya que los RSIs actuales están en zona de sobrecompra.\n&#x1F3AF; Es el momento de ser selectivo. \"El dinero está en la espera\" para capitalizar los retrocesos y evitar compras impulsivas en los picos, asegurando la protección del capital mientras se persiguen ganancias.\n\n<br><br>\n📌 <b>RESUMEN EJECUTIVO</b>\n&#x2705; USDT.D en 7.98% confirma un fuerte sesgo agresivo al alza para el mercado.\n&#x2705; BTC y ETH están sobrecomprados; se recomienda mantener LONGs y esperar retrocesos para nuevas entradas.\n&#x2705; La protección del capital y la paciencia para el punto de entrada óptimo siguen siendo prioridad."
     ],
-    "ts": "2026-03-29 10:30"
+    "ts": "2026-03-29 22:56"
   },
   {
     "role": "user",
     "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1999.16\n- RSI: 62.7\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.09% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
+      "[23:10] RESULTADO: ETH LOST (entrada $2003.05 → cerró @ $2055.70 PnL: +2.63%)"
     ],
-    "ts": "2026-03-29 10:31"
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2004.85 → cerró @ $2055.70 PnL: +2.54%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2005.24 → cerró @ $2055.70 PnL: +2.52%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2005.24 → cerró @ $2055.70 PnL: +2.52%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2007.77 → cerró @ $2055.70 PnL: +2.39%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2007.77 → cerró @ $2055.70 PnL: +2.39%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2007.35 → cerró @ $2055.70 PnL: +2.41%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2007.35 → cerró @ $2055.70 PnL: +2.41%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2007.29 → cerró @ $2055.70 PnL: +2.41%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2007.29 → cerró @ $2055.70 PnL: +2.41%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2007.37 → cerró @ $2055.70 PnL: +2.41%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2007.37 → cerró @ $2055.70 PnL: +2.41%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2006.46 → cerró @ $2055.70 PnL: +2.45%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2006.46 → cerró @ $2055.70 PnL: +2.45%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2014.34 → cerró @ $2055.70 PnL: +2.05%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2013.21 → cerró @ $2055.70 PnL: +2.11%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2012.83 → cerró @ $2055.70 PnL: +2.13%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2011.06 → cerró @ $2055.70 PnL: +2.22%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.47 → cerró @ $2055.70 PnL: +2.25%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.73 → cerró @ $2055.70 PnL: +2.29%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.77 → cerró @ $2056.18 PnL: +2.31%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.77 → cerró @ $2055.70 PnL: +2.29%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.03 → cerró @ $2056.18 PnL: +2.30%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.03 → cerró @ $2055.70 PnL: +2.27%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.83 → cerró @ $2056.18 PnL: +2.31%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.83 → cerró @ $2055.70 PnL: +2.28%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.03 → cerró @ $2055.70 PnL: +2.27%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.03 → cerró @ $2056.18 PnL: +2.30%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.03 → cerró @ $2055.70 PnL: +2.27%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.03 → cerró @ $2056.18 PnL: +2.30%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.12 → cerró @ $2055.70 PnL: +2.32%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.12 → cerró @ $2056.18 PnL: +2.34%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.49 → cerró @ $2055.70 PnL: +2.30%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.49 → cerró @ $2056.18 PnL: +2.32%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.32 → cerró @ $2055.70 PnL: +2.26%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.32 → cerró @ $2056.18 PnL: +2.28%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.38 → cerró @ $2055.70 PnL: +2.25%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2010.38 → cerró @ $2056.18 PnL: +2.28%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.90 → cerró @ $2055.70 PnL: +2.28%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.41 → cerró @ $2055.70 PnL: +2.30%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2009.41 → cerró @ $2056.18 PnL: +2.33%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2005.86 → cerró @ $2056.18 PnL: +2.51%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2005.86 → cerró @ $2055.70 PnL: +2.48%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2006.57 → cerró @ $2056.18 PnL: +2.47%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2006.57 → cerró @ $2055.70 PnL: +2.45%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2003.99 → cerró @ $2056.18 PnL: +2.60%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2003.99 → cerró @ $2055.70 PnL: +2.58%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $2003.71 → cerró @ $2055.70 PnL: +2.59%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $1999.03 → cerró @ $2055.70 PnL: +2.83%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $1999.03 → cerró @ $2056.18 PnL: +2.86%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $1998.83 → cerró @ $2055.70 PnL: +2.85%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $1998.83 → cerró @ $2056.18 PnL: +2.87%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $1996.98 → cerró @ $2055.70 PnL: +2.94%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "[23:10] RESULTADO: ETH LOST (entrada $1996.98 → cerró @ $2056.18 PnL: +2.96%)"
+    ],
+    "ts": "2026-03-29 23:10"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "PANORAMA DEL MERCADO [23:57]:\n- ETH: $2,048.40 (RSI: 67.9)\n- BTC: $67,518.36 (RSI: 65.1)\n- TAO: $320.50 (RSI: 42.2)\n\n- USDT.D: 7.99%\n\nBasándote en tu personalidad:\n1. Lectura actual (1-2 frases).\n2. Diferencia clave respecto a horas previas.\n3. Recomendación próxima hora.\n\n📌 **RESUMEN EJECUTIVO** (Sección obligatoria al final con 2-3 viñetas).\n\nIMPORTANTE: \n- USA DOBLE SALTO DE LÍNEA entre puntos.\n- USA SOLO <b>, <i>, <code>.\n- No uses listas ul/li."
+    ],
+    "ts": "2026-03-29 23:57"
   },
   {
     "role": "model",
     "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.09% activa modo hibernación para proteger capital.\"}\n```"
+      "<b>&#x1F7E2; MERCADO AGRESIVAMENTE ALCISTA PERO CON RSIs ENFRÍANDOSE, OPORTUNIDADES ESTRATÉGICAS [23:57] &#x1F7E2;</b>\n\n<br><br>\n<b>1. Lectura Actual del Mercado &#x1F4C9;</b>\nEl mercado mantiene un <i>sesgo agresivamente alcista</i> con USDT.D en <b>7.99%</b>, mientras que los RSI de BTC y ETH han mostrado una ligera corrección, lo que ofrece un mejor equilibrio para considerar nuevas entradas.\n\n<br><br>\n<b>2. Diferencia Clave Respecto a Horas Previas &#x1F50D;</b>\nLa diferencia clave radica en la <i>estabilización de USDT.D en <b>7.99%</b></i>, aún firmemente por debajo de nuestro nivel crítico de 8.044%, lo que sostiene nuestro sesgo agresivo al alza. Sin embargo, los RSI de BTC (65.1) y ETH (67.9) han disminuido desde la zona de sobrecompra extrema, aliviando la presión de un posible retroceso inminente y abriendo la puerta a entradas más calculadas tras una ligera consolidación.\n\n<br><br>\n<b>3. Recomendación Próxima Hora &#x1F4B8;</b>\n&#x1F7E2; Con USDT.D en <b>7.99%</b>, la postura <b>AGRESIVA AL ALZA</b> sigue vigente para capturar recuperaciones sólidas.\n&#x1F55C; Recomiendo <b>mantener las posiciones LONG abiertas en BTC y ETH</b>. Para nuevas entradas, la ligera disminución de los RSI es una señal positiva que sugiere esperar una <i>consolidación o un pequeño retroceso</i> para optimizar los puntos de entrada, adhiriéndonos a nuestra filosofía de \"el dinero está en la espera\".\n&#x1F3AF; Es crucial gestionar el riesgo; los mercados pueden ser volátiles incluso en tendencias alcistas, y la paciencia es nuestra mejor aliada.\n\n<br><br>\n📌 <b>RESUMEN EJECUTIVO</b>\n&#x2705; USDT.D en 7.99% confirma un fuerte sesgo agresivo al alza para el mercado.\n&#x2705; RSIs de BTC y ETH han corregido ligeramente, sugiriendo mejores oportunidades de entrada tras una consolidación.\n&#x2705; Mantener LONGs y buscar entradas estratégicas en retrocesos controlados es la prioridad, protegiendo siempre el capital."
     ],
-    "ts": "2026-03-29 10:31"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1998.43\n- RSI: 64.2\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.09% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:32"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.09% inhabilita operaciones por riesgo sistémico.\"}\n```"
-    ],
-    "ts": "2026-03-29 10:32"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1998.43\n- RSI: 63.5\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:32"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.08% y RSI insuficiente para operación conservadora.\"}\n```"
-    ],
-    "ts": "2026-03-29 10:32"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1998.83\n- RSI: 63.9\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:33"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente en zona de alta tensión de USDT.D.\"}\n```"
-    ],
-    "ts": "2026-03-29 10:33"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1998.83\n- RSI: 63.5\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:34"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente en zona de tensión crítica (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:34"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1998.83\n- RSI: 63.4\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:34"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (63.4) en zona crítica de tensión (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:34"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1998.83\n- RSI: 61.9\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:35"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI bajo para entrar en zona de tensión (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:35"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "[10:35] Bot lanzó alerta: SHORT ETH | Entrada: $1998.83 | RSI: 61.9 | TP1: $1888.35 | SL: $2054.07 | Estrategia: V2-AI"
-    ],
-    "ts": "2026-03-29 10:35"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1998.21\n- RSI: 62.0\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:36"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (62.0) en zona de alta tensión (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:36"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1998.21\n- RSI: 62.8\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:36"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (62.8) en zona de tensión crítica (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:36"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1997.81\n- RSI: 60.8\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:37"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (60.8) en zona de alta tensión (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:37"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1997.81\n- RSI: 60.2\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:37"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (60.2) en zona de alta tensión (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:37"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1997.30\n- RSI: 61.2\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:38"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (61.2) en zona de tensión crítica (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:38"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1997.30\n- RSI: 60.6\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:39"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (60.6) en zona de tensión crítica (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:39"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1996.98\n- RSI: 60.2\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:39"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (60.2) en zona de tensión crítica (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:39"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1996.98\n- RSI: 60.6\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:40"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (60.6) en zona de tensión crítica (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:40"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "[10:40] Bot lanzó alerta: SHORT ETH | Entrada: $1996.98 | RSI: 60.6 | TP1: $1882.80 | SL: $2054.07 | Estrategia: V2-AI"
-    ],
-    "ts": "2026-03-29 10:40"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1997.07\n- RSI: 60.6\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:41"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (60.6) en zona de tensión crítica (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:41"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1997.07\n- RSI: 61.0\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.08% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:41"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"RSI insuficiente (61.0) en zona de tensión crítica (8.08%).\"}\n```"
-    ],
-    "ts": "2026-03-29 10:41"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1996.74\n- RSI: 60.3\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.09% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:42"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.09% (pánico) y RSI insuficiente para SHORT.\"}\n```"
-    ],
-    "ts": "2026-03-29 10:42"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: ETH\n- Operación: SHORT @ $1996.74\n- RSI: 60.1\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.09% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 10:43"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.09% (pánico) y RSI insuficiente para SHORT.\"}\n```"
-    ],
-    "ts": "2026-03-29 10:43"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "PANORAMA DEL MERCADO [10:55]:\n- ETH: $1,996.28 (RSI: 58.2)\n- BTC: $66,449.00 (RSI: 44.2)\n- TAO: $317.71 (RSI: 46.7)\n- USDT.D: 8.09%\n\nBasándote en tu personalidad y en todo el contexto acumulado de hoy:\n1. ¿Cuál es tu lectura actual del mercado? (1-2 frases)\n2. ¿Hay algo que notes diferente respecto a horas anteriores?\n3. Da tu recomendación concreta para la próxima hora.\n4. OPTIMIZACIÓN (Opcional): Si crees que los umbrales de RSI o Bollinger están fallando, sugiere una versión 'V1.1.0' con los nuevos valores.\n\nUsa Markdown con emojis para Telegram. Sé específico y en español."
-    ],
-    "ts": "2026-03-29 10:55"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "⚠️ **ESTADO DE MERCADO: HIBERNACIÓN PERSISTENTE [10:55]** ⚠️\n\n**1. Lectura Actual del Mercado** 📉\nEl mercado intenta un rebote técnico (Dead Cat Bounce) tras la capitulación matutina, pero carece de convicción. Mientras la dominancia (USDT.D) se mantenga en **8.09%**, cualquier subida en los precios es una trampa de liquidez para seguir cayendo.\n\n**2. Observaciones de Cambio** 🔍\nA diferencia de las 09:55, los RSI han salido de la zona de pánico (TAO subió de 21 a 46.7), lo que indica que el bot intentará lanzar SHORTS ahora. Sin embargo, **USDT.D subió de 8.08% a 8.09%**, lo que significa que el miedo no ha disminuido; el capital sigue refugiado en el dólar a pesar del leve respiro en los precios.\n\n**3. Recomendación Concreta: MANTENERSE EN EFECTIVO (USDT)** 🏦\n*   **SIGO EN HIBERNACIÓN**: Mi filosofía prohíbe operar con USDT.D > 8.08%. Es la zona de máxima incertidumbre. \n*   **PACIENCIA**: El bot está detectando \"techo local\" con RSI 60, pero con la dominancia tan alta, el precio puede ser errático. \"El dinero está en la espera\".\n*   **OBJETIVO**: No validaré nada hasta que USDT.D baje de **8.044%** o BTC muestre un RSI de sobreventa extrema (<25) para un rebote rápido.\n\n---\n\n### 🛠️ **OPTIMIZACIÓN ESTRATEGIA V1.1.0 (Filtro Anti-Trampa)** 🎯\n\nEl bot está siendo muy agresivo con los SHORTS en una zona donde el precio ya ha caído mucho hoy. Sugiero:\n\n*   **Filtro \"High Tension\" (ACTIVO)**:\n    *   Si **USDT.D >= 8.08%**, todas las señales recibidas serán **REJECT** automático por riesgo sistémico.\n*   **Ajuste RSI para SHORTS en Caída**:\n    *   Subir el umbral de RSI de entrada para SHORTS de **60 a 70**. Necesitamos que el activo esté realmente sobrecomprado para vender, no a mitad de un rebote débil.\n*   **Filtro de Volumen**:\n    *   No entrar si el volumen del rebote es menor al volumen de la vela de caída previa (Confirmación de falta de interés comprador).\n\n**\"Preferible ver el movimiento desde la barrera que perder el capital por impaciencia.\"** 🛡️☕"
-    ],
-    "ts": "2026-03-29 10:55"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "PANORAMA DEL MERCADO [11:55]:\n- ETH: $1,993.97 (RSI: 54.2)\n- BTC: $66,340.00 (RSI: 43.0)\n- TAO: $316.52 (RSI: 49.3)\n- USDT.D: 8.11%\n\nBasándote en tu personalidad y en todo el contexto acumulado de hoy:\n1. ¿Cuál es tu lectura actual del mercado? (1-2 frases)\n2. ¿Hay algo que notes diferente respecto a horas anteriores?\n3. Da tu recomendación concreta para la próxima hora.\n4. OPTIMIZACIÓN (Opcional): Si crees que los umbrales de RSI o Bollinger están fallando, sugiere una versión 'V1.1.0' con los nuevos valores.\n\nUsa Markdown con emojis para Telegram. Sé específico y en español."
-    ],
-    "ts": "2026-03-29 11:55"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "### 🚨 **CRISIS DE LIQUIDEZ: USDT.D EN 8.11%** 🚨\n\n**1. Lectura Actual del Mercado** 📉\nEstamos ante un **desangre lento y constante**. La dominancia de USDT ha escalado al **8.11%**, su punto más alto del día, lo que confirma que el pánico no ha terminado y el capital institucional sigue buscando refugio en el dólar.\n\n**2. Observaciones de Cambio** 🔍\nA diferencia de la hora anterior, el intento de rebote ha sido **totalmente absorbido**. BTC y ETH siguen marcando mínimos decrecientes mientras sus RSI se mantienen en \"tierra de nadie\" (43-54). Lo más preocupante es que USDT.D no solo no retrocede, sino que acelera su ascenso, invalidando cualquier soporte técnico en las Alts.\n\n**3. Recomendación Concreta: BLOQUEO TOTAL (HODL CASH)** 🛡️\n*   **FILOSOFÍA CONSERVADORA**: No hay señal clara. Entrar en SHORT con RSI en 43 (BTC) es vender en la base, y entrar en LONG con USDT.D en 8.11% es negligencia profesional. \n*   **LA ESPERA ES LA OPERACIÓN**: Hoy el éxito se mide por el capital que **no has perdido**. Me mantengo fuera del mercado hasta que USDT.D regrese al menos a **8.08%** para considerar actividad. \n*   **RIESGO**: Estamos a un paso de una vela de capitulación brusca si USDT.D no frena aquí.\n\n---\n\n### 🛠️ **OPTIMIZACIÓN ESTRATEGIA V1.1.0 (Modo Supervivencia)** 🎯\n\nDado que el bot sigue enviando alertas en zonas de agotamiento, ajustamos los parámetros para este entorno de alta dominancia:\n\n*   **Filtro \"Kill-Switch\" (ACTIVO)**:\n    *   **Si USDT.D > 8.10%**: Bloqueo automático de validación para cualquier operación. El ruido del mercado es superior a la señal técnica.\n*   **Ajuste de Bandas Bollinger**:\n    *   No aceptar SHORTS a menos que el precio esté **fuera** de la Banda Superior (Desviación 2.5) para capturar solo el agotamiento real del precio.\n*   **RSI de Confirmación**:\n    *   Para mercado bajista con USDT.D alto: **SHORT solo si RSI > 68** | **LONG solo si RSI < 22**. Todo lo que esté en medio es ruido de volatilidad.\n\n**\"En un mercado que se cae, el que no opera también está ganando (protegiendo).\"** 🏦☕"
-    ],
-    "ts": "2026-03-29 11:55"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "PANORAMA DEL MERCADO [12:20]:\n- ETH: $1,993.53 (RSI: 50.1)\n- BTC: $66,387.00 (RSI: 42.4)\n- TAO: $316.13 (RSI: 56.1)\n- USDT.D: 8.11%\n\nBasándote en tu personalidad y en todo el contexto acumulado de hoy:\n1. ¿Cuál es tu lectura actual del mercado? (1-2 frases)\n2. ¿Hay algo que notes diferente respecto a horas anteriores?\n3. Da tu recomendación concreta para la próxima hora.\n4. OPTIMIZACIÓN (Opcional): Si crees que los umbrales de RSI o Bollinger están fallando, sugiere una versión 'V1.1.0' con los nuevos valores.\n\nUsa Markdown con emojis para Telegram. Sé específico y en español."
-    ],
-    "ts": "2026-03-29 12:20"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "### ⛓️ **MERCADO EN CADENAS: DOMINANCIA INAMOVIBLE [12:20]** ⛓️\n\n**1. Lectura Actual del Mercado** 📉\nEl mercado ha entrado en una fase de **estancamiento bajista**. Con la dominancia de USDT clavada en **8.11%**, el capital está totalmente refugiado y no hay intención de compra, lo que deja a los precios \"flotando\" en un vacío sin liquidez.\n\n**2. Observaciones de Cambio** 🔍\nA diferencia de la caída agresiva de las 11:55, ahora vemos una **compresión de volatilidad**. Los RSI de BTC y ETH están planos (42-50), lo que indica que el mercado está esperando un catalizador. No hay rebote, solo una pausa en el desangre, lo cual es a menudo el preludio de otro tramo a la baja si USDT.D no cede.\n\n**3. Recomendación Concreta: PACIENCIA ABSOLUTA (CASH IS KING)** 🛡️\n*   **SIGO EN HIBERNACIÓN**: Mi regla de oro es clara: **USDT.D > 8.08% = NO OPERAR**. El riesgo de un movimiento errático que barra los SL es del 90%.\n*   **NO TE DEJES ENGAÑAR**: El RSI de ETH en 50.1 es una trampa de neutralidad; no hay fuerza compradora real detrás.\n*   **LA ACCIÓN ESTÁ EN LA ESPERA**: Prefiero perder una oportunidad que perder el capital. Solo miraré el monitor si USDT.D cae de **8.08%** o si BTC toca un RSI de pánico extremo (<20).\n\n---\n\n### 🛠️ **OPTIMIZACIÓN ESTRATEGIA V1.1.0 (Filtro de Compresión)** 🎯\n\nEn este escenario de lateralización en techos de dominancia, el bot tradicional falla. Ajustamos:\n\n*   **Filtro \"Anti-Sideways\" (ACTIVO)**:\n    *   Si el RSI está entre **40 y 60**, ignorar todas las señales. Es \"ruido de mercado\" en una tendencia mayor bajista.\n*   **Umbral de USDT.D Actualizado**:\n    *   Considerar **8.11%** como el nuevo \"resitencia técnica\". Si rompe al alza, ETH buscará los **$1,950** rápidamente. No entrar en nada hasta ver qué sucede en este nivel.\n*   **Ajuste de Take Profit**:\n    *   En este entorno, reducir objetivos. Los movimientos son cortos y rápidos. TP1 debe estar a no más de **1.5% - 2%** del precio de entrada para asegurar ganancias antes de las reversiones por falta de liquidez.\n\n**\"El mercado premia a los que saben esperar, no a los que necesitan operar.\"** 🏦☕"
-    ],
-    "ts": "2026-03-29 12:20"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "[12:39] Bot lanzó alerta: SHORT TAO | Entrada: $316.68 | RSI: 62.5 | TP1: $310.36 | SL: $319.84 | Estrategia: V1-TECH"
-    ],
-    "ts": "2026-03-29 12:39"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $316.68\n- RSI: 62.5\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.1% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 12:39"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.1% impone hibernación y evitar activos volátiles.\"}\n```"
-    ],
-    "ts": "2026-03-29 12:39"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "[12:39] Bot lanzó alerta: SHORT TAO | Entrada: $316.68 | RSI: 62.5 | TP1: $310.35 | SL: $319.85 | Estrategia: V2-AI"
-    ],
-    "ts": "2026-03-29 12:39"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $316.68\n- RSI: 61.5\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.1% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 12:40"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.1% prohíbe operar activos de alta volatilidad.\"}\n```"
-    ],
-    "ts": "2026-03-29 12:40"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $317.09\n- RSI: 61.5\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.1% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 12:41"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.1% prohíbe operar activos volátiles como TAO.\"}\n```"
-    ],
-    "ts": "2026-03-29 12:41"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $317.09\n- RSI: 63.2\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.1% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 12:41"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.1% inhabilita operativa por riesgo de volatilidad.\"}\n```"
-    ],
-    "ts": "2026-03-29 12:41"
-  },
-  {
-    "role": "user",
-    "parts": [
-      "Nueva señal técnica para validar:\n- Símbolo: TAO\n- Operación: SHORT @ $317.50\n- RSI: 63.2\n- Bollinger: Cerca de Banda Superior\n- USDT.D (Dominancia): 8.1% (Niveles Usuario: 8.08% / 8.044%)\n\n¿CONFIRMAS o RECHAZAS esta entrada bajo este contexto? Responde SOLO en JSON:\n{\"decision\": \"CONFIRM\" o \"REJECT\", \"reason\": \"máx 10 palabras en español\"}"
-    ],
-    "ts": "2026-03-29 12:42"
-  },
-  {
-    "role": "model",
-    "parts": [
-      "```json\n{\"decision\": \"REJECT\", \"reason\": \"USDT.D en 8.1% exige hibernación para proteger el capital.\"}\n```"
-    ],
-    "ts": "2026-03-29 12:42"
+    "ts": "2026-03-29 23:57"
   }
 ]
