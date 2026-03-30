@@ -1,0 +1,94 @@
+//@version=5
+indicator("Zenith Trading Suite V6 (Consolidated)", overlay=true, margin_top=10)
+
+// --- INPUTS (Personalización) ---
+ema_len = input.int(200, "EMA Period", minval=1)
+bb_len = input.int(20, "Bollinger Period", minval=1)
+bb_mult = input.float(2.0, "Bollinger Mult", step=0.1)
+rsi_len = input.int(14, "RSI Period", minval=1)
+atr_len = input.int(14, "ATR Period", minval=1)
+show_dashboard = input.bool(true, "Show Dashboard Table")
+
+// --- CALCULATIONS ---
+ema200 = ta.ema(close, ema_len)
+rsi = ta.rsi(close, rsi_len)
+[bb_mid, bb_upper, bb_lower] = ta.bb(close, bb_len, bb_mult)
+atr = ta.atr(atr_len)
+
+// Tendencia Macro
+is_bull = close > ema200
+is_bear = close < ema200
+
+// --- STRATEGY SIGNALS (Logic from Python Zenith) ---
+// V1.6 Trend Following: Near BB + RSI + Trend
+long_v1 = is_bull and rsi <= 42 and low <= bb_lower
+short_v1 = is_bear and rsi >= 62 and high >= bb_upper
+
+// V3 Extreme Reversal
+long_v3 = rsi <= 28
+
+// Consolidated Signals
+buy_signal = long_v1 or long_v3
+sell_signal = short_v1
+
+// --- TARGET CALCULATIONS (ATR based) ---
+sl_dist = math.max(atr * 1.5, close * 0.005)
+long_sl = close - sl_dist
+long_tp1 = close + (sl_dist * 2.0)
+long_tp2 = close + (sl_dist * 3.5)
+
+short_sl = close + sl_dist
+short_tp1 = close - (sl_dist * 2.0)
+short_tp2 = close - (sl_dist * 3.5)
+
+// --- VISUALS ---
+// Plot EMA
+ema_color = is_bull ? color.new(color.green, 20) : color.new(color.red, 20)
+plot(ema200, "EMA 200 Trend", color=ema_color, linewidth=2)
+
+// Plot BB
+fill(plot(bb_upper, color=color.new(color.gray, 90)), plot(bb_lower, color=color.new(color.gray, 90)), color.new(color.blue, 95))
+
+// Signal Shapes
+plotshape(buy_signal, "BUY SIGNAL", shape.labelup, location.belowbar, color.green, text="BUY ZENITH", textcolor=color.white, size=size.small)
+plotshape(sell_signal, "SELL SIGNAL", shape.labeldown, location.abovebar, color.red, text="SELL ZENITH", textcolor=color.white, size=size.small)
+
+// Target Levels (Lines only drawn on signal bar) - Simplified visualization via plot
+var float target_tp1 = na
+var float target_tp2 = na
+var float target_sl = na
+
+if buy_signal
+    target_tp1 := long_tp1
+    target_tp2 := long_tp2
+    target_sl := long_sl
+else if sell_signal
+    target_tp1 := short_tp1
+    target_tp2 := short_tp2
+    target_sl := short_sl
+
+plot(buy_signal or sell_signal ? target_tp1 : na, "TP1", color.new(color.green, 0), style=plot.style_linebr, linewidth=2)
+plot(buy_signal or sell_signal ? target_tp2 : na, "TP2", color.new(color.blue, 0), style=plot.style_linebr, linewidth=2)
+plot(buy_signal or sell_signal ? target_sl : na, "SL", color.new(color.red, 0), style=plot.style_linebr, linewidth=2)
+
+// --- DASHBOARD TABLE ---
+var table zenith_dash = table.new(position.top_right, 2, 5, bgcolor=color.new(color.black, 40), border_width=1)
+if show_dashboard
+    table.cell(zenith_dash, 0, 0, "ZENITH SUITE V6", text_color=color.white, text_size=size.small)
+    table.cell(zenith_dash, 1, 0, "INTELLIGENCE", text_color=color.aqua, text_size=size.small)
+    
+    table.cell(zenith_dash, 0, 1, "Trend (EMA)", text_color=color.gray, text_size=size.small)
+    table.cell(zenith_dash, 1, 1, is_bull ? "BULL" : "BEAR", text_color=is_bull ? color.green : color.red, text_size=size.small)
+    
+    table.cell(zenith_dash, 0, 2, "RSI (14)", text_color=color.gray, text_size=size.small)
+    table.cell(zenith_dash, 1, 2, str.tostring(rsi, "#.##"), text_color=rsi > 70 ? color.red : rsi < 30 ? color.green : color.white, text_size=size.small)
+    
+    table.cell(zenith_dash, 0, 3, "Volatility", text_color=color.gray, text_size=size.small)
+    table.cell(zenith_dash, 1, 3, str.tostring(atr, "#.####"), text_color=color.yellow, text_size=size.small)
+    
+    table.cell(zenith_dash, 0, 4, "Version", text_color=color.gray, text_size=size.small)
+    table.cell(zenith_dash, 1, 4, "PRO-SCALPER", text_color=color.white, text_size=size.small)
+
+// --- ALERTS ---
+alertcondition(buy_signal, "Zenith BUY Alert", "Buy Zenith: {{ticker}} @ {{close}} | Target: {{plot('TP1')}}")
+alertcondition(sell_signal, "Zenith SELL Alert", "Sell Zenith: {{ticker}} @ {{close}} | Target: {{plot('TP1')}}")
