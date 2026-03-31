@@ -1,6 +1,7 @@
 from flask import Flask, render_template, jsonify, request
 import tracker
 import analysis_science
+import scalp_alert_bot
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -24,11 +25,14 @@ def get_stats():
 @app.route('/api/trades')
 def get_trades():
     return jsonify(tracker.get_all_trades())
+@app.route('/api/macro')
+def get_macro():
+    return jsonify(scalp_alert_bot.GLOBAL_CACHE["macro_metrics"])
 
 @app.route('/api/analysis')
 def get_analysis():
     results = []
-    for s in ["SOL/USDT", "BTC/USDT", "TAO/USDT"]:
+    for s in ["ZEC/USDT", "TAO/USDT", "BTC/USDT"]:
         res = analysis_science.scientific_analysis(s)
         if res:
             results.append(res)
@@ -47,7 +51,7 @@ def get_backtest_compare():
     if not date_str:
         date_str = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
 
-    SYMBOLS = ["SOL/USDT", "BTC/USDT", "TAO/USDT"]
+    SYMBOLS = ["ZEC/USDT", "TAO/USDT", "BTC/USDT"]
     VERSIONS = ["V1-TECH", "V2-AI"]
 
     # Verificar si ya existe en DB (y no se fuerza recálculo)

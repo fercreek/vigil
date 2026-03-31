@@ -13,7 +13,7 @@ load_dotenv()
 # Configuración
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-SYMBOLS = ["BTC/USDT", "ETH/USDT", "TAO/USDT"]
+SYMBOLS = ["ZEC/USDT", "TAO/USDT"]
 TIMEFRAME = '4h'
 
 # Inicialización
@@ -64,15 +64,23 @@ def run_zenith_swing():
                 if ai_bias == bias_logic and ai_bias != "NEUTRAL":
                     side = "LONG" if ai_bias == "BULL" else "SHORT"
                     
+                    price = technical['price']
+                    if side == "LONG":
+                        tp_price = price * 1.03
+                        sl_price = price * 0.985
+                    else:
+                        tp_price = price * 0.97
+                        sl_price = price * 1.015
+                    
                     msg = (f"🏛️ <b>ZENITH INSTITUTIONAL ALERT ({symbol})</b>\n\n"
                            f"🌌 <b>ESTRATEGIA</b>: Swing Trend Follower\n"
-                           f"📊 <b>BIAS SEMANAL (IA)</b>: {ai_bias}\n"
+                           f"📊 <b>BIAS SEMANAL (IA)</b>: {ai_bias} ({side})\n"
                            f"☁️ <b>KUMO STATUS</b>: {bias_logic}\n\n"
                            f"💡 <b>RACIONAL INSTITUCIONAL:</b>\n"
                            f"{ai_report['analysis'][:500]}...\n\n"
-                           f"🪙 {symbol} @ ${technical['price']:,.2f}\n"
-                           f"🎯 TP (Swing): +3.00%\n"
-                           f"🛑 SL (Swing): -1.50%")
+                           f"🪙 Entrada {side}: ${price:,.2f}\n"
+                           f"🎯 TP (3%): ${tp_price:,.2f}\n"
+                           f"🛑 SL (1.5%): ${sl_price:,.2f}")
                            
                     send_telegram(msg)
                     print(f"✅ Alerta Swing enviada para {symbol}")

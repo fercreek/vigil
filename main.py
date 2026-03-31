@@ -31,6 +31,16 @@ def run_swing_bot():
     except Exception as e:
         print(f"❌ Error crítico en Zenith Swing Bot: {e}")
 
+import stock_analyzer
+
+def run_stock_watchdog():
+    """Ejecuta el bucle del Centinela de Acciones."""
+    print("👁️ Stock Watchdog iniciado en segundo plano")
+    try:
+        stock_analyzer.stock_watchdog()
+    except Exception as e:
+        print(f"❌ Error crítico en Stock Watchdog: {e}")
+
 if __name__ == "__main__":
     print("🚀 --- INICIANDO SISTEMA HÍBRIDO (V2.0 DUAL ENGINE) ---")
     
@@ -43,7 +53,11 @@ if __name__ == "__main__":
     swing_thread = threading.Thread(target=run_swing_bot)
     swing_thread.daemon = True
     swing_thread.start()
+    # 3. Hilo para Stock Watchdog (15m)
+    watchdog_thread = threading.Thread(target=run_stock_watchdog)
+    watchdog_thread.daemon = True
+    watchdog_thread.start()
     
-    # 3. Hilo principal para Flask (Keep-Alive)
+    # 4. Hilo principal para Flask (Keep-Alive)
     run_flask()
 # Hot Reload Test

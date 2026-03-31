@@ -246,14 +246,41 @@ def get_win_rate(version: str = None):
     total = full_won + partial_won + lost
     return full_won, partial_won, lost, total
 
+def get_daily_pnl():
+    """Obtiene operaciones cerradas HOY para PnL rápido."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    try:
+        c.execute("SELECT status FROM trades WHERE (close_time LIKE ? OR open_time LIKE ?) AND status IN ('FULL_WON', 'LOST', 'PARTIAL_CLOSED', 'PARTIAL_WON')", (f"{today}%", f"{today}%"))
+        trades = c.fetchall()
+    except Exception as e:
+        print(f"Db Error: {e}")
+        trades = []
+    finally:
+        conn.close()
+    
+    wins = sum(1 for t in trades if t[0] in ['FULL_WON', 'PARTIAL_WON', 'PARTIAL_CLOSED'])
+    losses = sum(1 for t in trades if t[0] == 'LOST')
+    total = wins + losses
+    win_rate = (wins / total * 100) if total > 0 else 0.0
+    
+    return {
+        "wins": wins,
+        "losses": losses,
+        "total": total,
+        "win_rate": win_rate
+    }
 def get_audit_metrics():
     """Calcula métricas profesionales de auditoría (Profit Factor, Win Rate, PnL Total)."""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     
     # 1. Obtener todos los trades cerrados con PnL (simulando 1% riesgo por trade)
-    # Usaremos una aproximación basada en el Win/Loss
-    c.execute("SELECT status, type FROM trades WHERE status IN ('FULL_WON', 'LOST', 'PARTIAL_CLOSED')")
+    # V13.5: Sincronizado con estados PARTIAL_WON de V12
+    c.execute("SELECT status, type FROM trades WHERE status IN ('FULL_WON', 'LOST', 'PARTIAL_CLOSED', 'PARTIAL_WON')")
     trades = c.fetchall()
     conn.close()
     
@@ -269,7 +296,7 @@ def get_audit_metrics():
         elif status == 'LOST':
             losses += 1
             gross_loss += 1.0 # Riesgo 1.0
-        elif status == 'PARTIAL_CLOSED':
+        elif status in ['PARTIAL_CLOSED', 'PARTIAL_WON']:
             wins += 1
             gross_profit += 1.0 # R:R 1:1 aproximado
             

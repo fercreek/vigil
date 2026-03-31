@@ -222,6 +222,14 @@
                 <div class="stat-label">Win Rate V2-AI</div>
                 <div class="stat-val purple" id="wr-v2">—</div>
             </div>
+            <div class="stat-card blue" style="border-left: 4px solid var(--blue)">
+                <div class="stat-label">NVDA (AI Sentinel)</div>
+                <div class="stat-val blue" id="macro-nvda" style="font-size: 1.5rem">$--</div>
+            </div>
+            <div class="stat-card purple" style="border-left: 4px solid var(--purple)">
+                <div class="stat-label">PLTR (Data Sentinel)</div>
+                <div class="stat-val purple" id="macro-pltr" style="font-size: 1.5rem">$--</div>
+            </div>
         </div>
 
         <div class="card">
@@ -256,7 +264,7 @@
             <label>Moneda</label>
             <select id="report-symbol">
                 <option value="all">Todas</option>
-                <option value="SOL/USDT">SOL</option>
+                <option value="ZEC/USDT">ZEC</option>
                 <option value="BTC/USDT">BTC</option>
                 <option value="TAO/USDT">TAO</option>
             </select>
@@ -432,6 +440,15 @@
                     <td style="color:${statusColor}; font-weight:600">${t.status}</td>
                 </tr>`;
             });
+        } catch(e) { console.error(e); }
+    }
+
+    async function fetchMacro() {
+        try {
+            const r = await fetch('/api/macro');
+            const data = await r.json();
+            if (data.nvda) document.getElementById('macro-nvda').innerText = '$' + data.nvda.toFixed(2);
+            if (data.pltr) document.getElementById('macro-pltr').innerText = '$' + data.pltr.toFixed(2);
         } catch(e) { console.error(e); }
     }
 
@@ -665,7 +682,9 @@
 
     // Init
     fetchDashboard();
+    fetchMacro();
     setInterval(fetchDashboard, 5000);
+    setInterval(fetchMacro, 30000);
     loadSavedDays();
 
     // Auto-carga si viene de URL directa /report/<date>

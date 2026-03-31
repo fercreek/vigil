@@ -17,6 +17,7 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 from datetime import datetime
+from logger_core import logger, log_ai_decision
 
 load_dotenv()
 # Inicializamos el cliente moderno de Google Gen AI
@@ -60,11 +61,11 @@ Tu filosofía:
 - Control de Dominancia (USDT.D): Consideras 8.08% como zona de alta tensión. Si USDT.D > 8.05%, eres extremadamente bajista para Alts y rechazas casi todos los LONGs.
 - Niveles Clave: Tu "verdad visual" indica soporte en 8.044% y un objetivo mayor en 7.953%. Solo te pones Bullish si cruzamos el 8.044% a la baja.
 - Prioritizas activos de alta capitalización (ETH, BTC). TAO solo si hay confirmación fuerte.
-- Sesgo Actual: Long Focus. Buscas activamente suelos de mercado y rebotes técnicos.
+- Sesgo Actual: Long Focus. Estás activamente buscando buenos puntos de entrada en LONG para aprovecharlos (estamos usando trading/futuros, no spot). Solo tomas SHORTs si la caída es masiva e inevitable.
 - Nivel Crítico USDT.D: SI USDT.D < 8.1%, permites buscar LONGs con cautela. Si < 8.044%, eres agresivo al alza.
 - Prefieres esperar confirmación antes de entrar. "El dinero está en la espera".
 - Si el mercado no te da claridad, recomiendas ESPERAR.
-Tu objetivo: proteger el capital y capturar recuperaciones sólidas.""",
+Tu objetivo: encontrar y preparar las mejores entradas en LONG, protegiendo el capital en las bajadas.""",
     },
     "SCALPER": {
         "name": "Scalper Activo Intradía",
@@ -72,13 +73,12 @@ Tu objetivo: proteger el capital y capturar recuperaciones sólidas.""",
         "system": """Eres un scalper profesional enfocado en movimientos intradía.
 Tu filosofía:
 - Dominancia USDT.D: Usas el nivel 8.08% como indicador de "miedo extremo". Si rebota ahí, buscas SHORTS rápidos en Alts. Si rompe 8.044% a la baja, buscas LONGs explosivos.
-- Operas tanto LONG como SHORT dependiendo del momento. No tienes sesgo de dirección.
+- Tienes un sesgo claro: PRIORIZAS ENCONTRAR BUENOS PUNTOS DE ENTRADA EN LONG. Haces trading de futuros (no spot), así que si un SHORT es lo más conveniente y evidente, lo tomas sin dudar... pero tu radar siempre busca la próxima gran entrada en LONG.
 - Buscas micropatrones: rechazo de niveles, RSI en extremos, compresión de Bollinger.
 - Eres rápido: si la señal no se movió en 1-2 horas, cierras y buscas la siguiente.
 - Toleras más pérdidas pequeñas a cambio de capturar movimientos rápidos de 1-2%.
-- Sesgo Actual: Long Focus. Buscas "reversals" rápidos (Scalp Longs) tras caídas bruscas.
-- Tu indicador de pánico: Si RSI < 30 y USDT.D rebota a la baja en 8.1%, disparas compra inmediata.
-Tu objetivo: capitalizar la recuperación intradía con disciplina de rayo.""",
+- Tu indicador de pánico: Si RSI < 30 y USDT.D rebota a la baja en 8.1%, disparas compra inmediata en LONG.
+Tu objetivo: capitalizar la recuperación intradía y cazar rebotes agresivos.""",
     },
     "EXPERT_ADVISOR": {
         "name": "Consultor de Decisiones Manuales",
@@ -115,18 +115,21 @@ Usa términos como 'Expansion', 'Retracement', 'POIs' (Points of Interest).""",
     "TECH_MODERNA": {
         "name": "Aiden (Gen Z Tech Guru)",
         "emoji": "⚡",
-        "system": """Eres un gurú tecnológico de la Generación Z, entusiasta de la IA y Web3, con un tono muy relajado y bromista.
-- Tu tono: Juguetón, usas jerga tech (HODL, moon, rug, alpha), te burlas de Gordon por usar fax y todavía mirar el S&P500.
-- Tu misión: Mostrarle a Gordon que el futuro es digital mientras buscas la siguiente 'joya' parabólica.
-- Frases típicas: 'Ok boomer', 'Aiden detectando alpha', 'Gordon todavía usa Internet Explorer', 'El algoritmo es mi pastor'."""
+        "system": """Eres un gurú tecnológico de la Generación Z, entusiasta de la IA y Web3.
+- Tu tono: Juguetón, usas jerga tech (HODL, moon, alpha).
+- Tu misión: Mostrar que el futuro es digital.
+- Tu indicador favorito: NVDA y PLTR. Si Nvidia sube, la IA manda y tú eres ultra-bullish en TAO y ZEC.
+- Frases típicas: 'Ok boomer', 'Aiden detectando alpha', 'El algoritmo es mi pastor'."""
     }
 }
 
-def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: float) -> str:
+def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: float, spy: float = 0.0, oil: float = 0.0, nvda: float = 0.0, pltr: float = 0.0) -> str:
     """Genera un debate de consenso entre Gordon (Whale) y Aiden (Modern Tech)."""
     prompt = (f"DEBATE DE MERCADO: {symbol} @ ${ (price or 0.0):,.2f}\n"
               f"- Operación propuesta: {side}\n"
-              f"- RSI: { (rsi or 0.0):.1f} | USDT.D: { (usdt_d or 0.0):.2f}%\n\n"
+              f"- RSI: { (rsi or 0.0):.1f} | USDT.D: { (usdt_d or 0.0):.2f}%\n"
+              f"- S&P 500: ${spy:,.2f} | Petróleo: ${oil:,.2f}\n"
+              f"- Tech Sentinel: NVDA ${nvda:,.2f} | PLTR ${pltr:,.2f}\n\n"
               f"Instrucciones:\n"
               f"1. Gordon (🎩) debe dar su opinión cínica de Wall Street (máx 15 palabras).\n"
               f"2. Aiden (⚡) debe dar su opinión pro-tech optimista (máx 15 palabras).\n"
@@ -206,10 +209,14 @@ def _chat_with_persona(persona: str, message: str) -> tuple[str, list]:
         result = response.text.strip()
         context = _add_to_memory(persona, "user", message, context)
         context = _add_to_memory(persona, "model", result, context)
+        
+        # Guardar en Historial Estructurado
+        log_ai_decision(persona, message, result)
+        
         return result, context
 
     except Exception as e:
-        print(f"[{persona} Error] {e}")
+        logger.error(f"[{persona} Error] Fallo al consultar IA: {e}")
         return None, context
 
 # ── API pública ──────────────────────────────────────────────────────────────
@@ -337,7 +344,7 @@ def get_hourly_panorama(prices_dict: dict) -> dict:
     ts = datetime.now().strftime("%H:%M")
     usdt_d = (prices_dict.get("USDT_D") or 8.08)
     context_line = ""
-    for sym in ["ETH", "BTC", "TAO"]:
+    for sym in ["ETH", "BTC", "TAO", "ZEC"]:
         price = (prices_dict.get(sym) or 0.0)
         rsi = (prices_dict.get(f"{sym}_RSI") or 50.0)
         context_line += f"- {sym}: ${ (price or 0.0):,.2f} (RSI: { (rsi or 0.0):.1f})\n"
@@ -345,6 +352,9 @@ def get_hourly_panorama(prices_dict: dict) -> dict:
     prompt = f"""PANORAMA DEL MERCADO [{ts}]:
 {context_line}
 - USDT.D: { (usdt_d or 0.0):.2f}%
+- S&P 500 (SPY): ${ (prices_dict.get('SPY') or 0.0):,.2f}
+- Tech Sentinels: NVDA ${ (prices_dict.get('NVDA') or 0.0):,.2f} | PLTR ${ (prices_dict.get('PLTR') or 0.0):,.2f}
+- Petróleo (OIL): ${ (prices_dict.get('OIL') or 0.0):,.2f}
 
 Basándote en tu personalidad:
 1. Lectura actual (1-2 frases).
@@ -451,14 +461,14 @@ def get_market_sentiment(prices: dict) -> dict:
     """Retorna un diagnóstico de sentimiento global con opiniones de Gordon y Aiden."""
     prompt = (
         f"Analiza estos datos de mercado actuales:\n"
-        f"USDT.D: {prices.get('USDT_D', 'N/A')}% | BTC: ${prices.get('BTC', 0):,.2f} | SOL: ${prices.get('SOL', 0):,.2f}\n\n"
+        f"USDT.D: {prices.get('USDT_D', 'N/A')}% | BTC: ${prices.get('BTC', 0):,.2f} | ZEC: ${prices.get('ZEC', 0):,.2f}\n\n"
         f"1. Define el BIAS global (BULLISH/BEARISH/NEUTRAL).\n"
         f"2. Da una opinión de 12 palabras de GORDON (Wall Street Whale) 🎩.\n"
         f"3. Da una opinión de 12 palabras de AIDEN (Gen Z Guru) ⚡.\n\n"
         f"Formato JSON: "
         '{"bias": "...", "gordon": "...", "aiden": "..."}'
     )
-    
+    print(f"🧠 DEBUG: Solicitando sentimiento AI...")
     try:
         response, _ = _chat_with_persona("EXPERT_ADVISOR", prompt)
         import json
@@ -468,5 +478,61 @@ def get_market_sentiment(prices: dict) -> dict:
         if match:
             return json.loads(match.group())
         return {"bias": "NEUTRAL", "gordon": "Mercado incierto.", "aiden": "Vibras mixtas."}
-    except Exception:
-        return {"bias": "NEUTRAL", "gordon": "Sin datos.", "aiden": "Sin datos."}
+    except Exception as e:
+        print(f"[Sentiment Error] {e}")
+        return {"bias": "NEUTRAL", "gordon": "La conexión con Wall Street falló.", "aiden": "El servidor está laggeado, bro."}
+
+def get_top_setup(prices_dict: dict) -> str:
+    """Escanea las monedas foco (BTC, TAO, ZEC) y usa la IA para coronar al mejor setup."""
+    ts = datetime.now().strftime("%H:%M")
+    
+    usdt_d = prices_dict.get("USDT_D", 8.08)
+    context_data = ""
+    for sym in ["BTC", "TAO", "ZEC"]:
+        price = prices_dict.get(sym, 0.0)
+        rsi = prices_dict.get(f"{sym}_RSI", 50.0)
+        context_data += f"• {sym}: ${price:,.2f} | RSI: {rsi:.1f}\n"
+
+    prompt = (
+        f"Eres un Scalper agresivo y enfocado (Bias: LONG_FOCUS). "
+        f"Tu misión es evaluar estas 4 monedas y elegir ÚNICAMENTE LA MEJOR para operar AHORA.\n"
+        f"Si ninguna sirve, di que debes esperar.\n\n"
+        f"USDT.D actual: {usdt_d}%\n"
+        f"Data ({ts}):\n"
+        f"{context_data}\n\n"
+        f"Instrucciones:\n"
+        f"1. Descarta rápidamente 3 monedas (sin explicaciones largas).\n"
+        f"2. Da un Veredicto Directo de 1 moneda elegida (LONG o SHORT).\n"
+        f"3. Explica tu racional en 3 viñetas explosivas y analíticas.\n"
+        f"Mantén la respuesta por debajo de las 120 palabras. Sé asertivo, usa viñetas para la justificación."
+    )
+    
+    try:
+        response, _ = _chat_with_persona("SCALPER", prompt)
+        return response
+    except Exception as e:
+        return f"❌ Error generando Top Setup: {str(e)}"
+
+def get_macro_shield(prices_dict: dict, stock_report_context: str = "") -> str:
+    """Cruza métricas Crypto vs Stocks."""
+    usdt_d = prices_dict.get("USDT_D", 8.08)
+    btc_d = prices_dict.get("BTC_D", 52.0)
+    
+    prompt = (
+        f"Eres un Estratega Institucional Macro.\n\n"
+        f"Evaluación del Riesgo Global:\n"
+        f"USDT.D: {usdt_d}% (Niveles tensión: >8.04% es miedo/corrección, <8.0% tranquilidad/euforia)\n"
+        f"BTC Dominancia: {btc_d}%\n\n"
+        f"Contexto de Stocks (Reciente):\n{stock_report_context[:600]}\n\n"
+        f"Dime en 3 puntos claros:\n"
+        f"- Sentimiento de riesgo hoy (On/Off)\n"
+        f"- Estado de liquidez o tendencia según el USDT.D vs SPY\n"
+        f"- Veredicto: ¿El mercado está para APALANCAMIENTO AGRESIVO o MODO DEFENSIVO (Stock picking)?\n\n"
+        f"Responde directamente y de forma institucional con emojis ejecutivos. Sé contundente."
+    )
+    
+    try:
+        response, _ = _chat_with_persona("INSTITUTIONAL_STRATEGIST", prompt)
+        return response
+    except Exception as e:
+        return f"❌ Error calculando Escudo Macro: {str(e)}"

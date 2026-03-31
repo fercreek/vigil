@@ -12,7 +12,9 @@ from dotenv import load_dotenv
 import indicators
 import tracker
 import gemini_analyzer
+import social_analyzer
 import ccxt
+import yfinance as yf
 
 # Cargar variables de entorno
 load_dotenv()
@@ -28,17 +30,21 @@ GLOBAL_CACHE = {
     "prices": {},
     "indicators": {},
     "global_metrics": {"usdt_d": 8.08, "btc_d": 52.0},
+    "macro_metrics": {"spy": 0.0, "oil": 0.0, "nvda": 0.0, "pltr": 0.0},
     "last_update": {
         "prices": 0,
         "indicators": {},
         "global_metrics": 0,
+        "macro_metrics": 0,
         "fail_count": 0
-    }
+    },
+    "last_rsi": {"SOL": 50.0, "BTC": 50.0, "TAO": 50.0, "ZEC": 50.0}
 }
 # Tiempos de Vida (TTL) en segundos
 TTL_PRICES = 20      # Precio: 20s (Fallback si falla la red)
 TTL_INDICATORS = 120 # Indicadores: 2 min (Reducción de carga)
 TTL_GLOBAL = 600     # Métricas Globales: 10 min
+TTL_MACRO = 900      # Macro (SPY/Oil): 15 min (Lento)
 
 def safe_html(text: str) -> str:
     """Refinado V1.6.7: Maneja bullets de Markdown y preserva entidades HTML."""
@@ -106,7 +112,11 @@ def set_phase(phase: str):
 def update_dynamic_levels():
     """Calcula Soportes/Resistencias Diarios basados en ayer (Pivot Points)."""
     print("\n🔄 Actualizando niveles dinámicos (Pivot Points)...")
-    symbols = {"ETH": (binance_ex, "ETH/USDT"), "BTC": (binance_ex, "BTC/USDT"), "TAO": (binance_ex, "TAO/USDT")}
+    symbols = {
+        "BTC": (binance_ex, "BTC/USDT"),
+        "TAO": (binance_ex, "TAO/USDT"),
+        "ZEC": (binance_ex, "ZEC/USDT")
+    }
     
     for key, (exchange, sym) in symbols.items():
         try:
@@ -118,16 +128,22 @@ def update_dynamic_levels():
             r1 = (2 * p) - l
             s1 = (2 * p) - h
             
-            if key == "ETH":
-                LEVELS["ETH"]["short_entry_high"] = round(r1, 2)
-                LEVELS["ETH"]["target1"] = round(p, 2)
-                LEVELS["ETH"]["long_zone"] = round(s1, 2)
-                LEVELS["ETH"]["sl_short"] = round(r1 * 1.01, 2)
+            if key == "SOL":
+                LEVELS["SOL"]["short_entry_high"] = round(r1, 2)
+                LEVELS["SOL"]["target1"] = round(p, 2)
+                LEVELS["SOL"]["long_zone"] = round(s1, 2)
+                LEVELS["SOL"]["sl_short"] = round(r1 * 1.01, 2)
             elif key == "TAO":
                 LEVELS["TAO"]["resistance"] = round(r1, 1)
                 LEVELS["TAO"]["target1"] = round(p, 1)
                 LEVELS["TAO"]["long_zone"] = round(s1, 1)
                 LEVELS["TAO"]["long_sl"] = round(s1 * 0.98, 1)
+            elif key == "ZEC":
+                if "ZEC" not in LEVELS: LEVELS["ZEC"] = {}
+                LEVELS["ZEC"]["resistance"] = round(r1, 2)
+                LEVELS["ZEC"]["target1"] = round(p, 2)
+                LEVELS["ZEC"]["long_zone"] = round(s1, 2)
+                LEVELS["ZEC"]["long_sl"] = round(s1 * 0.98, 2)
             elif key == "BTC":
                 LEVELS["BTC"]["resistance"] = round(r1, 0)
                 LEVELS["BTC"]["support2"] = round(s1, 0)
@@ -142,12 +158,31 @@ def update_dynamic_levels():
 
 fired = {}
 
+def get_main_menu(symbol="ZEC"):
+    """Genera el teclado de botones para Telegram (Contextual V1.6.8)."""
+    last_trade = tracker.get_last_open_trade(symbol)
+    
+    keyboard = [
+        [{"text": "📊 Mercado"}, {"text": "📈 Acciones"}, {"text": "🎯 Setup"}],
+        [{"text": "🛡️ Macro"}, {"text": "🏦 PnL HOY"}, {"text": "🏛️ Audit"}],
+        [{"text": "🐦 Intel ZEC"}, {"text": "🐦 Intel TAO"}]
+    ]
+
+    return {
+        "keyboard": keyboard,
+        "resize_keyboard": True,
+        "persistent": True
+    }
+
 def send_telegram(msg: str, reply_to: str = None, keyboard: dict = None):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     # Usamos HTML para mayor robustez con el texto de Gemini
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
     if reply_to: payload["reply_to_message_id"] = reply_to
-    if keyboard: payload["reply_markup"] = keyboard
+    
+    # Si no se pasa teclado, usamos el principal por defecto
+    kb = keyboard if keyboard is not None else get_main_menu()
+    payload["reply_markup"] = kb
     try:
         r = requests.post(url, json=payload, timeout=10)
         res = r.json()
@@ -155,6 +190,7 @@ def send_telegram(msg: str, reply_to: str = None, keyboard: dict = None):
             return str(res["result"]["message_id"])
         else:
             print(f"❌ Error en Telegram (HTML): {res.get('description')}")
+            print(f"🔍 DEBUG: payload sent: {payload}")
             return None
     except Exception as e:
         if "NameResolutionError" in str(e) or "Max retries exceeded" in str(e):
@@ -162,30 +198,6 @@ def send_telegram(msg: str, reply_to: str = None, keyboard: dict = None):
         else:
             print(f"❌ Error enviando Telegram: {e}")
         return None
-
-def get_main_menu(symbol="TAO"):
-    """Genera el teclado de botones para Telegram (Contextual V1.6.8)."""
-    last_trade = tracker.get_last_open_trade(symbol)
-    
-    # Fila de control manual (Evolutiva)
-    if last_trade:
-        # Si hay trade, mostramos botón de cierre prominente
-        t_type = last_trade["type"]
-        entry = last_trade["entry_price"]
-        manual_row = [{"text": f"🛑 CERRAR {symbol} {t_type}"}]
-    else:
-        # Si no hay trade, mostramos opciones de apertura
-        manual_row = [{"text": f"🚀 {symbol} LONG"}, {"text": f"📉 {symbol} SHORT"}]
-
-    return {
-        "keyboard": [
-            [{"text": "📊 Status de Mercado"}, {"text": "🏛️ Auditoría (/audit)"}],
-            manual_row,
-            [{"text": "/analyze ETH"}, {"text": "/analyze BTC"}, {"text": "/analyze TAO"}]
-        ],
-        "resize_keyboard": True,
-        "persistent": True
-    }
 
 def alert(key: str, msg: str, version: str = "V1-TECH", cooldown: int = 300, reply_to: str = None):
     now = time.time()
@@ -198,10 +210,10 @@ def alert(key: str, msg: str, version: str = "V1-TECH", cooldown: int = 300, rep
         return send_telegram(full, reply_to)
     return None
 
-def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0, side="LONG", elliott=""):
+def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0, side="LONG", elliott="", spy=0.0, oil=0.0):
     """
-    Calcula un score de confluencia técnica (0-5 puntos). 
-    V1.6.1: Añadido bonus de Onda 3 de Elliott.
+    Calcula un score de confluencia técnica + Macro (0-6 puntos). 
+    V2.0: Añadido SPY (Sentiment) y Petróleo (Inflación).
     """
     score = 0
     # 1. RSI (2 pts)
@@ -228,7 +240,20 @@ def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0, side="LO
     if "Onda 3" in elliott:
         score += 1
         
-    return min(5, score)
+    # --- 6. MACRO BONUS (V2.1) ---
+    # SPY up (Risk On) + NVDA/PLTR strength is good for Longs
+    if side == "LONG" and spy > 0:
+        if usdt_d < 8.05: score += 1
+        
+    # Bonus Institucional Tech (NVDA + PLTR)
+    nvda = GLOBAL_CACHE["macro_metrics"].get("nvda", 0)
+    pltr = GLOBAL_CACHE["macro_metrics"].get("pltr", 0)
+    
+    if side == "LONG" and nvda > 0 and pltr > 0:
+        # Si las ballenas están comprando IA y Datos, es buena señal para ZEC/TAO
+        score += 1
+        
+    return min(6, score)
 
 def get_confluence_badge(score):
     if score >= 4: return "💎 DIAMANTE (MAX CONFLUENCIA) 💎"
@@ -248,7 +273,7 @@ def get_prices() -> dict:
     
     # 1. ¿Necesitamos actualizar precios? (Optimizado: 1 sola llamada)
     if now - GLOBAL_CACHE["last_update"]["prices"] > TTL_PRICES:
-        symbols = ['ETH/USDT', 'BTC/USDT', 'TAO/USDT', 'PAXG/USDT']
+        symbols = ['ETH/USDT', 'BTC/USDT', 'TAO/USDT', 'ZEC/USDT', 'PAXG/USDT']
         try:
             # OPTIMIZACIÓN V3.2: fetch_tickers (Plural) es más eficiente que 4 llamadas separadas
             tickers = binance_ex.fetch_tickers(symbols)
@@ -256,6 +281,7 @@ def get_prices() -> dict:
             res["ETH"] = tickers.get('ETH/USDT', {}).get('last', res.get("ETH"))
             res["BTC"] = tickers.get('BTC/USDT', {}).get('last', res.get("BTC"))
             res["TAO"] = tickers.get('TAO/USDT', {}).get('last', res.get("TAO"))
+            res["ZEC"] = tickers.get('ZEC/USDT', {}).get('last', res.get("ZEC"))
             res["GOLD"] = tickers.get('PAXG/USDT', {}).get('last', res.get("GOLD"))
             
             # Monitoreo de Carga (Opcional: X-MBX-USED-WEIGHT)
@@ -275,12 +301,14 @@ def get_prices() -> dict:
 
             try:
                 # Fallback a CoinGecko
-                ids = "ethereum,bittensor,bitcoin,pax-gold"
+                ids = "ethereum,bittensor,bitcoin,pax-gold,zcash"
                 url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd"
                 cg_r = requests.get(url, timeout=10).json()
                 res["ETH"] = cg_r.get("ethereum", {}).get("usd", res.get("ETH", 0.0))
                 res["BTC"] = cg_r.get("bitcoin", {}).get("usd", res.get("BTC", 0.0))
                 res["TAO"] = cg_r.get("bittensor", {}).get("usd", res.get("TAO", 0.0))
+                res["SOL"] = cg_r.get("solana", {}).get("usd", res.get("SOL", 0.0))
+                res["ZEC"] = cg_r.get("zcash", {}).get("usd", res.get("ZEC", 0.0))
                 res["GOLD"] = cg_r.get("pax-gold", {}).get("usd", res.get("GOLD", 0.0))
                 
                 GLOBAL_CACHE["prices"].update(res)
@@ -297,13 +325,40 @@ def get_prices() -> dict:
     res["USDT_D"] = GLOBAL_CACHE["global_metrics"]["usdt_d"]
     res["BTC_D"] = GLOBAL_CACHE["global_metrics"]["btc_d"]
 
+    # --- 2.5 MACRO SENTIMENT (SPY / OIL) ---
+    if now - GLOBAL_CACHE["last_update"]["macro_metrics"] > TTL_MACRO:
+        try:
+            # S&P 500, Petróleo, Nvidia y Palantir
+            macro_symbols = ["SPY", "CL=F", "NVDA", "PLTR"]
+            macro_data = yf.download(macro_symbols, period="1d", interval="1m", progress=False)['Close']
+            
+            spy_p = macro_data['SPY'].iloc[-1] if not macro_data['SPY'].empty else GLOBAL_CACHE["macro_metrics"]["spy"]
+            oil_p = macro_data['CL=F'].iloc[-1] if not macro_data['CL=F'].empty else GLOBAL_CACHE["macro_metrics"]["oil"]
+            nvda_p = macro_data['NVDA'].iloc[-1] if not macro_data['NVDA'].empty else GLOBAL_CACHE["macro_metrics"]["nvda"]
+            pltr_p = macro_data['PLTR'].iloc[-1] if not macro_data['PLTR'].empty else GLOBAL_CACHE["macro_metrics"]["pltr"]
+            
+            GLOBAL_CACHE["macro_metrics"] = {
+                "spy": float(spy_p), "oil": float(oil_p), 
+                "nvda": float(nvda_p), "pltr": float(pltr_p)
+            }
+            GLOBAL_CACHE["last_update"]["macro_metrics"] = now
+            print(f"🌍 [Macro Update] SPY: ${spy_p:.2f} | NVDA: ${nvda_p:.2f} | PLTR: ${pltr_p:.2f}")
+        except Exception as e:
+            print(f"⚠️ Error Macro (Yahoo): {e}")
+
+    res["SPY"] = GLOBAL_CACHE["macro_metrics"]["spy"]
+    res["OIL"] = GLOBAL_CACHE["macro_metrics"]["oil"]
+
     # 3. Datos Técnicos (TTL_INDICATORS para reducir carga)
-    for sym in ["SOL", "TAO", "BTC"]:
+    for sym in ["TAO", "BTC", "ZEC"]:
         last_ind_update = GLOBAL_CACHE["last_update"]["indicators"].get(sym, 0)
         
         if now - last_ind_update > TTL_INDICATORS:
             try:
-                # Calculamos y actualizamos caché
+                # V12.1: Guardamos el previo para la inercia (Hook)
+                GLOBAL_CACHE["last_rsi"][sym] = (prices.get(f"{sym}_RSI") or 50.0)
+                
+                rsi = indicators.get_rsi(sym, timeframe='15m')
                 vals = indicators.get_indicators(sym, "15m")
                 macro = indicators.get_macro_trend(sym)
                 
@@ -325,7 +380,7 @@ def get_prices() -> dict:
         res[f"{sym}_EMA_200"] = ind.get("ema_200", 0.0)
         res[f"{sym}_ATR"] = ind.get("atr", 0.0)
         res[f"{sym}_VOL_SMA"] = ind.get("vol_sma", 0.0)
-        res[f"{sym}_MACRO"] = ind.get("macro", "Neutral")
+        res[f"{sym}_MACRO"] = ind.get("macro", {"consensus": "NEUTRAL", "1H": "UNKNOWN", "4H": "UNKNOWN"})
         res[f"{sym}_ELLIOTT"] = ind.get("elliott", "")
 
     return res
@@ -369,7 +424,7 @@ def check_strategies(prices: dict):
     phase = get_phase()
     usdt_d = prices.get("USDT_D", 8.0)
     
-    for sym in ["SOL", "TAO", "BTC"]:
+    for sym in ["ZEC", "TAO"]:
         p = prices.get(sym, 0.0)
         rsi = prices.get(f"{sym}_RSI", 50.0)
         
@@ -382,7 +437,12 @@ def check_strategies(prices: dict):
         ema_200 = prices.get(f"{sym}_EMA_200", p)
         atr = prices[f"{sym}_ATR"]
         vol_sma = prices[f"{sym}_VOL_SMA"]
-        macro_dict = prices.get(f"{sym}_MACRO", {"consensus": "NEUTRAL", "1H": "UNKNOWN", "4H": "UNKNOWN"})
+        macro_raw = prices.get(f"{sym}_MACRO")
+        if isinstance(macro_raw, dict):
+            macro_dict = macro_raw
+        else:
+            macro_dict = {"consensus": "NEUTRAL", "1H": "UNKNOWN", "4H": "UNKNOWN"}
+            
         macro_status = macro_dict.get("consensus", "NEUTRAL")
         gold_price = prices.get("GOLD", 0.0)
         btc_d = prices.get("BTC_D", 50.0)
@@ -402,25 +462,41 @@ def check_strategies(prices: dict):
         macro_ctx = f"🌍 MACRO: {macro_status} (1H:{macro_dict['1H']} | 4H:{macro_dict['4H']})"
         elliott_ctx = f"🌊 ONDA ELLIOTT: {elliott}"
 
+        # --- GUARDIÁN ZEC (ANTI-VOLATILIDAD) ---
+        if sym == "ZEC" and phase == "LONG":
+            vol_ratio = (atr / p) * 100
+            if vol_ratio > 3.5:
+                # Bloqueo por riesgo de manipulación o mecha de salida en news
+                print(f"⚠️ [ZEC Guard] Volatilidad extrema ({vol_ratio:.1f}%). Ignorando Long por seguridad.")
+                continue
+
         # --- FILTRO V1.6.1 AUDIT: REDUCCIÓN DE RUIDO (CALIDAD > CANTIDAD) ---
         if "Corrección" in elliott or "Correctiva" in elliott:
             # Bloqueamos para mejorar el win rate, evitando zonas de indecisión
             continue
         
-        # --- ESTRATEGIA V1.5.0: CONFLUENCE MASTER (TREND + ATR + VOL) ---
-        # Short V1 (Trend Bajista + Near BB + RSI 62 + Vol Filter)
+        # --- ESTRATEGIA V12.1: CONFLUENCE + RSI HOOK ---
+        prev_rsi = GLOBAL_CACHE["last_rsi"].get(sym, 50.0)
+        
+        # Short V1 (Trend Bajista + Near BB + RSI 62 + Vol Filter + RSI Falling)
         if phase == "SHORT" and p < ema_200 and rsi >= 62 and "BB" in bb_ctx:
-            # Puntuación de Confluencia
+            if rsi > prev_rsi: # RSI sigue subiendo, no entramos
+                continue
+                
             side = "SHORT"
-            conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott)
+            conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"))
             badge = get_confluence_badge(conf_score)
             
-            # Gestión ATR: SL a 1.5 * ATR (puesto en V1.4.0)
-            sl_dist = max(atr * 1.5, p * 0.005)
+            # Gestión ATR: SL a 2.0 * ATR (puesto en V12.0)
+            sl_dist = max(atr * 2.0, p * 0.007)
             sl = round(p + sl_dist, 2)
             tp1 = round(p - (sl_dist * 2.0), 2)
-            tp2 = round(p - (sl_dist * 3.0), 2)
+            tp2 = round(p - (sl_dist * 3.5), 2)
             
+            if conf_score < 4:
+                print(f"⏩ [V12-Audit] Señal {sym} ignorada (Score {conf_score} < 4)")
+                continue
+
             msg = (f"{badge}\n\n"
                    f"🔥 <b>SEÑAL V1.6.2 SCALP (15m)</b> 🔥\n\n"
                    f"{macro_ctx}\n"
@@ -439,7 +515,7 @@ def check_strategies(prices: dict):
                    f"🎯 TP2: <b>${(tp2 or 0.0):,.2f}</b> (3:1)\n"
                    f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                    f"🎙️ <b>DEBATE DE CONSENSO:</b>\n"
-                   f"{gemini_analyzer.get_ai_consensus(sym, p, 'SHORT', rsi, usdt_d)}")
+                   f"{gemini_analyzer.get_ai_consensus(sym, p, 'SHORT', rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'))}")
             mid = alert(f"{sym}_v1_short", msg, version="V1-TECH")
             if mid:
                 tracker.log_trade(sym, "SHORT", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score)
@@ -461,48 +537,61 @@ def check_strategies(prices: dict):
                        f"🎯 TP2: <b>${(tp2 or 0.0):,.2f}</b> (3:1)\n"
                        f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                        f"🎙️ <b>DEBATE DE CONSENSO:</b>\n"
-                       f"{gemini_analyzer.get_ai_consensus(sym, p, phase, rsi, usdt_d)}")
+                       f"{gemini_analyzer.get_ai_consensus(sym, p, phase, rsi, usdt_d, spy=prices.get('SPY'), nvda=prices.get('NVDA'))}")
                 mid = alert(f"{sym}_v2_ai_{phase}", msg, version="V2-AI")
                 if mid:
                     tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, conf_score, ai_analysis=full_analysis, macro_bias=macro_status)
 
         # --- ESTRATEGIA V3: REVERSAL / INTRADIA (AGRESIVA) ---
-        elif phase == "LONG" and p < ema_200 and rsi <= 28:
-            side = "LONG"
-            conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott)
-            
-            # Gestión más amplia para Intradía (2:1 R:R)
-            sl_dist = max(atr * 2.0, p * 0.008) # SL más amplio para aguantar la base
-            sl = round(p - sl_dist, 2)
-            tp1 = round(p + (sl_dist * 2.0), 2)
-            tp2 = round(p + (sl_dist * 3.5), 2)
-            
-            msg = (f"🏛️ <b>SEÑAL V3: INTRADÍA REVERSAL (15m-1H)</b> 🏛️\n\n"
-                   f"🌊 Onda: {elliott}\n"
-                   f"⭐ <b>Confiabilidad: {format_confidence(conf_score)}</b>\n\n"
-                   f"💬 <i>Buscando el rebote a la media (EMA 200) tras agotamiento.</i>\n\n"
-                   f"🪙 <b>{sym}</b> @ ${p:,.2f}\n"
-                   f"🎯 TP1: <b>${tp1:,.2f}</b> (2:1)\n"
-                   f"🎯 TP2: <b>${tp2:,.2f}</b> (3.5:1)\n"
-                   f"🛑 SL: <b>${sl:,.2f}</b>\n\n"
-                   f"🎙️ <b>DEBATE DE CONSENSO:</b>\n"
-                   f"{gemini_analyzer.get_ai_consensus(sym, p, 'LONG', rsi, usdt_d)}")
-            mid = alert(f"{sym}_v3_reversal", msg, version="V1-TECH")
-            if mid:
-                tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score)
-                gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
-
-        # Long V1 (Trend Alcista + Near BB + RSI 42)
-        elif phase == "LONG" and p > ema_200 and "BB" in bb_ctx:
-            if rsi <= 42:
-                sl_dist = max(atr * 1.5, p * 0.005)
+        elif phase == "LONG" and p < ema_200:
+            # --- MODO RESCATE TAO ---
+            reversal_rsi = 28.0 if sym == "TAO" else 26.0
+            if rsi <= reversal_rsi: # Umbral más bajo para "Hook"
+                side = "LONG"
+                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"))
+                
+                # Gestión más amplia para Intradía (2:1 R:R)
+                sl_dist = max(atr * 2.0, p * 0.008) # SL más amplio para aguantar la base
                 sl = round(p - sl_dist, 2)
                 tp1 = round(p + (sl_dist * 2.0), 2)
-                tp2 = round(p + (sl_dist * 3.0), 2)
+                tp2 = round(p + (sl_dist * 3.5), 2)
+                
+                msg = (f"🏛️ <b>SEÑAL V3: INTRADÍA REVERSAL (15m-1H)</b> 🏛️\n\n"
+                       f"🌊 Onda: {elliott}\n"
+                       f"⭐ <b>Confiabilidad: {format_confidence(conf_score)}</b>\n\n"
+                       f"💬 <i>Buscando el rebote a la media (EMA 200) tras agotamiento.</i>\n\n"
+                       f"🪙 <b>{sym}</b> @ ${p:,.2f}\n"
+                       f"🎯 TP1: <b>${tp1:,.2f}</b> (2:1)\n"
+                       f"🎯 TP2: <b>${tp2:,.2f}</b> (3.5:1)\n"
+                       f"🛑 SL: <b>${sl:,.2f}</b>\n\n"
+                       f"🎙️ <b>DEBATE DE CONSENSO:</b>\n"
+                       f"{gemini_analyzer.get_ai_consensus(sym, p, 'LONG', rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'))}")
+                mid = alert(f"{sym}_v3_reversal", msg, version="V1-TECH")
+                if mid:
+                    tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score)
+                    gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
+
+        # Long V1 (Trend Alcista + Near BB + RSI 42 + RSI Rising)
+        elif phase == "LONG" and p > ema_200 and "BB" in bb_ctx:
+            # --- MODO PROACTIVO ZEC ---
+            entry_rsi = 48.0 if sym == "ZEC" else 42.0
+            if rsi <= entry_rsi:
+                if rsi < prev_rsi: # RSI sigue cayendo, no entramos (Falling Knife)
+                    continue
+                # Gestión ATR: SL a 2.0 * ATR (V12.0)
+                sl_dist = max(atr * 2.0, p * 0.007)
+                sl = round(p - sl_dist, 2)
+                tp1 = round(p + (sl_dist * 2.0), 2)
+                tp2 = round(p + (sl_dist * 3.5), 2)
                 caution = "⚠️ *PRECAUCIÓN: USDT.D ALTO*\n" if usdt_d > 8.05 else ""
-                # 3. Puntuación de Confluencia
+
                 side = "LONG"
-                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott)
+                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"))
+
+                if conf_score < 4:
+                    print(f"⏩ [V12-Audit] Señal {sym} ignorada (Score {conf_score} < 4)")
+                    continue
+
                 badge = get_confluence_badge(conf_score)
                 
                 msg = (f"{badge}\n\n"
@@ -522,7 +611,7 @@ def check_strategies(prices: dict):
                        f"🎯 TP2: <b>${(tp2 or 0.0):,.2f}</b> (3:1)\n"
                        f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                        f"🎙️ <b>DEBATE DE CONSENSO:</b>\n"
-                       f"{gemini_analyzer.get_ai_consensus(sym, p, 'LONG', rsi, usdt_d)}")
+                       f"{gemini_analyzer.get_ai_consensus(sym, p, 'LONG', rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'))}")
                 mid = alert(f"{sym}_v1_long", msg, version="V1-TECH")
                 if mid:
                     tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score)
@@ -544,7 +633,7 @@ def check_strategies(prices: dict):
                            f"🎯 TP2: <b>${(tp2 or 0.0):,.2f}</b> (3:1)\n"
                            f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                            f"🎙️ <b>DEBATE DE CONSENSO:</b>\n"
-                           f"{gemini_analyzer.get_ai_consensus(sym, p, phase, rsi, usdt_d)}")
+                           f"{gemini_analyzer.get_ai_consensus(sym, p, phase, rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'))}")
                     mid = alert(f"{sym}_v2_ai_{phase}", msg, version="V2-AI")
                     if mid:
                         tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, conf_score, ai_analysis=full_analysis, macro_bias=macro_status)
@@ -590,7 +679,7 @@ def check_strategies(prices: dict):
                        f"🎯 TP2: <b>${(tp2 or 0.0):,.2f}</b> (3:1)\n"
                        f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                        f"🎙️ <b>DEBATE DE CONSENSO:</b>\n"
-                       f"{gemini_analyzer.get_ai_consensus(sym, p, side, rsi, usdt_d)}")
+                       f"{gemini_analyzer.get_ai_consensus(sym, p, side, rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'))}")
                 
                 mid = alert(f"{sym}_v2_short", msg, version="V2-AI")
                 if mid:
@@ -601,7 +690,14 @@ def check_strategies(prices: dict):
         for level in [8.08, 8.044, 7.953]:
             # Alerta si cruzamos nivel (con tolerancia de 0.005)
             if abs(usdt_d - level) < 0.005:
-                alert(f"usdtd_break_{level}", f"🚨 *BREAKOUT USDT.D*: Nivel `{level}%` alcanzado.\nContexto: {bb_ctx}", version="MACRO", cooldown=3600)
+                if level == 8.08:
+                    desc = "Pánico y Alta Presión Vendedora (Precaución con los LONGs)"
+                elif level == 8.044:
+                    desc = "Tensión e Incertidumbre (Riesgo de corrección)"
+                else:
+                    desc = "Euforia y Dinero Entrando (Zona óptima para LONGs)"
+                    
+                alert(f"usdtd_break_{level}", f"🚨 *BREAKOUT USDT.D*: Nivel `{level}%` alcanzado.\n\n📖 *Significado*: {desc}\nContexto: {bb_ctx}", version="MACRO", cooldown=3600)
 
 def monitor_open_trades(prices: dict):
     open_trades = tracker.get_open_trades()
@@ -642,8 +738,10 @@ def monitor_open_trades(prices: dict):
                 gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
             elif t["tp1_price"] > 0 and curr_p <= t["tp1_price"] and t["status"] == "OPEN":
                 tracker.update_trade_status(t["id"], "PARTIAL_WON")
-                tracker.update_sl(t["id"], t["entry_price"]) # BE
-                alert(f"t_{t['id']}_p", f"🟡 <b>TP1 ASEGURADO</b>\nBE Activado | Riesgo eliminado.", version=t["version"], reply_to=reply)
+                # V12.1: BE con seguro (0.1% Profit)
+                new_sl = round(t["entry_price"] * 0.999, 2)
+                tracker.update_sl(t["id"], new_sl) 
+                alert(f"t_{t['id']}_p", f"🟡 <b>TP1 ASEGURADO</b>\nTrailing BE (0.1%) Activado. Riesgo eliminado.", version=t["version"], reply_to=reply)
         elif tipo == "LONG":
             if curr_p <= t["sl_price"]:
                 tracker.update_trade_status(t["id"], "LOST")
@@ -669,8 +767,10 @@ def monitor_open_trades(prices: dict):
                 gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
             elif t["tp1_price"] > 0 and curr_p >= t["tp1_price"] and t["status"] == "OPEN":
                 tracker.update_trade_status(t["id"], "PARTIAL_WON")
-                tracker.update_sl(t["id"], t["entry_price"]) # BE
-                alert(f"t_{t['id']}_p", f"🟡 <b>TP1 ASEGURADO</b>\nBE Activado | Riesgo eliminado.", version=t["version"], reply_to=reply)
+                # V12.1: BE con seguro (0.1% Profit)
+                new_sl = round(t["entry_price"] * 1.001, 2)
+                tracker.update_sl(t["id"], new_sl)
+                alert(f"t_{t['id']}_p", f"🚀 <b>TP1 ASEGURADO</b>\nTrailing BE (0.1%) Activado. Fondos protegidos.", version=t["version"], reply_to=reply)
 
 def check_user_queries(prices: dict):
     """Escucha comandos del usuario en Telegram para modo interactivo."""
@@ -698,25 +798,54 @@ def check_user_queries(prices: dict):
             chat_id = str(msg_obj.get("chat", {}).get("id", ""))
             
             # Solo respondemos si es el chat autorizado (dueño del bot)
-            if chat_id != TELEGRAM_CHAT_ID: 
-                print(f"⚠️ Intento de acceso no autorizado: {chat_id}")
+            if chat_id != str(TELEGRAM_CHAT_ID): 
+                print(f"⚠️ Intento de acceso no autorizado: {chat_id} (Esperado: {TELEGRAM_CHAT_ID})")
                 continue
             
             print(f"📩 [Telegram Agent] Comando: {text}")
             
-            if text.startswith("/analyze"):
-                sym = text.replace("/analyze", "").strip().upper()
-                if sym in ["SOL", "BTC", "TAO"]:
-                    print(f"🧠 Activando Agente Experto para {sym}...")
-                    send_telegram(f"🔍 <b>Analizando {sym} intensivamente...</b> Espera un momento.")
-                    advice = gemini_analyzer.get_expert_advice(sym, prices)
-                    print(f"🤖 IA Response Generada ({len(advice)} caracteres)")
-                    # Sanitizamos la respuesta para no romper el HTML de Telegram
-                    send_telegram(safe_html(advice))
-                    print(f"✅ Análisis enviado a Telegram.")
-                else:
-                    send_telegram("❌ Símbolo no reconocido. Usa: <code>/analyze SOL</code>, <code>BTC</code> o <code>TAO</code>.")
-            elif text.startswith("/status") or "Status de Mercado" in text:
+            if "setup" in text.lower() or text.startswith("/setup"):
+                print("🧠 Buscando el Mejor Setup...")
+                send_telegram("🔍 <b>La IA está escaneando BTC, SOL, TAO y ZEC para encontrar la mejor operación...</b>")
+                setup_report = gemini_analyzer.get_top_setup(prices)
+                send_telegram(safe_html(setup_report))
+                
+            elif "macro" in text.lower() or text.startswith("/macro"):
+                print("🧠 Activando Escudo Macro...")
+                send_telegram("🛡️ <b>Analizando Dominancia USDT y liquidez del mercado accionario...</b>")
+                stock_context = ""
+                try:
+                    with open("latest_report.txt", "r") as f:
+                        stock_context = f.read()
+                except: pass
+                macro_report = gemini_analyzer.get_macro_shield(prices, stock_context)
+                send_telegram(safe_html(macro_report))
+                
+            elif "pnl" in text.lower() or text.startswith("/pnl"):
+                print("📊 Calculando PnL Diario...")
+                stats = tracker.get_daily_pnl()
+                msg = (f"🏦 <b>REPORTE PNL DIARIO (HOY)</b>\n\n"
+                       f"🏆 Trades Cerrados: <b>{stats['total']}</b>\n"
+                       f"✅ Ganados: <b>{stats['wins']}</b>\n"
+                       f"🔴 Perdidos: <b>{stats['losses']}</b>\n"
+                       f"⚖️ Tasa Acierto: <b>{stats['win_rate']:.1f}%</b>")
+                send_telegram(msg)
+                    
+            elif "acciones" in text.lower() or text.startswith("/stocks"):
+                print("📈 Construyendo reporte de Radar de Acciones...")
+                send_telegram("⏳ Obteniendo radar de acciones y calculando precios en vivo con Yahoo Finance... (puede tardar unos segundos)")
+                import stock_analyzer
+                stock_report = stock_analyzer.check_stock_status()
+                send_telegram(stock_report)
+                
+            elif "intel" in text.lower() or "social" in text.lower() or text.startswith("/intel"):
+                sym = "ZEC" if "ZEC" in text.upper() else "TAO" if "TAO" in text.upper() else "BTC" if "BTC" in text.upper() else "ZEC"
+                print(f"🐦 Consultando Inteligencia Social para {sym} (Ambas Estrategias)...")
+                send_telegram(f"🐦 <b>Escaneando X (Twitter) y News para {sym}...</b>\nAnalizando Catalizadores y Veracidad...")
+                report = social_analyzer.get_social_intel(sym, current_price=prices.get(sym, 0.0))
+                send_telegram(safe_html(report))
+                
+            elif "mercado" in text.lower() or text.startswith("/status"):
                 print("📊 Generando reporte de estado con sentimiento AI...")
                 sentiment = gemini_analyzer.get_market_sentiment(prices)
                 bias_emoji = "🟢" if sentiment["bias"] == "BULLISH" else "🔴" if sentiment["bias"] == "BEARISH" else "🟡"
@@ -724,7 +853,7 @@ def check_user_queries(prices: dict):
                 status_msg = (f"📊 <b>ESTADO DEL MERCADO</b> {bias_emoji}\n"
                               f"Sentimiento: <b>{sentiment['bias']}</b>\n\n")
                 
-                for s in ["SOL", "BTC", "TAO"]:
+                for s in ["SOL", "BTC", "TAO", "ZEC"]:
                     p = (prices.get(s) or 0.0)
                     rsi = (prices.get(f"{s}_RSI") or 0.0)
                     status_msg += f"• <b>{s}</b>: ${(p or 0.0):,.2f} | RSI: {(rsi or 0.0):.1f}\n"
@@ -738,19 +867,28 @@ def check_user_queries(prices: dict):
             elif text.startswith("/audit") or "Auditoría" in text:
                 print("🏛️ Generando reporte de auditoría experta...")
                 metrics = tracker.get_audit_metrics()
-                audit_msg = (
-                    f"🏛️ <b>AUDITORÍA EXPERTA ZENITH (V4.0)</b>\n\n"
-                    f"• Total Trades: <b>{metrics['total_trades']}</b>\n"
-                    f"• Win Rate: <b>{metrics['win_rate']}</b>\n"
-                    f"• Profit Factor: <b>{metrics['profit_factor']}</b>\n"
-                    f"• Status: <b>{metrics['status']}</b>\n\n"
-                    f"🎯 <i>Objetivo Pro: Profit Factor > 1.75</i>"
-                )
+                
+                if metrics["total_trades"] == 0:
+                    audit_msg = (
+                        f"🏛️ <b>AUDITORÍA ZENITH (V13.5)</b>\n\n"
+                        f"📈 <b>NUEVA ERA INICIADA</b>\n"
+                        f"Métricas reseteadas. El bot está en modo 'Auditoría Silenciosa' acumulando datos de alta precisión.\n\n"
+                        f"🎯 <i>Objetivo: Profit Factor > 1.75</i>"
+                    )
+                else:
+                    audit_msg = (
+                        f"🏛️ <b>AUDITORÍA EXPERTA ZENITH (V13.5)</b>\n\n"
+                        f"• Total Trades: <b>{metrics['total_trades']}</b>\n"
+                        f"• Win Rate: <b>{metrics['win_rate']}</b>\n"
+                        f"• Profit Factor: <b>{metrics['profit_factor']}</b>\n"
+                        f"• Status: <b>{metrics['status']}</b>\n\n"
+                        f"🎯 <i>Objetivo Pro: Profit Factor > 1.75</i>"
+                    )
                 send_telegram(audit_msg, keyboard=get_main_menu())
             elif "LONG" in text or "SHORT" in text:
                 # Soporte para formato "/BTC LONG" o simplemente "/BTC LONG" (limpieza de comando)
                 clean_text = text.replace("/", "").upper()
-                sym = next((s for s in ["SOL", "BTC", "TAO"] if s in clean_text), None)
+                sym = next((s for s in ["SOL", "BTC", "TAO", "ZEC"] if s in clean_text), None)
                 if sym:
                     side = "LONG" if "LONG" in clean_text else "SHORT"
                     p = (prices.get(sym) or 0.0)
@@ -784,30 +922,35 @@ def check_user_queries(prices: dict):
                     else:
                         send_telegram(f"❌ No se pudo obtener el precio de {sym} para la entrada manual.")
                 else:
-                    send_telegram("❌ Símbolo no reconocido para trade manual. Usa BTC/SOL/TAO.")
+                    send_telegram("❌ Símbolo no reconocido para trade manual. Usa BTC/SOL/TAO/ZEC.")
             
-            elif "CERRAR TAO" in text or "CLOSE TAO" in text:
-                last_trade = tracker.get_last_open_trade("TAO")
-                if last_trade:
-                    p = (prices.get("TAO") or 0.0)
-                    if p > 0:
-                        entry = last_trade["entry_price"]
-                        pnl_pct = ((p - entry) / entry) * 100
-                        if last_trade["type"] == "SHORT": pnl_pct = -pnl_pct
-                        
-                        status = "FULL_WON" if pnl_pct > 0 else "LOST"
-                        tracker.update_trade_status(last_trade["id"], status)
-                        
-                        msg = (f"🏁 <b>POSICIÓN CERRADA (TAO)</b>\n\n"
-                               f"• Tipo: {last_trade['type']}\n"
-                               f"• Entrada: ${entry:,.2f}\n"
-                               f"• Cierre: ${p:,.2f}\n"
-                               f"💰 PnL: <b>{pnl_pct:+.2f}%</b>")
-                        send_telegram(msg, reply_to=last_trade["msg_id"], keyboard=get_main_menu("TAO"))
+            elif "CERRAR " in text or "CLOSE " in text:
+                clean_text = text.replace("/", "").upper()
+                sym = next((s for s in ["SOL", "BTC", "TAO", "ZEC"] if s in clean_text), None)
+                if sym:
+                    last_trade = tracker.get_last_open_trade(sym)
+                    if last_trade:
+                        p = (prices.get(sym) or 0.0)
+                        if p > 0:
+                            entry = last_trade["entry_price"]
+                            pnl_pct = ((p - entry) / entry) * 100
+                            if last_trade["type"] == "SHORT": pnl_pct = -pnl_pct
+                            
+                            status = "FULL_WON" if pnl_pct > 0 else "LOST"
+                            tracker.update_trade_status(last_trade["id"], status)
+                            
+                            msg = (f"🏁 <b>POSICIÓN CERRADA ({sym})</b>\n\n"
+                                   f"• Tipo: {last_trade['type']}\n"
+                                   f"• Entrada: ${entry:,.2f}\n"
+                                   f"• Cierre: ${p:,.2f}\n"
+                                   f"💰 PnL: <b>{pnl_pct:+.2f}%</b>")
+                            send_telegram(msg, reply_to=last_trade["msg_id"], keyboard=get_main_menu(sym))
+                        else:
+                            send_telegram(f"❌ No se pudo obtener el precio de {sym} para cerrar la posición.")
                     else:
-                        send_telegram("❌ No se pudo obtener el precio de TAO para cerrar la posición.")
+                        send_telegram(f"⚠️ No hay trades abiertos de {sym} para cerrar.", keyboard=get_main_menu(sym))
                 else:
-                    send_telegram("⚠️ No hay trades abiertos de TAO para cerrar.", keyboard=get_main_menu("TAO"))
+                    send_telegram("❌ Símbolo no reconocido para cerrar. Usa BTC/SOL/TAO/ZEC.")
             
             else:
                 welcome_text = (
@@ -826,9 +969,9 @@ def main():
     print("🚀 Scalp Alert Bot V3 (AI Panorama) - INICIANDO")
     update_dynamic_levels()
     
-    # Control de tiempo para insights horarios (V3.3: Inicia 1 hora después)
-    last_insight_time = time.time() 
-    
+    # Control de tiempo para insights horarios y sentinel (V2.0 Focus)
+    last_insight_time = time.time()
+    last_sentinel_time = 0
     keyboard = get_main_menu()
     send_telegram("🤖 <b>Scalp Bot Multi-Estrategia Online</b>\n🛡️ V1-TECH: Activa\n🤖 V2-AI: Activa\n📡 Expert Advisor: Escuchando", keyboard=keyboard)
     
@@ -847,14 +990,29 @@ def main():
                 # Insights Horarios: AMBAS PERSONALIDADES (cada 3600 segundos)
                 now = time.time()
                 if now - last_insight_time > 3600:
+                    # V3.4: Actualizamos el tiempo ANTES para evitar bucles si falla la IA o Telegram
+                    last_insight_time = now 
                     print("[Robot] Generando panorama horario (Conservador + Scalper)...")
                     panoramas = gemini_analyzer.get_hourly_panorama(prices)
                     # Enviar ambas perspectivas por separado
                     send_telegram(f"🤖 <b>PANORAMA DEL ROBOT</b>\n\n{safe_html(panoramas.get('conservador', 'Sin datos'))}")
                     send_telegram(f"🤖 <b>PANORAMA DEL ROBOT</b>\n\n{safe_html(panoramas.get('scalper', 'Sin datos'))}")
-                    last_insight_time = now
+                
+                # --- ALTCOIN SENTINEL (Cada 4 Horas) ---
+                if now - last_sentinel_time > 14400: # 4 horas
+                    last_sentinel_time = now
+                    print("📡 Sentinel de Altcoins: Escaneando mercado secundario (BTC/ETH)...")
+                    # Escaneamos narrativa para el resto, solo alertamos si es RELEVANTE (🚨)
+                    reports = social_analyzer.check_altcoin_narratives(["BTC", "ETH"])
+                    for r in reports:
+                        msg = (f"🛡️ <b>ALTCOIN SENTINEL ALERT</b> 🚨\n\n"
+                               f"{r}\n\n"
+                               f"💡 <i>Setup detectado fuera del foco principal ZEC/TAO.</i>")
+                        send_telegram(msg)
                     
-        except Exception as e: print(f"❌ Main Loop Error: {e}")
+        except Exception as e:
+            print(f"❌ Main Loop Error: {e}")
+            time.sleep(10) # Backoff de seguridad en fallos de red persistentes
         time.sleep(CHECK_INTERVAL)
 
 if __name__ == "__main__":
