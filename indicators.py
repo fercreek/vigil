@@ -156,15 +156,23 @@ def detect_elliot_wave(df):
     except Exception:
         return "Analizando..."
 
+def get_df(symbol, timeframe='1h', limit=300):
+    """Obtiene el DataFrame de precios (OHLCV) desde Binance."""
+    try:
+        exchange_symbol = f"{symbol}/USDT"
+        ohlcv = binance.fetch_ohlcv(exchange_symbol, timeframe=timeframe, limit=limit)
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        return df
+    except Exception as e:
+        print(f"Error fetching DF: {e}")
+        return pd.DataFrame()
+
 def get_indicators(symbol, timeframe='1h'):
     """Obtiene RSI, BB, EMA 200, ATR, Volume SMA y Elliott Wave."""
     try:
-        exchange = binance
-        exchange_symbol = f"{symbol}/USDT"
-            
-        ohlcv = exchange.fetch_ohlcv(exchange_symbol, timeframe=timeframe, limit=300)
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        
+        df = get_df(symbol, timeframe=timeframe, limit=300)
+        if df.empty: return 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "S/D"
+
         rsi = calculate_rsi(df['close'])
         bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(df['close'])
         ema_200 = calculate_ema(df['close'], period=200)

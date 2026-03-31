@@ -194,14 +194,29 @@
         .day-box.green { background: rgba(34,197,94,0.15); border-color: var(--green); color: var(--green); }
         .day-box.red { background: rgba(239,68,68,0.15); border-color: var(--red); color: var(--red); }
         .day-box .date-num { font-size: 0.6rem; opacity: 0.6; }
+        .badge-mode {
+            background: rgba(46, 213, 115, 0.2);
+            color: var(--green);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border: 1px solid var(--green);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 <div class="container">
 
     <header>
-        <div class="logo">⚡ <span>Scalping Terminal V3</span></div>
-        <div class="live-badge"><span class="dot"></span> Multi-Estrategia Activa</div>
+        <div class="logo">⚡ <span>Zenith Institutional V3</span></div>
+        <div class="live-badge">
+            <div class="badge-mode">🛡️ MODO: INSTITUTIONAL LONG-ONLY ACTIVE</div>
+        </div>
     </header>
 
     <div class="nav-tabs">

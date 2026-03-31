@@ -12,7 +12,8 @@ from dotenv import load_dotenv
 import indicators
 import tracker
 import gemini_analyzer
-import social_analyzer
+import indicators_swing
+import trading_executor
 import ccxt
 import yfinance as yf
 
@@ -38,7 +39,8 @@ GLOBAL_CACHE = {
         "macro_metrics": 0,
         "fail_count": 0
     },
-    "last_rsi": {"SOL": 50.0, "BTC": 50.0, "TAO": 50.0, "ZEC": 50.0}
+    "last_rsi": {"SOL": 50.0, "BTC": 50.0, "TAO": 50.0, "ZEC": 50.0},
+    "executor": None # V5.0 Instance
 }
 # Tiempos de Vida (TTL) en segundos
 TTL_PRICES = 20      # Precio: 20s (Fallback si falla la red)
@@ -210,10 +212,10 @@ def alert(key: str, msg: str, version: str = "V1-TECH", cooldown: int = 300, rep
         return send_telegram(full, reply_to)
     return None
 
-def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0, side="LONG", elliott="", spy=0.0, oil=0.0):
+def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0, side="LONG", elliott="", spy=0.0, oil=0.0, ob_detected=False):
     """
     Calcula un score de confluencia técnica + Macro (0-6 puntos). 
-    V2.0: Añadido SPY (Sentiment) y Petróleo (Inflación).
+    V3.0: Añadido SMC (Order Block Detection).
     """
     score = 0
     # 1. RSI (2 pts)
@@ -240,19 +242,23 @@ def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0, side="LO
     if "Onda 3" in elliott:
         score += 1
         
-    # --- 6. MACRO BONUS (V2.1) ---
-    # SPY up (Risk On) + NVDA/PLTR strength is good for Longs
-    if side == "LONG" and spy > 0:
-        if usdt_d < 8.05: score += 1
+    # --- 6. MACRO BONUS (V2.1 - LONG ONLY BIAS) ---
+    # Only rewards LONGs, ignore SHORTS for scoring
+    if side == "LONG":
+        if spy > 0:
+            if usdt_d < 8.05: score += 1
+            
+        # Bonus Institucional Tech (NVDA + PLTR)
+        nvda = GLOBAL_CACHE["macro_metrics"].get("nvda", 0)
+        pltr = GLOBAL_CACHE["macro_metrics"].get("pltr", 0)
         
-    # Bonus Institucional Tech (NVDA + PLTR)
-    nvda = GLOBAL_CACHE["macro_metrics"].get("nvda", 0)
-    pltr = GLOBAL_CACHE["macro_metrics"].get("pltr", 0)
-    
-    if side == "LONG" and nvda > 0 and pltr > 0:
-        # Si las ballenas están comprando IA y Datos, es buena señal para ZEC/TAO
+        if nvda > 0 and pltr > 0:
+            score += 1
+
+    # --- 7. SMC BONUS (V3.0 - SMART MONEY) ---
+    if ob_detected:
         score += 1
-        
+            
     return min(6, score)
 
 def get_confluence_badge(score):
@@ -478,13 +484,18 @@ def check_strategies(prices: dict):
         # --- ESTRATEGIA V12.1: CONFLUENCE + RSI HOOK ---
         prev_rsi = GLOBAL_CACHE["last_rsi"].get(sym, 50.0)
         
-        # Short V1 (Trend Bajista + Near BB + RSI 62 + Vol Filter + RSI Falling)
-        if phase == "SHORT" and p < ema_200 and rsi >= 62 and "BB" in bb_ctx:
+        # (V12.1 SHORT Logic Disabled - Institutional LONG FOCUS)
+        if False and phase == "SHORT": # and p < ema_200 and rsi >= 62 and "BB" in bb_ctx:
             if rsi > prev_rsi: # RSI sigue subiendo, no entramos
                 continue
                 
             side = "SHORT"
-            conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"))
+            # SMC Filter: Check for Order Blocks
+            df = indicators.get_df(sym, "1h")
+            obs = indicators_swing.find_order_blocks(df)
+            ob_detected = any(ob["type"] == "BEAR_OB" and p >= ob["low"] * 0.99 and p <= ob["high"] * 1.01 for ob in obs)
+
+            conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), ob_detected=ob_detected)
             badge = get_confluence_badge(conf_score)
             
             # Gestión ATR: SL a 2.0 * ATR (puesto en V12.0)
@@ -499,10 +510,9 @@ def check_strategies(prices: dict):
 
             msg = (f"{badge}\n\n"
                    f"🔥 <b>SEÑAL V1.6.2 SCALP (15m)</b> 🔥\n\n"
-                   f"{macro_ctx}\n"
-                   f"{elliott_ctx}\n"
-                   f"📉 15m Trend: {trend_ctx}\n"
-                   f"💰 Volatilidad: {(atr or 0.0):,.2f} USD\n\n"
+                   f"🌍 {macro_ctx}\n"
+                   f"🌊 {elliott_ctx}\n"
+                   f"🛡️ <b>SMC SHIELD:</b> {'🟢 DETECTED' if (ob_detected if 'ob_detected' in locals() else False) else '⚪ NONE'}\n\n"
                    f"📊 <b>ESTADO TÉCNICO:</b>\n"
                    f"• RSI: {(rsi or 0.0):.1f} | BB: {bb_ctx}\n"
                    f"• EMA 200: ${(ema_200 or 0.0):,.2f}\n"
@@ -596,8 +606,9 @@ def check_strategies(prices: dict):
                 
                 msg = (f"{badge}\n\n"
                        f"🚀 <b>SEÑAL V1.6.2 SCALP (15m)</b> 🚀\n\n"
-                       f"{macro_ctx}\n"
-                       f"{elliott_ctx}\n"
+                       f"🌍 {macro_ctx}\n"
+                       f"🌊 {elliott_ctx}\n"
+                       f"🛡️ <b>SMC SHIELD:</b> {'🟢 DETECTED' if (ob_detected if 'ob_detected' in locals() else False) else '⚪ NONE'}\n\n"
                        f"📈 15m Trend: {trend_ctx}\n"
                        f"💰 Volatilidad: {atr:,.2f} USD\n\n"
                        f"📊 <b>ESTADO TÉCNICO:</b>\n"
@@ -621,9 +632,22 @@ def check_strategies(prices: dict):
                 decision, reason, full_analysis = gemini_analyzer.get_ai_decision(sym, p, phase, rsi, bb_u, bb_l, "V2-AI", usdt_d, conf_score)
                 
                 if decision == "CONFIRM":
-                    badge = get_confluence_badge(conf_score + 1)
+                    conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), ob_detected=ob_detected)
+                    badge = get_confluence_badge(conf_score)
+                    
+                    # --- V5.0 EXECUTION LAYER (BINANCE) ---
+                    exec_report = "⚪ NO EJECUTADO (Bajo Conf_Score)"
+                    if conf_score >= 4:
+                        if not GLOBAL_CACHE["executor"]:
+                            GLOBAL_CACHE["executor"] = trading_executor.ZenithExecutor()
+                        
+                        res = GLOBAL_CACHE["executor"].execute_bracket_order(sym, side, p, tp1, tp2, sl)
+                        exec_report = f"💸 <b>BINANCE STATUS:</b> {res.get('status')} (ID: {res.get('id')})"
+
                     msg = (f"{badge}\n\n"
-                           f"🤖 <b>SEÑAL V2-AI CONSENSUS (HYBRID)</b>\n\n"
+                           f"🚀 <b>ESTRATEGIA V5: EXECUTIVE MODE</b>\n"
+                           f"🛡️ <b>SMC SHIELD:</b> {'🟢 DETECTED' if (ob_detected if 'ob_detected' in locals() else False) else '⚪ NONE'}\n"
+                           f"{exec_report}\n\n"
                            f"📊 <b>ESTADO TÉCNICO:</b>\n"
                            f"• Score Confluencia: {conf_score}/5\n"
                            f"⭐ <b>Confiabilidad: {format_confidence(conf_score + 1)}</b>\n\n"
@@ -638,9 +662,13 @@ def check_strategies(prices: dict):
                     if mid:
                         tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, conf_score, ai_analysis=full_analysis, macro_bias=macro_status)
 
-        # --- ESTRATEGIA V2: AI ENHANCED (CON CONSENSU) ---
-        if (rsi >= 60 or rsi <= 40):
-            side = "SHORT" if rsi >= 60 else "LONG"
+        # --- ESTRATEGIA V2: AI ENHANCED (LONG ONLY) ---
+        if rsi <= 40:
+            side = "LONG"
+            # SMC Filter: Check for Order Blocks
+            df = indicators.get_df(sym, "1h")
+            obs = indicators_swing.find_order_blocks(df)
+            ob_detected = any(ob["type"] == "BULL_OB" and p >= ob["low"] * 0.99 and p <= ob["high"] * 1.01 for ob in obs)
             
             # 1. Consultamos a ambos agentes para buscar CONSENSO
             # El filtro EMA es global: no confirmamos si va contra tendencia
@@ -671,6 +699,7 @@ def check_strategies(prices: dict):
 
                 msg = (f"{header} ({side})\n"
                        f"{caution}"
+                       f"🛡️ <b>SMC SHIELD:</b> {'🟢 DETECTED' if (ob_detected if 'ob_detected' in locals() else False) else '⚪ NONE'}\n\n"
                        f"💬 <i>{safe_html(final_reason)}</i>\n\n"
                        f"🪙 <b>{sym}</b> @ ${(p or 0.0):,.2f}\n"
                        f"📊 RSI: {(rsi or 0.0):.1f} | {bb_ctx}\n"
@@ -712,10 +741,17 @@ def monitor_open_trades(prices: dict):
         bb_ctx = "🔝 Techo BB" if curr_p >= bb_u * 0.99 else "🩸 Suelo BB" if curr_p <= bb_l * 1.01 else "↕️ Rango"
         pnl_pct = ((curr_p - t["entry_price"]) / t["entry_price"]) * 100
         if tipo == "SHORT": pnl_pct = -pnl_pct
+        
+        # V5.0: Log PNL to console for pure trading monitor
+        if abs(pnl_pct) > 1.0:
+            print(f"📈 [Trade Monitor] {sym} {tipo}: {pnl_pct:+.2f}% (P: {curr_p})")
 
         if tipo == "SHORT":
             if curr_p >= t["sl_price"]:
                 tracker.update_trade_status(t["id"], "LOST")
+                # Neural Audit V4.0
+                lesson = gemini_analyzer.trigger_shadow_post_mortem(sym, curr_p, "LOST", rsi, "Post-Mortem SL (Short)")
+                if lesson: send_telegram(f"🧠 <b>NEURAL LEARNING (V4.0)</b>\n<i>{lesson}</i>", reply_to=reply)
                 msg = (f"🔴 <b>STOP LOSS TOCADO (POST-MORTEM)</b>\n\n"
                        f"🪙 {sym} SHORT\n"
                        f"💸 PnL: <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
@@ -745,6 +781,9 @@ def monitor_open_trades(prices: dict):
         elif tipo == "LONG":
             if curr_p <= t["sl_price"]:
                 tracker.update_trade_status(t["id"], "LOST")
+                # Neural Audit V4.0
+                lesson = gemini_analyzer.trigger_shadow_post_mortem(sym, curr_p, "LOST", rsi, "Post-Mortem SL (Long)")
+                if lesson: send_telegram(f"🧠 <b>NEURAL LEARNING (V4.0)</b>\n<i>{lesson}</i>", reply_to=reply)
                 msg = (f"🔴 <b>STOP LOSS TOCADO (POST-MORTEM)</b>\n\n"
                        f"🪙 {sym} LONG\n"
                        f"💸 PnL: <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
@@ -972,6 +1011,7 @@ def main():
     # Control de tiempo para insights horarios y sentinel (V2.0 Focus)
     last_insight_time = time.time()
     last_sentinel_time = 0
+    last_zec_sentinel_time = 0
     keyboard = get_main_menu()
     send_telegram("🤖 <b>Scalp Bot Multi-Estrategia Online</b>\n🛡️ V1-TECH: Activa\n🤖 V2-AI: Activa\n📡 Expert Advisor: Escuchando", keyboard=keyboard)
     
@@ -997,6 +1037,17 @@ def main():
                     # Enviar ambas perspectivas por separado
                     send_telegram(f"🤖 <b>PANORAMA DEL ROBOT</b>\n\n{safe_html(panoramas.get('conservador', 'Sin datos'))}")
                     send_telegram(f"🤖 <b>PANORAMA DEL ROBOT</b>\n\n{safe_html(panoramas.get('scalper', 'Sin datos'))}")
+                
+                # --- ZEC SENTINEL REPORT (Cada 1 Hora) ---
+                if now - last_zec_sentinel_time > 3600:
+                    last_zec_sentinel_time = now
+                    print("🥷 Sentinel ZEC: Generando reporte estructural de Shadow...")
+                    zec_p = prices.get("ZEC", 0.0)
+                    zec_rsi = prices.get("ZEC_RSI", 50.0)
+                    zec_ema = GLOBAL_CACHE["indicators"].get("ZEC", {}).get("ema_200", zec_p)
+                    # Fetch ZEC report from Shadow
+                    shadow_report = gemini_analyzer.get_zec_sentinel_report(zec_p, zec_rsi, zec_ema, prices.get("USDT_D", 8.08))
+                    send_telegram(f"🥷 <b>SHADOW REPORT: ZCASH (ZEC)</b>\n\n{safe_html(shadow_report)}")
                 
                 # --- ALTCOIN SENTINEL (Cada 4 Horas) ---
                 if now - last_sentinel_time > 14400: # 4 horas

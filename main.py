@@ -53,10 +53,10 @@ if __name__ == "__main__":
     swing_thread = threading.Thread(target=run_swing_bot)
     swing_thread.daemon = True
     swing_thread.start()
-    # 3. Hilo para Stock Watchdog (15m)
-    watchdog_thread = threading.Thread(target=run_stock_watchdog)
-    watchdog_thread.daemon = True
-    watchdog_thread.start()
+    # 3. Hilo para Stock Watchdog (DESHABILITADO - Solo Macro)
+    # watchdog_thread = threading.Thread(target=run_stock_watchdog)
+    # watchdog_thread.daemon = True
+    # watchdog_thread.start()
     
     # 4. Hilo principal para Flask (Keep-Alive)
     run_flask()
