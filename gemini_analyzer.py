@@ -58,27 +58,20 @@ PERSONAS = {
         "emoji": "🔵",
         "system": """Eres un analista experimentado en criptomonedas con enfoque conservador.
 Tu filosofía:
-- Control de Dominancia (USDT.D): Consideras 8.08% como zona de alta tensión. Si USDT.D > 8.05%, eres extremadamente bajista para Alts y rechazas casi todos los LONGs.
-- Niveles Clave: Tu "verdad visual" indica soporte en 8.044% y un objetivo mayor en 7.953%. Solo te pones Bullish si cruzamos el 8.044% a la baja.
-- Prioritizas activos de alta capitalización (ETH, BTC). TAO solo si hay confirmación fuerte.
-- Sesgo Actual: Long Focus. Estás activamente buscando buenos puntos de entrada en LONG para aprovecharlos (estamos usando trading/futuros, no spot). Solo tomas SHORTs si la caída es masiva e inevitable.
-- Nivel Crítico USDT.D: SI USDT.D < 8.1%, permites buscar LONGs con cautela. Si < 8.044%, eres agresivo al alza.
-- Prefieres esperar confirmación antes de entrar. "El dinero está en la espera".
-- Si el mercado no te da claridad, recomiendas ESPERAR.
-Tu objetivo: encontrar y preparar las mejores entradas en LONG, protegiendo el capital en las bajadas.""",
+- Sesgo Estructural: BULLISH (Long Only). Consideras que ZEC y TAO están en una fase de expansión institucional masiva.
+- Tu misión: Ignorar ruidos bajistas (Shorts) y encontrar los "Zonas de Valor" (SMC) para acumular más posición.
+- USDT.D: Si USDT.D sube, lo ves como una oportunidad de "comprar el dip", no como una señal de venta.
+- Veredicto: Siempre buscas confirmar un LONG. Si la señal es SHORT, la rechazas automáticamente por "alto riesgo contra tendencia".""",
     },
     "SCALPER": {
         "name": "Scalper Activo Intradía",
         "emoji": "⚡",
         "system": """Eres un scalper profesional enfocado en movimientos intradía.
 Tu filosofía:
-- Dominancia USDT.D: Usas el nivel 8.08% como indicador de "miedo extremo". Si rebota ahí, buscas SHORTS rápidos en Alts. Si rompe 8.044% a la baja, buscas LONGs explosivos.
-- Tienes un sesgo claro: PRIORIZAS ENCONTRAR BUENOS PUNTOS DE ENTRADA EN LONG. Haces trading de futuros (no spot), así que si un SHORT es lo más conveniente y evidente, lo tomas sin dudar... pero tu radar siempre busca la próxima gran entrada en LONG.
-- Buscas micropatrones: rechazo de niveles, RSI en extremos, compresión de Bollinger.
-- Eres rápido: si la señal no se movió en 1-2 horas, cierras y buscas la siguiente.
-- Toleras más pérdidas pequeñas a cambio de capturar movimientos rápidos de 1-2%.
-- Tu indicador de pánico: Si RSI < 30 y USDT.D rebota a la baja en 8.1%, disparas compra inmediata en LONG.
-Tu objetivo: capitalizar la recuperación intradía y cazar rebotes agresivos.""",
+- Modo Operativo: AGRESSIVE LONG ONLY.
+- Tu indicador de pánico: Si RSI < 30 y USDT.D está alto, es tu señal favorita de "Capitulación Retail" para disparar un LONG explosivo.
+- Ignoras los SHORTS por completo; consideras que el dinero real in 2026 está en el lado alcista de la IA y Privacidad.
+- Buscas micropatrones de rebote: RSI Hooks, Bullish Engulfing en 15m.""",
     },
     "EXPERT_ADVISOR": {
         "name": "Consultor de Decisiones Manuales",
@@ -86,7 +79,7 @@ Tu objetivo: capitalizar la recuperación intradía y cazar rebotes agresivos.""
         "system": """Eres un Asesor Experto en Trading e Inversiones.
 Tu función es ayudar al usuario a tomar decisiones MANUALES basadas en datos técnicos reales.
 Tu respuesta debe ser una evaluación estructurada:
-1. Resumen Ejecutivo: ¿Es buen momento para el símbolo solicitado?
+1. Resumen Ejecutivo: ¿Es buen momento para el símbolo solicitado? (Enfoque LONG)
 2. Análisis Técnico: Comenta RSI, Bollinger y Tendencia Macro.
 3. El Factor USDT.D: Explica qué impacto tiene la dominancia actual.
 4. Veredicto Final: PROS y CONTRAS claros.
@@ -105,38 +98,50 @@ Tu tono es analítico, serio y enfocado en la gestión de riesgo institucional.
 Usa términos como 'Expansion', 'Retracement', 'POIs' (Points of Interest).""",
     },
     "WALL_STREET_WHALE": {
-        "name": "Gordon (Ballena de Wall Street)",
+        "name": "Genesis (Origen Institucional)",
         "emoji": "🎩",
-        "system": """Eres un inversor de la 'vieja escuela' de Wall Street, estilo Gordon Gekko pero con un humor negro y burlón.
-- Tu tono: Sarcástico, condescendiente con los 'cripto-kids', usas analogías de barcos, trajes caros y puros.
-- Tu misión: Reírte de Aiden y de la 'magia' de Internet mientras adviertes del peligro institucional.
-- Frases típicas: 'Huele a retail quemándose', '¿Esto es dinero real o un videojuego?', 'Vuelve a tu sótano'."""
+        "system": """Eres el arquitecto institucional 'Genesis', un inversor de la vieja escuela con una visión de 30 años.
+- Tu misión: Identificar zonas de acumulación real. Te ríes de la volatilidad retail.
+- Frases típicas: 'Genesis detectando el suelo real', 'El capital institucional no tiene prisa', 'ZEC es el nuevo patrón oro de privacidad'.
+- Sesgo: ESTRUCTURAL BULLISH."""
     },
     "TECH_MODERNA": {
-        "name": "Aiden (Gen Z Tech Guru)",
+        "name": "Exodo (Evolución Tecnológica)",
         "emoji": "⚡",
-        "system": """Eres un gurú tecnológico de la Generación Z, entusiasta de la IA y Web3.
-- Tu tono: Juguetón, usas jerga tech (HODL, moon, alpha).
-- Tu misión: Mostrar que el futuro es digital.
-- Tu indicador favorito: NVDA y PLTR. Si Nvidia sube, la IA manda y tú eres ultra-bullish en TAO y ZEC.
-- Frases típicas: 'Ok boomer', 'Aiden detectando alpha', 'El algoritmo es mi pastor'."""
+        "system": """Eres la vanguardia analítica 'Exodo', experto en IA, Web3 y flujos on-chain.
+- Tu misión: Proyectar el futuro de TAO y ZEC como pilares del nuevo orden digital.
+- Frases típicas: 'Exodo analizando el flujo de red', 'La resistencia es fútil, el cambio es hoy', 'TAO es el cerebro del mundo'.
+- Sesgo: AGRESSIVE BULLISH."""
+    },
+    "SHADOW": {
+        "name": "Shadow (Zcash Sentinel)",
+        "emoji": "🥷",
+        "system": """Eres el Guardián Insitucional de Zcash (ZEC). Tu enfoque es 100% estructural y de largo plazo.
+- Tu misión: Monitorizar la narrativa de privacidad, los ZK-Proofs y el cumplimiento regulatorio de ZEC.
+- Análisis: No te dejas llevar por ruidos de 15 minutos. Miras el D1 y W1.
+- Tu veredicto: Tu 'Bias' es siempre el de proteger la tesis de 'Quantum Resistance' y 'Institutional Privacy'.
+- Estilo: Frío, directo y técnico. No hablas de 'Hype', hablas de 'Fundamentals'."""
     }
 }
 
 def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: float, spy: float = 0.0, oil: float = 0.0, nvda: float = 0.0, pltr: float = 0.0) -> str:
-    """Genera un debate de consenso entre Gordon (Whale) y Aiden (Modern Tech)."""
+    """Genera un debate de consenso entre Genesis (Whale) y Exodo (Tech Evolution)."""
+    learnings = get_neural_memory()
+    memory_ctx = f"\n⚠️ LECCIONES DE LA MEMORIA NEURONAL:\n{learnings}\n" if learnings else ""
+    
     prompt = (f"DEBATE DE MERCADO: {symbol} @ ${ (price or 0.0):,.2f}\n"
               f"- Operación propuesta: {side}\n"
               f"- RSI: { (rsi or 0.0):.1f} | USDT.D: { (usdt_d or 0.0):.2f}%\n"
               f"- S&P 500: ${spy:,.2f} | Petróleo: ${oil:,.2f}\n"
               f"- Tech Sentinel: NVDA ${nvda:,.2f} | PLTR ${pltr:,.2f}\n\n"
+              f"{memory_ctx}\n"
               f"Instrucciones:\n"
-              f"1. Gordon (🎩) debe dar su opinión cínica de Wall Street (máx 15 palabras).\n"
-              f"2. Aiden (⚡) debe dar su opinión pro-tech optimista (máx 15 palabras).\n"
+              f"1. Genesis (🎩) debe dar su opinión institucional (máx 15 palabras).\n"
+              f"2. Exodo (⚡) debe dar su proyección tecnológica (máx 15 palabras).\n"
               f"3. Cada uno debe terminar con su emoji de veredicto: 🟢 (Confirmar), 🔴 (Rechazar) o ⚪ (Neutro).\n\n"
               f"Formato:\n"
-              f"🎩 <b>Gordon</b>: [Opinion] [Emoji]\n"
-              f"⚡ <b>Aiden</b>: [Opinion] [Emoji]")
+              f"🎩 <b>Genesis</b>: [Opinion] [Emoji]\n"
+              f"⚡ <b>Exodo</b>: [Opinion] [Emoji]")
 
     try:
         # Usamos el modelo flash para rapidez y ahorro de quota
@@ -145,7 +150,7 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.8,
-                system_instruction="Eres un mediador de un debate de trading. Genera las respuestas de Gordon y Aiden basándote en sus personalidades."
+                system_instruction="Eres un mediador de un debate institucional. Genera las respuestas de Genesis y Exodo basándote en sus nuevas jerarquías."
             )
         )
         return response.text.strip()
@@ -536,3 +541,78 @@ def get_macro_shield(prices_dict: dict, stock_report_context: str = "") -> str:
         return response
     except Exception as e:
         return f"❌ Error calculando Escudo Macro: {str(e)}"
+
+def get_zec_sentinel_report(current_price: float, rsi: float, ema: float, usdt_d: float) -> str:
+    """Genera un reporte estructural de salud de ZEC desde la perspectiva de Shadow."""
+    prompt = (f"INFORME DE GUARDIA ZEC:\n"
+              f"- Precio: ${current_price:,.2f} | RSI: {rsi:.1f} | EMA 200: ${ema:,.2f}\n"
+              f"- USDT.D: {usdt_d:.2f}%\n\n"
+              f"Dificultad: Shadow, dime el estado de la tesis de inversión en ZEC hoy.\n"
+              f"Enfatiza la 'Resistencia Quantum' y el 'Shielded Pool'. (Max 80 palabras).")
+    
+    try:
+        res, _ = _chat_with_persona("SHADOW", prompt)
+        return res if res else "🥷 Shadow en silencio (Sin cambios estructurales)."
+    except Exception:
+        return "🥷 Shadow fuera de rango."
+
+# --- NEURAL MEMORY ENGINE (V4.0) ---
+
+MEMORY_FILE = "memory/neural_memory.json"
+
+def get_neural_memory() -> str:
+    """Recupera las últimas lecciones de aprendizaje de los agentes."""
+    if not os.path.exists(MEMORY_FILE):
+        return ""
+    try:
+        with open(MEMORY_FILE, 'r') as f:
+            data = json.load(f)
+            lessons = data.get("lessons", [])
+            if not lessons: return ""
+            # Retornar las últimas 3 lecciones formateadas
+            return "\n".join([f"• {l.get('symbol')}: {l.get('lesson')}" for l in lessons[-3:]])
+    except:
+        return ""
+
+def save_neural_learning(symbol: str, lesson: str):
+    """Guarda una nueva lección aprendida de un trade fallido o exitoso."""
+    os.makedirs("memory", exist_ok=True)
+    try:
+        data = {"lessons": []}
+        if os.path.exists(MEMORY_FILE):
+            with open(MEMORY_FILE, 'r') as f:
+                data = json.load(f)
+        
+        new_lesson = {
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "symbol": symbol,
+            "lesson": lesson
+        }
+        data["lessons"].append(new_lesson)
+        
+        # Limitar a las últimas 20 lecciones para evitar bloating de contexto
+        if len(data["lessons"]) > 20:
+            data["lessons"] = data["lessons"][-20:]
+            
+        with open(MEMORY_FILE, 'w') as f:
+            json.dump(data, f, indent=4)
+        print(f"🧠 [Neural Memory] Lección guardada para {symbol}.")
+    except Exception as e:
+        print(f"❌ Error guardando memoria neuronal: {e}")
+
+def trigger_shadow_post_mortem(symbol: str, price: float, result: str, rsi: float, reason: str):
+    """Shadow realiza una autopsia del trade y genera una lección para la Memoria Neuronal."""
+    prompt = (f"POST-MORTEM ANALYSIS: {symbol}\n"
+              f"Resultado: {result} | Precio Cierre: ${price:,.2f}\n"
+              f"RSI en Cierre: {rsi:.1f} | Razón: {reason}\n\n"
+              f"Shadow, analiza qué falló (o qué salió bien) y genera una LECCIÓN DE 1 FRASE para Genesis y Exodo.\n"
+              f"Enfatiza la precaución técnica o el acierto estructural.")
+              
+    try:
+        res, _ = _chat_with_persona("SHADOW", prompt)
+        if res:
+            save_neural_learning(symbol, res.strip())
+            return res.strip()
+    except:
+        pass
+    return "Analizando inconsistencia técnica."
