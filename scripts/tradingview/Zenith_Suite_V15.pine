@@ -1,0 +1,110 @@
+//@version=6
+// =============================================================================
+//  ZENITH SUITE V15 — Institutional Master Engine 🛰️🛡️🎭
+//  • Master Elliott Waves (Wave 3/5 Detection)
+//  • SMC / Order Blocks (Unmitigated Zones)
+//  • ETH: ACTIVADO (R1/S1 Dinámicos)
+//  • Multi-TP Structure (2:1 / 4:1 / 7.5:1)
+// =============================================================================
+indicator("Zenith V15 Institutional", overlay=true, max_lines_count=50, max_labels_count=50, max_boxes_count=50)
+
+// ─── INPUTS ──────────────────────────────────────────────────────────────────
+ema_len    = input.int(200,   "EMA Period")
+bb_len     = input.int(20,    "BB Period")
+bb_mult    = input.float(2.0, "BB Mult")
+rsi_len    = input.int(14,    "RSI Period")
+atr_len    = input.int(14,    "ATR Period")
+atr_sl     = input.float(2.0, "ATR x SL")
+tp1_mult   = input.float(2.0, "ATR x TP1 (50%)")
+tp2_mult   = input.float(4.0, "ATR x TP2 (25%)")
+tp3_mult   = input.float(7.5, "ATR x TP3 (25%)")
+ob_lookbk  = input.int(10,    "OB Lookback (SMC)")
+show_elliott = input.bool(true, "Show Master Elliott Waves")
+
+// ─── PERFIL POR SÍMBOLO (V15) ────────────────────────────────────────────────
+is_btc = syminfo.basecurrency == "BTC"
+is_tao = syminfo.basecurrency == "TAO"
+is_zec = syminfo.basecurrency == "ZEC"
+is_eth = syminfo.basecurrency == "ETH"
+
+rsi_thresh = is_zec ? 48.0 : 42.0
+// ETH ya no está bloqueado
+
+// ─── CALCULOS BASE ───────────────────────────────────────────────────────────
+ema200 = ta.ema(close, ema_len)
+[bb_mid, bb_u, bb_l] = ta.bb(close, bb_len, bb_mult)
+rsi    = ta.rsi(close, rsi_len)
+atr    = ta.atr(atr_len)
+
+macro_bull = close > ema200
+rsi_rising = rsi > rsi[1]
+
+// ─── SMC: ORDER BLOCKS (Institutional POIs) ──────────────────────────────────
+var box[] ob_boxes = array.new_box()
+if not na(ta.change(time))
+    while array.size(ob_boxes) > 0
+        box.delete(array.shift(ob_boxes))
+
+bool ob_bull = high[1] < high and low[1] > low and close[1] < open[1] // Engulfing base
+if ob_bull
+    array.push(ob_boxes, box.new(bar_index[1], high[1], bar_index + 10, low[1], bgcolor=color.new(color.green, 85), border_color=color.new(color.green, 60)))
+
+// ─── MASTER ELLIOTT WAVES (Simplified V15) ───────────────────────────────────
+float ph = ta.pivothigh(high, 5, 5)
+float pl = ta.pivotlow(low, 5, 5)
+
+if show_elliott and not na(ph)
+    label.new(bar_index - 5, ph, "Wave 5?", color=color.red, style=label.style_label_down, textcolor=color.white, size=size.small)
+
+if show_elliott and not na(pl)
+    label.new(bar_index - 5, pl, "Wave 3/4?", color=color.blue, style=label.style_label_up, textcolor=color.white, size=size.small)
+
+// ─── SEÑALES (ZENITH V15) ────────────────────────────────────────────────────
+in_zone   = close <= bb_l * 1.015
+is_signal = macro_bull and in_zone and rsi <= rsi_thresh and rsi_rising
+
+// ─── SL / TP (Multi-Level) ───────────────────────────────────────────────────
+sl_dist  = math.max(atr * atr_sl, close * 0.007)
+long_sl  = close - sl_dist
+long_tp1 = close + sl_dist * tp1_mult
+long_tp2 = close + sl_dist * tp2_mult
+long_tp3 = close + sl_dist * tp3_mult
+
+// ─── PLOT ────────────────────────────────────────────────────────────────────
+plot(ema200, "Zenith Master Trend", color=macro_bull ? color.new(color.teal, 30) : color.new(color.orange, 30), linewidth=3)
+bb_u_p = plot(bb_u, "BB U", color=color.new(color.gray, 80))
+bb_l_p = plot(bb_l, "BB L", color=color.new(color.gray, 80))
+fill(bb_u_p, bb_l_p, color.new(color.teal, 96))
+
+plotshape(is_signal, title=" Zenith V15 SIGNAL", style=shape.labelup, location=location.belowbar, color=color.new(color.lime, 0), text="ZENITH LONG", textcolor=color.black, size=size.normal)
+
+// ─── DASHBOARD V15 ───────────────────────────────────────────────────────────
+if barstate.islast
+    var table t = table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 15), border_color=color.new(color.gray, 50), border_width=1)
+    
+    table.cell(t, 0, 0, "ZENITH V15 ENGINE", text_color=color.white, bgcolor=color.new(color.teal, 40))
+    table.cell(t, 1, 0, "INSTITUTIONAL", text_color=color.white, bgcolor=color.new(color.teal, 40))
+    
+    table.cell(t, 0, 1, "Status", text_color=color.silver)
+    table.cell(t, 1, 1, is_signal ? "🔥 SIGNAL DETECTED" : macro_bull ? "BULL (Wait Zone)" : "BEAR (No Operar)", text_color=is_signal ? color.lime : macro_bull ? color.aqua : color.red)
+    
+    table.cell(t, 0, 2, "Asset", text_color=color.silver)
+    table.cell(t, 1, 2, syminfo.ticker, text_color=color.white)
+    
+    table.cell(t, 0, 3, "RSI + Pulse", text_color=color.silver)
+    table.cell(t, 1, 3, str.format("{0} ({1})", str.tostring(math.round(rsi, 1)), rsi_rising ? "📈" : "📉"), text_color=rsi_rising ? color.lime : color.orange)
+    
+    table.cell(t, 0, 4, "Entry", text_color=color.silver)
+    table.cell(t, 1, 4, str.tostring(math.round(close, 2)), text_color=color.white)
+    
+    table.cell(t, 0, 5, "TP1 / TP2 / TP3", text_color=color.silver)
+    table.cell(t, 1, 5, str.format("{0} / {1} / {2}", str.tostring(math.round(long_tp1, 2)), str.tostring(math.round(long_tp2, 2)), str.tostring(math.round(long_tp3, 2))), text_color=color.lime)
+    
+    table.cell(t, 0, 6, "SL (2.0 ATR)", text_color=color.silver)
+    table.cell(t, 1, 6, str.tostring(math.round(long_sl, 2)), text_color=color.red)
+
+    table.cell(t, 0, 7, "Master Elliott", text_color=color.silver)
+    table.cell(t, 1, 7, "V3 Architecture ACTIVE", text_color=color.teal)
+
+// ─── ALERTS ──────────────────────────────────────────────────────────────────
+alertcondition(is_signal, "Zenith V15 Institutional", "V15 SIGNAL | {{ticker}} @ {{close}} | TP1: {{long_tp1}} SL: {{long_sl}}")

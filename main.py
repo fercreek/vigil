@@ -44,7 +44,11 @@ def run_stock_watchdog():
 if __name__ == "__main__":
     print("🚀 --- INICIANDO SISTEMA HÍBRIDO (V2.0 DUAL ENGINE) ---")
     
-    # 1. Hilo para el Scalp Alert Bot (15m)
+    # 1. Registro de Comandos (Telegram UI)
+    import alert_manager
+    alert_manager.set_bot_commands()
+
+    # 2. Hilo para el Scalp Alert Bot (15m)
     bot_thread = threading.Thread(target=run_bot)
     bot_thread.daemon = True
     bot_thread.start()

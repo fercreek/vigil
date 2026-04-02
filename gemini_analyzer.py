@@ -244,6 +244,27 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
         print(f"[Consensus Error] {e}")
         return "🏛️ <i>Debate temporalmente suspendido por congestión de mercado.</i>"
 
+def _find_recent_chart(symbol: str) -> str | None:
+    """
+    Busca el gráfico más reciente subido para el símbolo en chart_ideas/assets/.
+    Retorna el path absoluto si existe, de lo contrario None.
+    """
+    assets_dir = "chart_ideas/assets"
+    if not os.path.exists(assets_dir):
+        return None
+    
+    symbol = symbol.upper().replace("/USDT", "")
+    candidates = []
+    for f in os.listdir(assets_dir):
+        if f.lower().startswith(f"image_{symbol.lower()}_") and f.lower().endswith(".png"):
+            candidates.append(os.path.join(assets_dir, f))
+    
+    if not candidates:
+        return None
+        
+    # Retornar el más nuevo basándose en la fecha de modificación
+    return max(candidates, key=os.path.getmtime)
+
 def _add_to_memory(persona: str, role: str, content: str, context: list) -> list:
     """Agrega un mensaje al contexto en memoria."""
     context.append({
@@ -268,32 +289,42 @@ def _build_chat_history(context: list) -> list:
             ))
     return history
 
-def _chat_with_persona(persona: str, message: str) -> tuple[str, list]:
-    """Envía un mensaje al agente con su personalidad + historial del día."""
+def _chat_with_persona(persona: str, message: str, image_path: str = None) -> tuple[str, list]:
+    """
+    Envía un mensaje al agente con su personalidad + historial del día.
+    V14.2: Soporta inyección de imagen (Multi-Modal) para contexto visual.
+    """
     context = _load_memory(persona)
     system = PERSONAS[persona]["system"]
     history = _build_chat_history(context)
 
     try:
-        # Configuramos la generación con el nuevo Modelo 2.0 y la instrucción de sistema
         config = types.GenerateContentConfig(
             system_instruction=system,
             temperature=0.7
         )
 
+        contents = []
+        if image_path and os.path.exists(image_path):
+            with open(image_path, "rb") as f:
+                img_data = f.read()
+            contents.append(types.Part.from_bytes(data=img_data, mime_type="image/png"))
+            # Notificar a la IA que hay un gráfico adjunto
+            message = f"[VISUAL CONTEXT ATTACHED] {message}"
+        
+        contents.append(types.Part.from_text(text=message))
+
         if history:
-            # Iniciamos chat con historial acumulado
             chat = client.chats.create(
                 model='gemini-2.5-flash',
                 config=config,
                 history=history
             )
-            response = chat.send_message(message)
+            response = chat.send_message(contents)
         else:
-            # Generación simple sin historial previo
             response = client.models.generate_content(
                 model='gemini-2.5-flash',
-                contents=message,
+                contents=contents,
                 config=config
             )
 
@@ -301,9 +332,7 @@ def _chat_with_persona(persona: str, message: str) -> tuple[str, list]:
         context = _add_to_memory(persona, "user", message, context)
         context = _add_to_memory(persona, "model", result, context)
         
-        # Guardar en Historial Estructurado
         log_ai_decision(persona, message, result)
-        
         return result, context
 
     except Exception as e:
@@ -380,13 +409,26 @@ def get_ai_decision(symbol: str, price: float, side: str, rsi: float,
         # Claude Haiku primero — más confiable para seguir instrucciones JSON estrictas
         result = None
         if _HAS_CLAUDE:
-            result = _call_claude_decision(PERSONAS[persona]["system"], prompt,
-                                           call_type="decision", symbol=symbol)
-        # Fallback a Gemini si Claude no disponible o falló
+            # V15: Budget Guard — Verificar si podemos usar Claude (presupuesto/cuota)
+            import ai_budget
+            can_use, reason = ai_budget.can_use_ai(call_type="decision")
+            
+            if can_use:
+                result = _call_claude_decision(PERSONAS[persona]["system"], prompt,
+                                               call_type="decision", symbol=symbol)
+            else:
+                print(f"🛡️ [Budget Guard] Claude bloqueado: {reason}. Usando Gemini (Fallback).")
+        
+        # Fallback a Gemini si Claude no disponible o falló o fue bloqueado
         if not result:
-            result, _ = _chat_with_persona(persona, prompt)
+            # V14.2: Inyectar contexto visual si existe un gráfico reciente
+            img_path = _find_recent_chart(symbol)
+            if img_path:
+                prompt = f"[ANALIZA EL GRÁFICO ADJUNTO] {prompt}"
+            result, _ = _chat_with_persona(persona, prompt, image_path=img_path)
+        
         if not result:
-            return "REJECT", "Fallo en conexión con IA", ""
+            return "REJECT", "Fallo en conexión con IA", "🏛️ <i>Debate temporalmente suspendido.</i>"
 
         # Extracción robusta de JSON: busca el ÚLTIMO bloque {...} en el texto
         # (Gemini suele poner el JSON al final, después del análisis narrativo)
@@ -807,7 +849,12 @@ def get_market_sentiment(prices: dict) -> dict:
     )
     print(f"🧠 DEBUG: Solicitando sentimiento AI...")
     try:
-        response, _ = _chat_with_persona("EXPERT_ADVISOR", prompt)
+        # V14.2: Buscar gráfico reciente para contexto visual (usamos BTC como ancla si no hay específico)
+        img_path = _find_recent_chart("BTC")
+        if img_path:
+            prompt = f"[VISIÓN GLOBAL] {prompt}"
+            
+        response, _ = _chat_with_persona("EXPERT_ADVISOR", prompt, image_path=img_path)
         import json
         import re
         # Extracción robusta: limpiar fences y buscar el último JSON con las claves esperadas
@@ -858,9 +905,20 @@ def get_top_setup(prices_dict: dict) -> str:
         f"Mantén la respuesta por debajo de las 120 palabras. Sé asertivo, usa viñetas para la justificación."
     )
     
+    print(f"🧠 DEBUG: Escaneando TOP Setup para {ts}...")
     try:
-        response, _ = _chat_with_persona("SCALPER", prompt)
-        return response
+        # V14.2: El TOP Setup ahora es MULTIMODAL.
+        # Buscamos si hay algún gráfico de los 3 símbolos foco.
+        img_path = None
+        for s in ["BTC", "TAO", "ZEC"]:
+            path = _find_recent_chart(s)
+            if path:
+                img_path = path
+                prompt = f"[GRÁFICO DE {s} DETECTADO] {prompt}"
+                break
+                
+        response, _ = _chat_with_persona("SCALPER", prompt, image_path=img_path)
+        return response if response else "<i>Error analizando setups.</i>"
     except Exception as e:
         return f"❌ Error generando Top Setup: {str(e)}"
 

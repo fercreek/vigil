@@ -235,17 +235,17 @@
         </header>
 
     <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('live', this)">📡 Live Scalps</button>
-        <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reportes & Backtesting</button>
-        <button class="tab-btn" onclick="switchTab('monthly', this)">📈 Mensual</button>
-        <button class="tab-btn" onclick="switchTab('analysis', this)">🔬 Análisis</button>
-        <button class="tab-btn" onclick="switchTab('alerts', this); loadAlertsMap()">⚡ Alertas</button>
-        <button class="tab-btn" onclick="switchTab('budget', this); loadAiBudget()">💰 IA Budget</button>
-        <button class="tab-btn" onclick="switchTab('flow', this)">🔀 Flujo</button>
+        <a href="/" class="tab-btn {{ 'active' if active_tab == 'live' else '' }}">📡 Live Scalps</a>
+        <a href="/reports" class="tab-btn {{ 'active' if active_tab == 'reports' else '' }}">📊 Reportes & Backtesting</a>
+        <a href="/monthly" class="tab-btn {{ 'active' if active_tab == 'monthly' else '' }}">📈 Mensual</a>
+        <a href="/analysis" class="tab-btn {{ 'active' if active_tab == 'analysis' else '' }}">🔬 Análisis</a>
+        <a href="/alerts" class="tab-btn {{ 'active' if active_tab == 'alerts' else '' }}">⚡ Alertas</a>
+        <a href="/budget" class="tab-btn {{ 'active' if active_tab == 'budget' else '' }}">💰 IA Budget</a>
+        <a href="/flow" class="tab-btn {{ 'active' if active_tab == 'flow' else '' }}">🔀 Flujo</a>
     </div>
 
     <!-- ─── TAB: LIVE ─── -->
-    <div id="tab-live" class="tab-content active">
+    <div id="tab-live" class="tab-content {{ 'active' if active_tab == 'live' else '' }}">
         <div class="stats-row">
             <div class="stat-card blue">
                 <div class="stat-label">Win Rate V1-TECH</div>
@@ -282,7 +282,7 @@
     </div>
 
     <!-- ─── TAB: REPORTS ─── -->
-    <div id="tab-reports" class="tab-content">
+    <div id="tab-reports" class="tab-content {{ 'active' if active_tab == 'reports' else '' }}">
 
         <!-- Toolbar -->
         <div class="report-toolbar">
@@ -323,19 +323,19 @@
     </div>
 
     <!-- ─── TAB: MONTHLY ─── -->
-    <div id="tab-monthly" class="tab-content">
+    <div id="tab-monthly" class="tab-content {{ 'active' if active_tab == 'monthly' else '' }}">
         <div style="padding:2rem; text-align:center; color:var(--muted)">📊 Cargando métricas mensuales...</div>
     </div>
 
     <!-- ─── TAB: ANALYSIS ─── -->
-    <div id="tab-analysis" class="tab-content">
+    <div id="tab-analysis" class="tab-content {{ 'active' if active_tab == 'analysis' else '' }}">
         <div class="analysis-grid" id="analysis-content">
             <div style="color:var(--muted); padding:2rem">Cargando análisis técnico...</div>
         </div>
     </div>
 
     <!-- ─── TAB: ALERTAS ─── -->
-    <div id="tab-alerts" class="tab-content">
+    <div id="tab-alerts" class="tab-content {{ 'active' if active_tab == 'alerts' else '' }}">
         <div style="margin-bottom:1.5rem">
             <h2 style="color:var(--blue);margin:0 0 0.4rem">⚡ Registro de Alertas Configuradas</h2>
             <p style="color:var(--muted);margin:0;font-size:0.85rem">Tipos de alerta activos, condiciones de disparo y win rate histórico. Úsalo para decidir qué estrategias seguir según tu perfil de riesgo.</p>
@@ -372,18 +372,17 @@
                     <div style="color:#fff;font-size:1rem;font-weight:700;margin-top:0.2rem">65.5% WR (N=29)</div>
                     <div style="color:var(--muted);margin-top:0.2rem">RSI thresh especial: 48</div>
                 </div>
-                <div style="background:#0d1117;padding:0.75rem;border-radius:6px;border-left:3px solid #ff4444">
-                    <div style="color:#ff4444;font-weight:700">ETH — Descartado</div>
-                    <div style="color:var(--muted);margin-top:0.3rem">Win rate histórico</div>
-                    <div style="color:#fff;font-size:1rem;font-weight:700;margin-top:0.2rem">13.3% WR (-$87)</div>
-                    <div style="color:var(--muted);margin-top:0.2rem">Recomendado: eliminar del bot</div>
+                <div style="background:#0d1117;padding:0.75rem;border-radius:6px;border-left:3px solid var(--blue)">
+                    <div style="color:var(--blue);font-weight:700">ETH — Activo</div>
+                    <div style="color:var(--muted);margin-top:0.3rem">Niveles dinámicos activados</div>
+                    <div style="font-size:0.75rem; color:var(--muted)">Monitoreo institucional H1/H4 iniciado.</div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- ─── TAB: IA BUDGET ─── -->
-    <div id="tab-budget" class="tab-content">
+    <div id="tab-budget" class="tab-content {{ 'active' if active_tab == 'budget' else '' }}">
         <div style="margin-bottom:1.5rem">
             <h2 style="color:var(--blue);margin:0 0 0.4rem">💰 Consumo de APIs de IA</h2>
             <p style="color:var(--muted);margin:0;font-size:0.85rem">Máximo $10 USD/mes · 15 decisiones críticas/día. Claude Haiku para JSON, Gemini para narrativa.</p>
@@ -451,7 +450,7 @@
     </div>
 
     <!-- ─── TAB: FLUJO ─── -->
-    <div id="tab-flow" class="tab-content">
+    <div id="tab-flow" class="tab-content {{ 'active' if active_tab == 'flow' else '' }}">
         <div style="margin-bottom:1.5rem">
             <h2 style="color:var(--blue);margin:0 0 0.3rem">🔀 Flujo del Sistema — Embudo de Señales</h2>
             <p style="color:var(--muted);margin:0;font-size:0.82rem">De las APIs externas hasta la alerta en Telegram. Cada etapa filtra y enriquece la señal para minimizar consultas innecesarias a la IA.</p>
@@ -1267,39 +1266,38 @@
         }).join('');
     }
 
-    // Shadow Intel Simulator — JS puro, sin llamadas a APIs.
-    // Intervalo aleatorio entre 20 y 40 minutos → 1-3 actualizaciones/hora.
-    const SHADOW_MESSAGES = [
-        sym => `POC detectado en ${sym}. Zona de acumulación institucional activa.`,
-        sym => `Volumen anómalo en ${sym}. Posible Order Block en formación.`,
-        sym => `${sym} tocando soporte clave. Monitoreo activo activado.`,
-        sym => `Imbalance de liquidez detectado en ${sym}. Zona de interés marcada.`,
-        sym => `${sym}: RSI divergencia potencial en H4. Seguimiento pendiente.`,
-        sym => `Macro correlación DXY↓ favorece acumulación en ${sym}.`,
-    ];
+    // ─── INIT: Dashboard Router (V14.3) ───────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        const activeTab = "{{ active_tab }}";
+        console.log(`🚀 Terminal inicializada en vista: ${activeTab}`);
 
-    function scheduleShadowUpdate() {
-        const msMin = 20 * 60 * 1000;   // 20 min
-        const msMax = 40 * 60 * 1000;   // 40 min
-        const delay = msMin + Math.random() * (msMax - msMin);
-        setTimeout(() => {
-            const items = document.getElementById('memory-feed');
-            if (items) {
-                const symbols = ["ZEC", "TAO", "BTC"];
-                const sym = symbols[Math.floor(Math.random() * symbols.length)];
-                const msgFn = SHADOW_MESSAGES[Math.floor(Math.random() * SHADOW_MESSAGES.length)];
-                const now = new Date();
-                const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-                const newItem = document.createElement('div');
-                newItem.className = 'memory-item';
-                newItem.innerHTML = `<div class="memory-time">${timeStr}</div>${msgFn(sym)}`;
-                items.prepend(newItem);
-                // Mantener máx 8 entradas en el feed
-                while (items.children.length > 8) items.removeChild(items.lastChild);
+        // Inicialización base (siempre se corre para el header/sidebar)
+        fetchMacro();
+        setInterval(fetchMacro, 30000);
+
+        // Carga específica por pestaña
+        if (activeTab === 'live') {
+            fetchDashboard();
+            setInterval(fetchDashboard, 15000);
+        } else if (activeTab === 'reports') {
+            loadSavedDays();
+            // Si hay una fecha pre-cargada (ej: desde /report/YYYY-MM-DD), ejecutar reporte
+            const preloadDate = "{{ preload_date or '' }}";
+            if (preloadDate) {
+                document.getElementById('report-date').value = preloadDate;
+                setTimeout(() => runReport(false), 300);
             }
-            scheduleShadowUpdate(); // Reagendar para el siguiente intervalo
-        }, delay);
-    }
+        } else if (activeTab === 'monthly') {
+            fetchMonthlyPerformance();
+        } else if (activeTab === 'analysis') {
+            fetchAnalysis();
+        } else if (activeTab === 'alerts') {
+            loadAlertsMap();
+        } else if (activeTab === 'budget') {
+            loadAiBudget();
+        }
+    });
+
     scheduleShadowUpdate();
 </script>
 

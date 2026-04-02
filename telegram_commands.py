@@ -115,22 +115,22 @@ def check_user_queries(prices: dict):
                     continue
 
                 if "photo" in msg_obj and "/add_chart" in text:
-    # Expected caption: /add_chart SYMBOL TIMEFRAME
-    parts = text.split()
-    if len(parts) >= 3:
-        sym = parts[1].upper()
-        tf = parts[2].lower()
-        dest_path = f"chart_ideas/assets/image_{sym.lower()}_{tf}.png"
-        if _download_telegram_file(msg_obj["photo"][-1]["file_id"], dest_path):
-            _update_levels_json(sym, tf, dest_path)
-            send_telegram(f"✅ Imagen guardada para {sym} {tf}.")
-        else:
-            send_telegram("❌ Error al descargar la imagen.")
-    else:
-        send_telegram("⚠️ Uso: /add_chart SYMBOL TIMEFRAME en la descripción de la foto.")
-    continue
-if not text and "photo" not in msg_obj:
-    continue
+                    # Expected caption: /add_chart SYMBOL TIMEFRAME
+                    parts = text.split()
+                    if len(parts) >= 3:
+                        sym = parts[1].upper()
+                        tf = parts[2].lower()
+                        dest_path = f"chart_ideas/assets/image_{sym.lower()}_{tf}.png"
+                        if _download_telegram_file(msg_obj["photo"][-1]["file_id"], dest_path):
+                            _update_levels_json(sym, tf, dest_path)
+                            send_telegram(f"✅ Imagen guardada para {sym} {tf}.")
+                        else:
+                            send_telegram("❌ Error al descargar la imagen.")
+                    else:
+                        send_telegram("⚠️ Uso: /add_chart SYMBOL TIMEFRAME en la descripción de la foto.")
+                    continue
+                
+                if not text and "photo" not in msg_obj:
                     continue
 
                 t = text.lower()

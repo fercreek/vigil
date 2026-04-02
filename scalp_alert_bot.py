@@ -42,7 +42,9 @@ GLOBAL_CACHE = {
     },
     "last_rsi": {"SOL": 50.0, "BTC": 50.0, "TAO": 50.0, "ZEC": 50.0},
     "social_intel": {},  # {sym: {"score": 0.0, "last_update": 0}}
-    "executor": None # V5.0 Instance
+    "executor": None, # V5.0 Instance
+    "shadow_messages": [], # V15.0 Real Shadow Intel
+    "fear_greed": {"value": 50, "label": "Neutral"}
 }
 
 # --- POSITION TRACKER: evita alertas duplicadas para la misma posición abierta ---
@@ -98,8 +100,17 @@ def register_signal_event(sym: str, prices: dict) -> None:
                f"{safe_html(scan)}")
         _send_telegram(msg)
         print(f"[Multi-Signal] Scan enviado para {symbols_firing}")
+        add_shadow_intel("MULTI", f"Análisis unificado para {', '.join(symbols_firing)} completado.")
     except Exception as e:
-        print(f"[Multi-Signal] Error en market scan: {e}")
+        print(f"❌ Error en Multi-Signal scan: {e}")
+
+def add_shadow_intel(sym: str, msg: str):
+    """Añade un mensaje real a la cola de Shadow Intel para el dashboard."""
+    ts = datetime.now().strftime("%H:%M")
+    new_msg = {"ts": ts, "msg": f"🥷 <b>{sym}</b>: {msg}"}
+    msgs = GLOBAL_CACHE.get("shadow_messages", [])
+    msgs.insert(0, new_msg)
+    GLOBAL_CACHE["shadow_messages"] = msgs[:10] # Mantener los últimos 10
 
 def safe_html(text: str) -> str:
     """Delegado a alert_manager.safe_html — ver ese módulo."""
@@ -173,6 +184,12 @@ def update_dynamic_levels():
             elif key == "BTC":
                 LEVELS["BTC"]["resistance"] = round(r1, 0)
                 LEVELS["BTC"]["support2"] = round(s1, 0)
+            elif key == "ETH":
+                if "ETH" not in LEVELS: LEVELS["ETH"] = {}
+                LEVELS["ETH"]["long_zone"] = round(s1, 2)
+                LEVELS["ETH"]["resistance"] = round(r1, 2)
+                LEVELS["ETH"]["target1"] = round(p, 2)
+                LEVELS["ETH"]["long_sl"] = round(s1 * 0.98, 2)
             
             print(f"✅ {key} R1: ${(r1 or 0.0):,.2f} | S1: ${(s1 or 0.0):,.2f}")
         except Exception as e:
@@ -566,6 +583,20 @@ def get_prices() -> dict:
         
     res["USDT_D"] = GLOBAL_CACHE["global_metrics"]["usdt_d"]
     res["BTC_D"] = GLOBAL_CACHE["global_metrics"]["btc_d"]
+    
+    # 2.2 FEAR & GREED INDEX (Optimizado: 1x/10min)
+    if now - GLOBAL_CACHE["last_update"]["global_metrics"] > TTL_GLOBAL:
+        try:
+            fg_r = requests.get("https://api.alternative.me/fng/", timeout=5).json()
+            if fg_r.get("data"):
+                val = fg_r["data"][0]
+                GLOBAL_CACHE["fear_greed"] = {"value": int(val["value"]), "label": val["value_classification"]}
+                # Mensaje Shadow si hay extrema miedo
+                if int(val["value"]) < 20:
+                    add_shadow_intel("BTC", f"EXTREMO MIEDO ({val['value']}). Oportunidad de acumulación institucional detectada.")
+        except: pass
+    
+    res["FEAR_GREED"] = GLOBAL_CACHE["fear_greed"]
 
     # --- 2.5 MACRO SENTIMENT (SPY / OIL / DXY / VIX) ---
     if now - GLOBAL_CACHE["last_update"]["macro_metrics"] > TTL_MACRO:
@@ -627,6 +658,10 @@ def get_prices() -> dict:
                     "elliott": vals[7], "poc": vals[8], "macro": macro
                 }
                 GLOBAL_CACHE["last_update"]["indicators"][sym] = now
+                
+                # V15: Real Shadow Intel — Reportar POC al sidebar
+                if vals[8] > 0:
+                    add_shadow_intel(sym, f"POC detectado en ${vals[8]:,.2f}. Zona de interés institucional.")
             except Exception:
                 # Silencioso: Se mantiene la caché previa
                 pass
@@ -684,7 +719,7 @@ def check_strategies(prices: dict):
     phase = get_phase()
     usdt_d = prices.get("USDT_D", 8.0)
     
-    for sym in ["ZEC", "TAO"]:
+    for sym in ["ZEC", "TAO", "ETH"]:
         p = prices.get(sym, 0.0)
         rsi = prices.get(f"{sym}_RSI", 50.0)
         
@@ -784,6 +819,7 @@ def check_strategies(prices: dict):
             # --- MODO RESCATE TAO ---
             reversal_rsi = 28.0 if sym == "TAO" else 26.0
             if rsi <= reversal_rsi: # Umbral más bajo para "Hook"
+                register_signal_event(sym.replace("/USDT", ""), prices)
                 side = "LONG"
                 conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"))
                 conf_score = round(conf_score + social_adj, 2)

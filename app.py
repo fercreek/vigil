@@ -17,12 +17,36 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('index.html', preload_date=None)
+    return render_template('index.html', active_tab='live', preload_date=None)
+
+@app.route('/reports')
+def reports():
+    return render_template('index.html', active_tab='reports', preload_date=None)
+
+@app.route('/monthly')
+def monthly():
+    return render_template('index.html', active_tab='monthly', preload_date=None)
+
+@app.route('/analysis')
+def analysis():
+    return render_template('index.html', active_tab='analysis', preload_date=None)
+
+@app.route('/alerts')
+def alerts():
+    return render_template('index.html', active_tab='alerts', preload_date=None)
+
+@app.route('/budget')
+def budget():
+    return render_template('index.html', active_tab='budget', preload_date=None)
+
+@app.route('/flow')
+def flow():
+    return render_template('index.html', active_tab='flow', preload_date=None)
 
 @app.route('/report/<date_str>')
 def report_day(date_str):
     """URL directa para un reporte, ej: /report/2026-03-27"""
-    return render_template('index.html', preload_date=date_str)
+    return render_template('index.html', active_tab='reports', preload_date=date_str)
 
 @app.route('/api/stats')
 def get_stats():
@@ -368,6 +392,16 @@ def get_ai_budget():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/api/shadow_intel')
+def get_shadow_intel():
+    """Retorna mensajes reales de monitoreo neural (Shadow Sentinel)."""
+    try:
+        # Intentar obtener de la caché del bot o devolver vacíos.
+        msgs = scalp_alert_bot.GLOBAL_CACHE.get("shadow_messages", [])
+        return jsonify(msgs)
+    except Exception as e:
+        return jsonify([])
 
 if __name__ == '__main__':
     print("🚀 Dashboard de Scalping UI iniciado en http://localhost:5001")
