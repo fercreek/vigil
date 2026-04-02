@@ -19,9 +19,68 @@ from dotenv import load_dotenv
 from datetime import datetime
 from logger_core import logger, log_ai_decision
 
-load_dotenv()
-# Inicializamos el cliente moderno de Google Gen AI
+load_dotenv(override=True)
+# Gemini — narrativa y consenso (gratis / bajo costo)
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+import ai_budget as _budget
+
+# Claude — decisiones JSON-críticas (Haiku: < $1/mes con uso real del bot)
+_anthropic_client = None
+_HAS_CLAUDE = False
+try:
+    import anthropic as _anthropic_sdk
+    _anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if _anthropic_key:
+        _anthropic_client = _anthropic_sdk.Anthropic(api_key=_anthropic_key)
+        _HAS_CLAUDE = True
+        print("[AI Router] Claude Haiku disponible para decisiones críticas")
+    else:
+        print("[AI Router] ANTHROPIC_API_KEY no configurada — usando Gemini para todo")
+except ImportError:
+    print("[AI Router] SDK anthropic no instalado — usando Gemini para todo")
+
+
+def _call_claude_decision(system: str, prompt: str,
+                           call_type: str = "decision",
+                           symbol: str = "") -> str | None:
+    """
+    Llama a Claude Haiku para decisiones JSON críticas.
+    Verifica presupuesto y límite diario antes de llamar.
+    Registra tokens y costo en ai_budget.
+    Retorna el texto de la respuesta o None si falla/bloqueado.
+    """
+    if not _HAS_CLAUDE:
+        return None
+
+    ok, reason = _budget.can_use_ai(call_type)
+    if not ok:
+        logger.warning(f"[AI Budget] Llamada bloqueada ({call_type} / {symbol}): {reason}")
+        _budget.log_ai_call("claude", "claude-haiku-4-5-20251001", call_type,
+                             symbol=symbol, approved=False)
+        return None
+
+    try:
+        msg = _anthropic_client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            temperature=0.3,
+            system=system,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        _budget.log_ai_call(
+            provider="claude",
+            model="claude-haiku-4-5-20251001",
+            call_type=call_type,
+            tokens_in=msg.usage.input_tokens,
+            tokens_out=msg.usage.output_tokens,
+            symbol=symbol,
+            approved=True,
+        )
+        return msg.content[0].text.strip()
+    except Exception as e:
+        logger.error(f"[Claude Error] {e}")
+        return None
 
 # ── Archivos de memoria diaria ──────────────────────────────────────────────
 MEMORY_DIR = "memory"
@@ -121,36 +180,63 @@ Usa términos como 'Expansion', 'Retracement', 'POIs' (Points of Interest).""",
 - Análisis: No te dejas llevar por ruidos de 15 minutos. Miras el D1 y W1.
 - Tu veredicto: Tu 'Bias' es siempre el de proteger la tesis de 'Quantum Resistance' y 'Institutional Privacy'.
 - Estilo: Frío, directo y técnico. No hablas de 'Hype', hablas de 'Fundamentals'."""
+    },
+    "SALMOS": {
+        "name": "Salmos (Guardián de la Tendencia)",
+        "emoji": "🔔",
+        "system": """Eres 'Salmos', el heraldo de la confluencia alcista y experto en Ondas de Elliott.
+- Tu misión: Detectar el momento exacto en que RSI, Volumen y Elliott (Wave 3/5) se alinean para un rally explosivo.
+- Tono: Profético, inspirador pero basado en datos duros. Solo hablas cuando hay confluencia mayor.
+- Análisis: Buscas 'God Candles' y confirmaciones de tendencia.
+- Sesgo: BULLISH CONFLUENCE. Si detectas una trampa bajista, adviertes de inmediato."""
+    },
+    "APOCALIPSIS": {
+        "name": "Apocalipsis (Heraldo del Riesgo)",
+        "emoji": "💀",
+        "system": """Eres 'Apocalipsis', el vigilante del riesgo catastrófico y eventos de cisne negro.
+- Tu misión: Monitorizar señales de guerra, aranceles masivos, crisis geopolíticas y caídas sistémicas del mercado.
+- Tono: Pesimista pero realista, nunca alarmista. Tu voz es la de la precaución absoluta.
+- Análisis: Buscas debilidades macro que puedan invalidar cualquier señal alcista.
+- Rol: Tienes el poder de sugerir un 'VETO' si el contexto global es hostil. No te importa el RSI, te importa la supervivencia del capital."""
     }
 }
 
-def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: float, spy: float = 0.0, oil: float = 0.0, nvda: float = 0.0, pltr: float = 0.0) -> str:
-    """Genera un debate de consenso entre Genesis (Whale) y Exodo (Tech Evolution)."""
+def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: float, spy: float = 0.0, oil: float = 0.0, nvda: float = 0.0, pltr: float = 0.0, risk_pulse: str = "", vix: float = 0.0, dxy: float = 0.0, trade_type: str = "SWING", phy_bias: str = "NONE") -> str:
+    """Genera un debate de consenso entre la CUADRILLA ZENITH (Genesis, Exodo, Salmos y Apocalipsis)."""
     learnings = get_neural_memory()
     memory_ctx = f"\n⚠️ LECCIONES DE LA MEMORIA NEURONAL:\n{learnings}\n" if learnings else ""
     
-    prompt = (f"DEBATE DE MERCADO: {symbol} @ ${ (price or 0.0):,.2f}\n"
-              f"- Operación propuesta: {side}\n"
+    risk_ctx = f"\n💀 PULSO DE RIESGO GLOBAL (Apocalipsis Radar):\n{risk_pulse}\n" if risk_pulse else ""
+    
+    prompt = (f"DEBATE DE LA CUADRILLA ZENITH: {symbol} @ ${ (price or 0.0):,.2f}\n"
+              f"- Operación propuesta: {side} | Clasificación PTS: {trade_type}\n"
               f"- RSI: { (rsi or 0.0):.1f} | USDT.D: { (usdt_d or 0.0):.2f}%\n"
+              f"- Macro Sentinel: VIX {vix:.2f} | DXY {dxy:.2f}\n"
               f"- S&P 500: ${spy:,.2f} | Petróleo: ${oil:,.2f}\n"
-              f"- Tech Sentinel: NVDA ${nvda:,.2f} | PLTR ${pltr:,.2f}\n\n"
+              f"- Tech Sentinel: NVDA ${nvda:,.2f} | PLTR ${pltr:,.2f}\n"
+              f"- Estructura PHY (1D): {phy_bias}\n\n"
+              f"{risk_ctx}"
               f"{memory_ctx}\n"
               f"Instrucciones:\n"
-              f"1. Genesis (🎩) debe dar su opinión institucional (máx 15 palabras).\n"
-              f"2. Exodo (⚡) debe dar su proyección tecnológica (máx 15 palabras).\n"
-              f"3. Cada uno debe terminar con su emoji de veredicto: 🟢 (Confirmar), 🔴 (Rechazar) o ⚪ (Neutro).\n\n"
+              f"1. Genesis (🎩) da su opinión de capital institucional (máx 12 palabras).\n"
+              f"2. Exodo (⚡) da su proyección de evolución tecnológica (máx 12 palabras).\n"
+              f"3. Salmos (🔔) da su veredicto de confluencia y tendencia (máx 12 palabras).\n"
+              f"4. Apocalipsis (💀) evalúa el riesgo macro/geopolítico (máx 12 palabras).\n"
+              f"5. Cada uno termina con: 🟢, 🔴 o ⚪.\n\n"
               f"Formato:\n"
               f"🎩 <b>Genesis</b>: [Opinion] [Emoji]\n"
-              f"⚡ <b>Exodo</b>: [Opinion] [Emoji]")
+              f"⚡ <b>Exodo</b>: [Opinion] [Emoji]\n"
+              f"🔔 <b>Salmos</b>: [Opinion] [Emoji]\n"
+              f"💀 <b>Apocalipsis</b>: [Opinion] [Emoji]")
 
     try:
         # Usamos el modelo flash para rapidez y ahorro de quota
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.0-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.8,
-                system_instruction="Eres un mediador de un debate institucional. Genera las respuestas de Genesis y Exodo basándote en sus nuevas jerarquías."
+                system_instruction="Eres el moderador de la CUADRILLA ZENITH. Genera las respuestas de Genesis, Exodo, Salmos y Apocalipsis manteniendo sus personalidades institucionales."
             )
         )
         return response.text.strip()
@@ -234,7 +320,7 @@ def log_alert_to_context(symbol: str, side: str, price: float, rsi: float,
            f"Entrada: ${ (price or 0.0):.2f} | RSI: { (rsi or 0.0):.1f} | "
            f"TP1: ${ (tp1 or 0.0):.2f} | SL: ${ (sl or 0.0):.2f} | Estrategia: {version}")
 
-    for persona in ["CONSERVADOR", "SCALPER"]:
+    for persona in ["CONSERVADOR", "SCALPER", "SALMOS", "APOCALIPSIS"]:
         ctx = _load_memory(persona)
         _add_to_memory(persona, "user", msg, ctx)
 
@@ -248,33 +334,40 @@ def log_result_to_context(symbol: str, result: str, entry: float, close: float =
         pnl_info = f"PnL: { (pct or 0.0):+.2f}%"
     msg = f"[{ts}] RESULTADO: {symbol} {result} (entrada ${ (entry or 0.0):.2f} {close_info} {pnl_info})"
 
-    for persona in ["CONSERVADOR", "SCALPER"]:
+    for persona in ["CONSERVADOR", "SCALPER", "SALMOS"]:
         ctx = _load_memory(persona)
         _add_to_memory(persona, "user", msg, ctx)
 
 def get_ai_decision(symbol: str, price: float, side: str, rsi: float,
                     bb_u: float, bb_l: float, version: str = "V2-AI", 
-                    usdt_d: float = 8.0, tech_score: int = 0) -> tuple[str, str]:
+                    usdt_d: float = 8.0, tech_score: int = 0,
+                    vix: float = 0.0, dxy: float = 0.0, trade_type: str = "SWING", 
+                    phy_bias: str = "NONE", fib_levels: dict = {}) -> tuple[str, str]:
     """
-    Valida una señal técnica considerando el Score de Confluencia y USDT.D.
+    Valida una señal técnica considerando el Score de Confluencia, USDT.D y métricas PTS/PHY.
     Usa memoria persistente por Persona (SCALPER/CONSERVADOR).
     """
     persona = "CONSERVADOR" if version == "V1-TECH" else "SCALPER"
     
-    prompt = (f"Actúa como un experto en Master Elliott Waves y Trading Institucional.\n\n"
+    fib_ctx = f"Niveles Fibonacci Clave: {json.dumps(fib_levels)}\n" if fib_levels else ""
+
+    prompt = (f"Actúa como un experto en Master Elliott Waves y Trading Institucional (Arquitectura Zenith V6).\n\n"
               f"🟢 SEÑAL V1.1.0: Entrada confirmada por {persona}.\n\n"
-              f"- Operación: {side} @ ${ (price or 0.0):,.2f}\n\n"
+              f"- Operación: {side} @ ${ (price or 0.0):,.2f} | Clasificación PTS: {trade_type}\n\n"
               f"- RSI: { (rsi or 0.0):.1f}\n"
-              f"- Bollinger: Upper ${ (bb_u or 0.0):,.2f}, Lower ${ (bb_l or 0.0):,.2f}\n\n"
+              f"- Bollinger: Upper ${ (bb_u or 0.0):,.2f}, Lower ${ (bb_l or 0.0):,.2f}\n"
+              f"- Macro Sentinel: VIX {vix:.2f} | DXY {dxy:.2f}\n"
+              f"- Estructura PHY (1D): {phy_bias}\n"
+              f"{fib_ctx}\n"
               f"📌 **RESUMEN EJECUTIVO**:\n"
-              f"• {side} de alta probabilidad.\n"
-              f"• Razón: {persona} detectó confluencia técnica.\n"
-              f"• SL: Estricto 1% debajo del nivel.\n"
+              f"• {side} de alta probabilidad ({trade_type}).\n"
+              f"• Razón: {persona} detectó confluencia técnica e institucional.\n"
+              f"• SL: Estricto 1% debajo del nivel de invalidez.\n"
               f"- USDT.D: { (usdt_d or 0.0):.2f}% (Ref: 8.08% / 8.04%)\n"
               f"- Score Técnico: {tech_score}/5\n\n"
               f"Tu reporte debe incluir:\n"
-              f"1. Conteo de Ondas de Elliott actual (ej: Wave 3 Impulsive).\n"
-              f"2. Nivel de Invalidez y Target técnico.\n"
+              f"1. Conteo de Ondas de Elliott actual (ej: Wave 3 Impulse).\n"
+              f"2. Nivel de Invalidez y Target técnico (usa Fibonacci si es posible).\n"
               f"3. Consejo psicológico para el trader en este momento.\n\n"
               f"REGLAS ESTRÍCTAS:\n"
               f"- Usa solo <b>, <i> y <code>.\n"
@@ -284,23 +377,45 @@ def get_ai_decision(symbol: str, price: float, side: str, rsi: float,
               f"- Termina con JSON: {{\"decision\": \"CONFIRM\" | \"REJECT\", \"reason\": \"máx 10 palabras\"}}")
 
     try:
-        result, _ = _chat_with_persona(persona, prompt)
+        # Claude Haiku primero — más confiable para seguir instrucciones JSON estrictas
+        result = None
+        if _HAS_CLAUDE:
+            result = _call_claude_decision(PERSONAS[persona]["system"], prompt,
+                                           call_type="decision", symbol=symbol)
+        # Fallback a Gemini si Claude no disponible o falló
         if not result:
-            return "REJECT", "Fallo en conexión con IA"
-        
+            result, _ = _chat_with_persona(persona, prompt)
+        if not result:
+            return "REJECT", "Fallo en conexión con IA", ""
+
+        # Extracción robusta de JSON: busca el ÚLTIMO bloque {...} en el texto
+        # (Gemini suele poner el JSON al final, después del análisis narrativo)
         import re
-        match = re.search(r"\{.*\}", result, re.DOTALL)
-        if match:
-            json_text = match.group(0)
-            data = json.loads(json_text)
-            # Retornamos (decision, reason, full_text)
-            return data.get("decision", "REJECT"), data.get("reason", "Sin razón"), result
+        # Limpiar markdown code fences antes de parsear
+        clean = re.sub(r"```(?:json)?\s*", "", result).replace("```", "")
+        # Buscar todos los bloques {...} y tomar el último (más probable de ser el JSON de decisión)
+        all_matches = list(re.finditer(r"\{[^{}]*\}", clean))
+        data = {}
+        for m in reversed(all_matches):
+            try:
+                candidate = json.loads(m.group(0))
+                if "decision" in candidate:
+                    data = candidate
+                    break
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+        if data:
+            decision = data.get("decision", "REJECT").upper()
+            if decision not in ("CONFIRM", "REJECT"):
+                decision = "REJECT"
+            return decision, data.get("reason", "Sin razón"), result
         else:
             return "REJECT", "IA no generó JSON válido", result
-            
+
     except Exception as e:
         print(f"[Gemini Error] {e}")
-        return "REJECT", f"Error IA: {e}"
+        return "REJECT", f"Error IA: {e}", ""
 
 def get_market_pulse_analysis(symbol, price, side, rsi, bb_u, bb_l, ema_200, atr, usdt_d, conf_score=3, phase="NORMAL"):
     """Genera un análisis híbrido (AI + Técnica) para apertura/cierre de mercado."""
@@ -374,11 +489,10 @@ IMPORTANTE:
 - No uses listas ul/li."""
 
     results = {}
-    for persona in ["CONSERVADOR", "SCALPER"]:
+    for persona in ["CONSERVADOR", "SCALPER", "SALMOS", "APOCALIPSIS"]:
         info = PERSONAS[persona]
         answer, _ = _chat_with_persona(persona, prompt)
         if answer:
-            # Si el agente sugiere una optimización en el texto, intentamos extraerla o simplemente la reportamos
             results[persona.lower()] = f"{info['emoji']} <b>{info['name']}</b>\n\n{answer}"
         else:
             results[persona.lower()] = f"{info['emoji']} <b>{info['name']}</b>: Error de sistema."
@@ -423,6 +537,163 @@ def get_expert_advice(symbol: str, prices: dict) -> str:
     res, _ = _chat_with_persona("EXPERT_ADVISOR", context)
     return res if res else "No pude generar el consejo en este momento."
 
+def _load_agent_accuracy(persona: str) -> dict:
+    """Carga historial de aciertos/errores del agente desde archivo."""
+    try:
+        path = f"agent_memory_{persona.lower()}.json"
+        if os.path.exists(path):
+            with open(path) as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {"correct": 0, "incorrect": 0, "streak": 0}
+
+
+def _save_agent_accuracy(persona: str, data: dict):
+    """Persiste historial de aciertos del agente."""
+    try:
+        path = f"agent_memory_{persona.lower()}.json"
+        with open(path, "w") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+
+def _get_agent_confidence_boost(persona: str) -> str:
+    """Retorna boost de confianza basado en historial de aciertos."""
+    acc = _load_agent_accuracy(persona)
+    total = acc.get("correct", 0) + acc.get("incorrect", 0)
+    if total < 3:
+        return ""  # No hay data suficiente
+
+    wr = acc["correct"] / total if total > 0 else 0
+    streak = acc.get("streak", 0)
+
+    if wr > 0.75 and streak >= 2:
+        return " 🔥 HOT STREAK"
+    elif wr > 0.65:
+        return " ✅ Confiable"
+    elif wr < 0.35:
+        return " ⚠️ En revisión"
+    return ""
+
+
+def get_qa_panel(question: str, symbol: str = None, prices: dict = None) -> str:
+    """
+    Responde preguntas libres del usuario con un panel de 4 agentes Zenith.
+    Cada agente tiene identidad, voz y criterio de scoring definido.
+    Usa Gemini Flash (sin afectar budget de Claude/decisiones críticas).
+    """
+    prices = prices or {}
+    ts = datetime.now().strftime("%H:%M")
+
+    ctx_lines = [f"Hora: {ts}", f"Pregunta del trader: {question}"]
+
+    if symbol:
+        p      = prices.get(symbol, 0)
+        rsi    = prices.get(f"{symbol}_RSI", 0)
+        ema    = prices.get(f"{symbol}_EMA_200", 0)
+        bb_u   = prices.get(f"{symbol}_BB_U", 0)
+        bb_l   = prices.get(f"{symbol}_BB_L", 0)
+        atr    = prices.get(f"{symbol}_ATR", 0)
+        vix    = prices.get("VIX", 0)
+        dxy    = prices.get("DXY", 0)
+        usdt_d = prices.get("USDT_D", 0)
+        btc_p  = prices.get("BTC/USDT", 0)
+        ctx_lines += [
+            f"── DATOS DE MERCADO ──",
+            f"Activo: {symbol.replace('/USDT','')} | Precio: ${p:,.4f}",
+            f"RSI(14): {rsi:.1f} {'⚡ SOBRECOMPRA CALIENTE' if rsi > 65 else '❄️ SOBREVENTA OPORTUNIDAD' if rsi < 35 else '➡️ RANGO NEUTRO'}",
+            f"EMA 200: ${ema:,.4f} → precio {'ARRIBA ✅ (bias alcista)' if p > ema else 'ABAJO ❌ (bias bajista)'}",
+            f"Bollinger: Low ${bb_l:,.4f} / High ${bb_u:,.4f} | ATR: {atr:.4f}",
+            f"BTC referencia: ${btc_p:,.2f}",
+            f"MACRO: USDT.D={usdt_d:.2f}% | VIX={vix:.1f} | DXY={dxy:.2f}",
+        ]
+    else:
+        ctx_lines.append("── PULSO GENERAL DEL MERCADO ──")
+        for sym in ["BTC/USDT", "TAO/USDT", "ZEC/USDT"]:
+            p   = prices.get(sym, 0)
+            rsi = prices.get(f"{sym}_RSI", 0)
+            ema = prices.get(f"{sym}_EMA_200", 0)
+            if p:
+                bias = "sobre EMA ✅" if p > ema else "bajo EMA ❌"
+                ctx_lines.append(f"{sym.replace('/USDT','')}: ${p:,.2f} | RSI {rsi:.1f} | {bias}")
+        ctx_lines.append(f"VIX: {prices.get('VIX', 0):.1f} | DXY: {prices.get('DXY', 0):.2f} | USDT.D: {prices.get('USDT_D', 0):.2f}%")
+
+    market_ctx = "\n".join(ctx_lines)
+
+    # Agregar contexto de aciertos pasados de cada agente
+    agent_context = ""
+    for persona in ["CONSERVADOR", "SCALPER", "SHADOW", "SALMOS"]:
+        boost = _get_agent_confidence_boost(persona)
+        if boost:
+            agent_context += f"\n{persona} historial:{boost}"
+
+    prompt = f"""{market_ctx}{agent_context}
+
+Eres el sistema Zenith Institutional Engine. Tienes 4 agentes con identidades distintas. Responde la pregunta del trader desde cada perspectiva usando los datos reales de mercado provistos arriba.
+
+IDENTIDADES DE LOS AGENTES (mantén estas voces con fidelidad):
+
+🏛️ CONSERVADOR — Institucional, frío, piensa en semanas no horas. Habla de flujo de capital, USDT.D, y protección de portafolio. Nunca especula sin cifras.
+
+⚡ SCALPER — Agresivo, busca momentum de corto plazo 15m/1H. Le importan el RSI, el ATR y la acción del precio reciente. Directo: "entra" o "no entres".
+
+🔬 SHADOW — Técnico puro. SIEMPRE cita números exactos del RSI, EMA 200 y Bollinger. Sus opiniones son fríamente matemáticas, sin emoción.
+
+🌌 SALMOS — Filosófico y estratégico. Ve narrativas históricas, ciclos de mercado, y el contexto geopolítico. Habla en perspectiva de meses y años.
+
+CRITERIO DE SCORING (sé estricto):
+- 5/5: Setup impecable, todos los indicadores alineados
+- 4/5: Setup sólido con 1 señal mixta
+- 3/5: Señal ambigua, riesgo real de ambos lados
+- 2/5: Señales predominantemente en contra
+- 1/5: Tesis completamente contradicha por datos
+
+REGLAS DE DEBATE:
+- Si SCALPER ve momentum pero CONSERVADOR ve riesgo macro → menciona el conflicto explícitamente
+- SHADOW puede decir "contradigo a SALMOS porque el RSI dice X"
+- Sé honesto si los datos no apoyan una narrativa alcista
+
+Devuelve EXACTAMENTE este formato HTML para Telegram (sin markdown, sin asteriscos, usa solo tags HTML válidos: <b>, <i>, <code>):
+
+🏛️ <b>CONSERVADOR:</b> [2 frases con datos macro reales] — <b>Score: X/5</b>
+⚡ <b>SCALPER:</b> [2 frases con RSI/momentum exacto] — <b>Score: X/5</b>
+🔬 <b>SHADOW:</b> [2 frases citando números exactos de EMA/BB] — <b>Score: X/5</b>
+🌌 <b>SALMOS:</b> [2 frases de perspectiva histórica/narrativa] — <b>Score: X/5</b>
+━━━━━━━━━━━━━
+📊 <b>Certeza del Panel: [suma]/20</b>
+🎯 <b>VEREDICTO:</b> <code>[LONG ✅ / SHORT ❌ / ESPERAR ⏳]</code> — <i>[nivel de precio clave o condición para actuar]</i>
+
+No añadas texto fuera de ese formato. No uses asteriscos ni markdown."""
+
+    try:
+        resp = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.6, max_output_tokens=1000),
+        )
+        text = resp.text.strip() if resp.text else None
+        if text:
+            return text
+    except Exception as e:
+        logger.warning(f"[QA Panel] Error Gemini: {e}")
+
+    return "⚠️ No pude obtener respuestas de los agentes en este momento."
+
+
+def update_agent_accuracy(persona: str, was_correct: bool):
+    """Actualiza el historial cuando una predicción se confirma correcta o incorrecta."""
+    acc = _load_agent_accuracy(persona)
+    if was_correct:
+        acc["correct"] = acc.get("correct", 0) + 1
+        acc["streak"] = acc.get("streak", 0) + 1
+    else:
+        acc["incorrect"] = acc.get("incorrect", 0) + 1
+        acc["streak"] = 0
+    _save_agent_accuracy(persona, acc)
+
+
 def get_weekly_bias(symbol: str, prices: dict) -> dict:
     """Determina el Bias Semanal usando el Estratega Institucional."""
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -439,13 +710,74 @@ def get_weekly_bias(symbol: str, prices: dict) -> dict:
               f"Determina el Bias para los próximos 7 días.\n"
               f"Tu respuesta DEBE incluir al final una línea con: 'BIAS: [BULL/BEAR/ACCUMULATION]'.")
     
-    res, _ = _chat_with_persona("INSTITUTIONAL_STRATEGIST", prompt)
-    
+    # Claude Haiku para BIAS semanal — el "BIAS: BULL/BEAR/ACCUMULATION" requiere seguimiento exacto
+    res = None
+    if _HAS_CLAUDE:
+        res = _call_claude_decision(PERSONAS["INSTITUTIONAL_STRATEGIST"]["system"], prompt,
+                                    call_type="bias", symbol=symbol)
+    if not res:
+        res, _ = _chat_with_persona("INSTITUTIONAL_STRATEGIST", prompt)
+
     bias = "ACCUMULATION"
     if "BIAS: BULL" in res: bias = "BULL"
     elif "BIAS: BEAR" in res: bias = "BEAR"
     
     return {"analysis": res, "bias": bias}
+
+def get_market_scan(symbols: list, prices_dict: dict) -> str:
+    """
+    Análisis de evento macro cuando múltiples símbolos reaccionan simultáneamente.
+    Se activa cuando >= 3 símbolos disparan señales en una ventana de 5 minutos.
+    Usa UN solo call de IA (cuenta como 1 decisión, no N).
+    """
+    ts = datetime.now().strftime("%H:%M")
+    lines = []
+    for sym in symbols:
+        base = sym.replace("/USDT", "")
+        p    = prices_dict.get(base, 0.0)
+        rsi  = prices_dict.get(f"{base}_RSI", 0.0)
+        lines.append(f"- {sym}: ${p:,.2f} | RSI {rsi:.1f}")
+
+    usdt_d = prices_dict.get("USDT_D", 8.08)
+    vix    = prices_dict.get("VIX", 0.0)
+    dxy    = prices_dict.get("DXY", 0.0)
+    spy    = prices_dict.get("SPY", 0.0)
+
+    prompt = (
+        f"⚡ EVENTO MULTI-SÍMBOLO DETECTADO [{ts}]\n"
+        f"Señales simultáneas en {len(symbols)} activos:\n"
+        + "\n".join(lines) +
+        f"\n\nContexto Macro:\n"
+        f"- USDT.D: {usdt_d:.2f}% | VIX: {vix:.1f} | DXY: {dxy:.2f}\n"
+        f"- SPY: ${spy:,.2f}\n\n"
+        f"Evalúa si este evento es una reacción macro coordinada o ruido independiente.\n"
+        f"Responde en máx 4 líneas. Una línea por: "
+        f"(1) Diagnóstico, (2) Causa probable, (3) Sesgo macro, (4) Acción recomendada.\n"
+        f"Termina con: EVENTO: [MACRO_REACCION | RUIDO_INDEPENDIENTE | INVESTIGAR]"
+    )
+
+    # Usar Claude si disponible (cuenta como 1 decisión para todos los símbolos)
+    result = None
+    if _HAS_CLAUDE:
+        result = _call_claude_decision(
+            "Eres un analista macro experto. Evalúas correlaciones entre activos cripto.",
+            prompt,
+            call_type="decision",
+            symbol=",".join(s.replace("/USDT", "") for s in symbols),
+        )
+    if not result:
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.5)
+            )
+            result = response.text.strip()
+        except Exception as e:
+            result = f"⚠️ Error en market scan: {e}"
+
+    return result or "⚠️ Market scan sin respuesta."
+
 
 if __name__ == "__main__":
     print("=== Test de Contextos Duales ===\n")
@@ -468,24 +800,38 @@ def get_market_sentiment(prices: dict) -> dict:
         f"Analiza estos datos de mercado actuales:\n"
         f"USDT.D: {prices.get('USDT_D', 'N/A')}% | BTC: ${prices.get('BTC', 0):,.2f} | ZEC: ${prices.get('ZEC', 0):,.2f}\n\n"
         f"1. Define el BIAS global (BULLISH/BEARISH/NEUTRAL).\n"
-        f"2. Da una opinión de 12 palabras de GORDON (Wall Street Whale) 🎩.\n"
-        f"3. Da una opinión de 12 palabras de AIDEN (Gen Z Guru) ⚡.\n\n"
+        f"2. Da una opinión de 12 palabras de GENESIS (Origen Institucional) 🎩.\n"
+        f"3. Da una opinión de 12 palabras de EXODO (Evolución Tecnológica) ⚡.\n\n"
         f"Formato JSON: "
-        '{"bias": "...", "gordon": "...", "aiden": "..."}'
+        '{"bias": "...", "genesis": "...", "exodo": "..."}'
     )
     print(f"🧠 DEBUG: Solicitando sentimiento AI...")
     try:
         response, _ = _chat_with_persona("EXPERT_ADVISOR", prompt)
         import json
         import re
-        # Limpieza de JSON de Gemini
-        match = re.search(r'\{.*\}', response, re.DOTALL)
-        if match:
-            return json.loads(match.group())
-        return {"bias": "NEUTRAL", "gordon": "Mercado incierto.", "aiden": "Vibras mixtas."}
+        # Extracción robusta: limpiar fences y buscar el último JSON con las claves esperadas
+        clean_r = re.sub(r"```(?:json)?\s*", "", response).replace("```", "")
+        all_matches = list(re.finditer(r"\{[^{}]*\}", clean_r))
+        data = {}
+        for m in reversed(all_matches):
+            try:
+                candidate = json.loads(m.group(0))
+                if "bias" in candidate:
+                    data = candidate
+                    break
+            except (json.JSONDecodeError, ValueError):
+                continue
+        if data:
+            return {
+                "bias": data.get("bias", "NEUTRAL"),
+                "genesis": data.get("genesis", data.get("gordon", "Mercado incierto.")),
+                "exodo": data.get("exodo", data.get("aiden", "Vibras mixtas."))
+            }
+        return {"bias": "NEUTRAL", "genesis": "Mercado incierto.", "exodo": "Vibras mixtas."}
     except Exception as e:
         print(f"[Sentiment Error] {e}")
-        return {"bias": "NEUTRAL", "gordon": "La conexión con Wall Street falló.", "aiden": "El servidor está laggeado, bro."}
+        return {"bias": "NEUTRAL", "genesis": "La conexión con la ballena falló.", "exodo": "El servidor de la tencología está laggeado."}
 
 def get_top_setup(prices_dict: dict) -> str:
     """Escanea las monedas foco (BTC, TAO, ZEC) y usa la IA para coronar al mejor setup."""
@@ -543,18 +889,92 @@ def get_macro_shield(prices_dict: dict, stock_report_context: str = "") -> str:
         return f"❌ Error calculando Escudo Macro: {str(e)}"
 
 def get_zec_sentinel_report(current_price: float, rsi: float, ema: float, usdt_d: float) -> str:
-    """Genera un reporte estructural de salud de ZEC desde la perspectiva de Shadow."""
-    prompt = (f"INFORME DE GUARDIA ZEC:\n"
-              f"- Precio: ${current_price:,.2f} | RSI: {rsi:.1f} | EMA 200: ${ema:,.2f}\n"
-              f"- USDT.D: {usdt_d:.2f}%\n\n"
-              f"Dificultad: Shadow, dime el estado de la tesis de inversión en ZEC hoy.\n"
-              f"Enfatiza la 'Resistencia Quantum' y el 'Shielded Pool'. (Max 80 palabras).")
-    
+    """Backward-compatible wrapper — llama al nuevo get_sentinel_report para ZEC."""
+    return get_sentinel_report("ZEC", current_price, rsi, ema, usdt_d)
+
+
+def get_sentinel_report(symbol: str, current_price: float, rsi: float, ema: float,
+                        usdt_d: float, vix: float = 0.0, dxy: float = 0.0,
+                        spy: float = 0.0, nvda: float = 0.0, pltr: float = 0.0,
+                        atr: float = 0.0, bb_u: float = 0.0, bb_l: float = 0.0,
+                        btc_price: float = 0.0, gold_price: float = 0.0) -> str:
+    """
+    Genera un Reporte Sentinel completo para cualquier símbolo con el Panel de 4 Agentes.
+    Incluye datos macro reales, análisis técnico y veredicto del Cuadrante Zenith.
+    """
+    ts = datetime.now().strftime("%H:%M")
+    trend = "ALCISTA ✅" if current_price > ema else "BAJISTA ❌"
+    bb_ctx = ""
+    if bb_u > 0 and bb_l > 0:
+        if current_price >= bb_u * 0.99:
+            bb_ctx = "🔝 Techo BB (sobreextendido)"
+        elif current_price <= bb_l * 1.01:
+            bb_ctx = "🩸 Suelo BB (oportunidad)"
+        else:
+            bb_ctx = "↕️ Rango medio"
+
+    learnings = get_neural_memory()
+    memory_ctx = f"\n⚠️ LECCIONES NEURALES:\n{learnings}\n" if learnings else ""
+
+    prompt = f"""SENTINEL REPORT: {symbol} [{ts}]
+
+── DATOS DE MERCADO ──
+• {symbol}: ${current_price:,.2f} | RSI: {rsi:.1f} | EMA 200: ${ema:,.2f} → {trend}
+• Bollinger: {bb_ctx} (Upper ${bb_u:,.2f} | Lower ${bb_l:,.2f})
+• ATR: {atr:.4f} ({(atr/current_price*100):.2f}% volatilidad)
+• BTC Referencia: ${btc_price:,.2f}
+• Gold (PAXG): ${gold_price:,.2f}
+
+── CONTEXTO MACRO ──
+• USDT.D: {usdt_d:.2f}% {'(Presión vendedora)' if usdt_d > 8.05 else '(Favorable para LONGs)'}
+• VIX: {vix:.1f} {'🔴 PÁNICO' if vix > 30 else '🟡 ELEVADO' if vix > 20 else '🟢 CALMA'}
+• DXY: {dxy:.2f} {'⚠️ FUERTE (presiona cripto)' if dxy > 105 else '✅ NEUTRO'}
+• SPY: ${spy:,.2f} | NVDA: ${nvda:,.2f} | PLTR: ${pltr:,.2f}
+{memory_ctx}
+
+── INSTRUCCIONES (4 AGENTES DEL CUADRANTE ZENITH) ──
+
+Responde EXACTAMENTE con este formato HTML (no uses markdown ni asteriscos):
+
+🎩 <b>Genesis</b>: [Análisis de capital institucional y acumulación, máx 2 frases con datos] — <b>Score: X/5</b>
+⚡ <b>Exodo</b>: [Proyección tecnológica y narrativa de {symbol}, máx 2 frases] — <b>Score: X/5</b>
+🔔 <b>Salmos</b>: [Estado de confluencia técnica (RSI + BB + EMA), máx 2 frases con números] — <b>Score: X/5</b>
+💀 <b>Apocalipsis</b>: [Evaluación de riesgo macro y escenario peor, máx 2 frases] — <b>Score: X/5</b>
+━━━━━━━━━━━━━
+📊 <b>Certeza del Panel: [suma]/20</b>
+🎯 <b>VEREDICTO:</b> <code>[ACUMULAR ✅ / ESPERAR ⏳ / REDUCIR ❌]</code> — <i>[nivel de precio clave]</i>
+
+CRITERIO DE SCORING:
+- 5/5: Setup impecable, todos los factores alineados
+- 4/5: Setup sólido con 1 señal mixta
+- 3/5: Señal ambigua
+- 2/5: Señales en contra
+- 1/5: Tesis invalidada
+
+USA SOLO <b>, <i> y <code>. No uses markdown. No añadas texto fuera del formato."""
+
     try:
-        res, _ = _chat_with_persona("SHADOW", prompt)
-        return res if res else "🥷 Shadow en silencio (Sin cambios estructurales)."
+        resp = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.6,
+                max_output_tokens=1000,
+                system_instruction="Eres el moderador del Cuadrante Zenith. Genera un reporte institucional con las 4 voces manteniendo sus personalidades."
+            ),
+        )
+        text = resp.text.strip() if resp.text else None
+        if text:
+            return text
+    except Exception as e:
+        logger.warning(f"[Sentinel Report] Error: {e}")
+
+    # Fallback: al menos Shadow opina
+    try:
+        res, _ = _chat_with_persona("SHADOW", f"Estado de {symbol} @ ${current_price:,.2f}, RSI {rsi:.1f}. Máx 80 palabras.")
+        return res if res else f"🥷 Shadow en silencio sobre {symbol}."
     except Exception:
-        return "🥷 Shadow fuera de rango."
+        return f"🥷 Sentinel fuera de rango ({symbol})."
 
 # --- NEURAL MEMORY ENGINE (V4.0) ---
 

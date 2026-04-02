@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Flask Dashboard",
+      "runtimeExecutable": "venv/bin/python",
+      "runtimeArgs": ["app.py"],
+      "port": 5001
+    },
+    {
+      "name": "Scalp Alert Bot (main)",
+      "runtimeExecutable": "venv/bin/python",
+      "runtimeArgs": ["main.py"],
+      "port": null
+    },
+    {
+      "name": "Dev Watcher (hot-reload → main.py)",
+      "runtimeExecutable": "venv/bin/python",
+      "runtimeArgs": ["dev.py"],
+      "port": null
+    },
+    {
+      "name": "Swing Bot (ZEC / TAO)",
+      "runtimeExecutable": "venv/bin/python",
+      "runtimeArgs": ["swing_bot.py"],
+      "port": null
+    }
+  ]
+}

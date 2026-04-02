@@ -42,28 +42,28 @@ class ZenithExecutor:
             # Cantidad = Riesgo / Distancia SL
             raw_amount = risk_amount / sl_distance
             
+            if self.mode == "PAPER":
+                return round(raw_amount, 2) # Bypass precision logic for paper
+                
             # Formatear según los límites de Binance (load_markets)
-            # symbol para Binance CCXT en futuros es como 'TAO/USDT' o 'ZEC/USDT'
-            m_sym = f"{symbol}/USDT"
-            
-            # Cargamos mercados para precisiones
+            exchange_symbol = f"{symbol}/USDT"
             self.exchange.load_markets()
-            amount = self.exchange.amount_to_precision(m_sym, raw_amount)
+            amount = self.exchange.amount_to_precision(exchange_symbol, raw_amount)
             
             # Verificación de costo mínimo ($5.1 USDT en Binance)
             if float(amount) * entry < 5.1:
-                # Ajustamos al mínimo permitido si es necesario
                 min_amount = 5.2 / entry
-                amount = self.exchange.amount_to_precision(m_sym, min_amount)
+                amount = self.exchange.amount_to_precision(exchange_symbol, min_amount)
                 
             return float(amount)
         except Exception as e:
+            if self.mode == "PAPER": return 10.0 # Fallback Hardcoded for Paper
             print(f"⚠️ Error calculando cantidad: {e}")
             return 0.0
 
-    def execute_bracket_order(self, symbol, side, entry, tp1, tp2, sl):
-        """Ejecuta una orden Bracket (Entrada + TP + SL) en Binance."""
-        print(f"💸 [Zenith Executor] Iniciando ciclo de ejecución para {symbol} ({side})...")
+    def execute_bracket_order(self, symbol, side, entry, tp1, tp2, sl, tp3=None):
+        """Ejecuta una orden Bracket (Entrada + 3 TPs + SL) en Binance."""
+        print(f"💸 [Zenith Executor] Iniciando ciclo de ejecución V6 (3 TPs) para {symbol} ({side})...")
         
         balance = self.get_balance()
         if balance < 10:
@@ -74,68 +74,70 @@ class ZenithExecutor:
             return {"status": "FAILED", "reason": "Error en cálculo de tamaño (Size=0)"}
 
         exchange_symbol = f"{symbol}/USDT"
+        final_tp3 = tp3 if tp3 else round(entry * (1.1 if side == "LONG" else 0.9), 2)
         
         if self.mode == "PAPER":
-            report = (f"🛡️ [PAPER_MODE] Simulación de orden {side} en {symbol}\n"
+            report = (f"🛡️ [PAPER_MODE V6] Simulación de orden {side} en {symbol}\n"
                       f"💰 Cantidad: {amount} {symbol} (~${(amount * entry):.2f})\n"
-                      f"🎯 TP1: {tp1} | 🎯 TP2: {tp2}\n"
+                      f"🎯 TP1 (50%): {tp1} | 🎯 TP2 (25%): {tp2} | 🎯 TP3 (25%): {final_tp3}\n"
                       f"🛑 SL: {sl}")
             print(report)
             return {"status": "PAPER_EXECUTED", "id": f"PAPER_{int(time.time())}", "amount": amount}
 
         # --- LIVE EXECUTION MODE (REAL TRADING) ---
         try:
-            # 1. Configurar Apalancamiento (Aislado 5x por seguridad)
+            # 1. Configurar Apalancamiento e Isolation
+            # Si falla el leverage, ABORTAMOS — operar a leverage incorrecto es inaceptable
             try:
-                self.exchange.fapiPrivatePostMarginType({
-                    'symbol': symbol + 'USDT',
-                    'marginType': 'ISOLATED'
-                })
-            except: pass # Ya está configurado
-            
+                self.exchange.fapiPrivatePostMarginType({'symbol': symbol + 'USDT', 'marginType': 'ISOLATED'})
+            except Exception as e:
+                print(f"⚠️ [Executor] Margin type ya configurado o error no crítico: {e}")
             try:
                 self.exchange.set_leverage(5, exchange_symbol)
-            except: pass
+                print(f"✅ [Executor] Leverage x5 configurado para {exchange_symbol}")
+            except Exception as e:
+                err_msg = str(e)
+                print(f"❌ [Executor] FALLO CRÍTICO: No se pudo configurar leverage para {exchange_symbol}: {err_msg}")
+                return {"status": "FAILED", "reason": f"Leverage setup falló: {err_msg}"}
 
-            # 2. Orden de Entrada (MARKET para rapidez institucional)
+            # 2. Orden de Entrada (MARKET)
             order_side = 'buy' if side == 'LONG' else 'sell'
-            entry_order = self.exchange.create_order(
-                symbol=exchange_symbol,
-                type='market',
-                side=order_side,
-                amount=amount
-            )
-            
+            entry_order = self.exchange.create_order(symbol=exchange_symbol, type='market', side=order_side, amount=amount)
             entry_id = entry_order['id']
             print(f"✅ Entrada ejecutada: ID {entry_id}")
 
             # 3. Órdenes de Protección (Reduce-Only)
             exit_side = 'sell' if side == 'LONG' else 'buy'
             
-            # 3a. Take Profit 1 (70% de la posición)
+            # 3a. TP1 (50%)
             self.exchange.create_order(
-                symbol=exchange_symbol,
-                type='limit',
-                side=exit_side,
-                amount=amount * 0.7,
-                price=tp1,
-                params={'reduceOnly': True}
+                symbol=exchange_symbol, type='limit', side=exit_side, 
+                amount=amount * 0.5, price=tp1, params={'reduceOnly': True}
             )
 
-            # 3b. Stop Loss (Total)
+            # 3b. TP2 (25%)
             self.exchange.create_order(
-                symbol=exchange_symbol,
-                type='STOP_MARKET',
-                side=exit_side,
-                amount=amount,
-                params={'stopPrice': sl, 'reduceOnly': True}
+                symbol=exchange_symbol, type='limit', side=exit_side, 
+                amount=amount * 0.25, price=tp2, params={'reduceOnly': True}
+            )
+            
+            # 3c. TP3 (25%)
+            self.exchange.create_order(
+                symbol=exchange_symbol, type='limit', side=exit_side, 
+                amount=amount * 0.25, price=final_tp3, params={'reduceOnly': True}
+            )
+
+            # 3d. Stop Loss (Total)
+            self.exchange.create_order(
+                symbol=exchange_symbol, type='STOP_MARKET', side=exit_side, 
+                amount=amount, params={'stopPrice': sl, 'reduceOnly': True}
             )
 
             return {
                 "status": "LIVE_EXECUTED",
                 "id": entry_id,
                 "amount": amount,
-                "msg": f"✅ Orden Ejecutada en Binance. ID: {entry_id}"
+                "msg": f"✅ Orden V6 (3 TPs) Ejecutada. ID: {entry_id}"
             }
 
         except Exception as e:

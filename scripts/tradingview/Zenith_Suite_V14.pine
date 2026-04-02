@@ -1,0 +1,173 @@
+//@version=5
+// =============================================================================
+//  ZENITH SUITE V14 — Clean Signal System
+//  BTC: BB Width >= 3%  →  88.9% WR
+//  TAO: Williams <= -85  →  66.7% WR
+//  ZEC: ADX >= 20 (RSI 48)  →  65.5% WR
+//  ETH: BLOQUEADO (13.3% WR)
+// =============================================================================
+indicator("Zenith V14", overlay=true, max_lines_count=10, max_labels_count=30)
+
+// ─── INPUTS ──────────────────────────────────────────────────────────────────
+ema_len  = input.int(200,   "EMA Period")
+bb_len   = input.int(20,    "BB Period")
+bb_mult  = input.float(2.0, "BB Mult",   step=0.1)
+rsi_len  = input.int(14,    "RSI Period")
+atr_len  = input.int(14,    "ATR Period")
+atr_sl   = input.float(2.0, "ATR x SL",  step=0.1)
+atr_tp1  = input.float(2.0, "ATR x TP1", step=0.1)
+atr_tp2  = input.float(3.5, "ATR x TP2", step=0.1)
+use_4h   = input.bool(true, "Filtro Macro 4H")
+zone_pct = input.float(2.5, "BB Zone %", step=0.5)
+
+// ─── PERFIL POR SÍMBOLO ───────────────────────────────────────────────────────
+is_btc = syminfo.basecurrency == "BTC"
+is_tao = syminfo.basecurrency == "TAO"
+is_zec = syminfo.basecurrency == "ZEC"
+is_eth = syminfo.basecurrency == "ETH"
+
+rsi_thresh = is_zec ? 48.0 : 42.0
+use_bbw    = is_btc
+use_willr  = is_tao
+use_adx    = is_zec
+eth_block  = is_eth
+
+// ─── CÁLCULOS ────────────────────────────────────────────────────────────────
+ema200 = ta.ema(close, ema_len)
+[bb_mid, bb_u, bb_l] = ta.bb(close, bb_len, bb_mult)
+rsi    = ta.rsi(close, rsi_len)
+atr    = ta.atr(atr_len)
+
+rsi_rising = rsi > rsi[1]
+bbw        = (bb_u - bb_l) / bb_mid * 100
+hh14       = ta.highest(high, 14)
+ll14       = ta.lowest(low, 14)
+willr      = -100.0 * (hh14 - close) / (hh14 - ll14)
+[dip, dim, adx_val] = ta.dmi(14, 14)
+
+ema4h      = request.security(syminfo.tickerid, "240", ta.ema(close, ema_len), lookahead=barmerge.lookahead_off)
+bull_1h    = close > ema200
+bull_4h    = close > ema4h
+macro_bull = use_4h ? (bull_1h and bull_4h) : bull_1h
+
+// ─── FILTROS ─────────────────────────────────────────────────────────────────
+bbw_ok    = not use_bbw   or bbw >= 3.0
+willr_ok  = not use_willr or willr <= -85.0
+adx_ok    = not use_adx   or adx_val >= 20.0
+filter_ok = bbw_ok and willr_ok and adx_ok
+
+// ─── SEÑALES ─────────────────────────────────────────────────────────────────
+in_zone   = close <= bb_l * (1.0 + zone_pct / 100.0)
+is_setup  = macro_bull and in_zone and rsi <= rsi_thresh and not eth_block
+is_signal = is_setup and rsi_rising and filter_ok
+is_strong = is_signal and rsi <= 30
+is_v3     = bull_4h and not macro_bull and rsi <= 30 and rsi_rising and in_zone and not eth_block
+
+// ─── SL / TP ─────────────────────────────────────────────────────────────────
+sl_dist  = math.max(atr * atr_sl, close * 0.007)
+long_sl  = close - sl_dist
+long_tp1 = close + sl_dist * atr_tp1
+long_tp2 = close + sl_dist * atr_tp2
+
+// ─── PLOT: EMA ───────────────────────────────────────────────────────────────
+plot(ema200, "EMA 200", color=macro_bull ? color.new(color.green, 25) : color.new(color.red, 25), linewidth=2)
+
+// ─── PLOT: BOLLINGER BANDS ───────────────────────────────────────────────────
+bb_u_p = plot(bb_u, "BB Upper", color=color.new(color.gray, 70))
+bb_l_p = plot(bb_l, "BB Lower", color=color.new(color.gray, 70))
+fill(bb_u_p, bb_l_p, color.new(color.blue, 94))
+
+// Zona verde de entrada (solo visible en BULL)
+zone_top_val = macro_bull ? bb_l * (1.0 + zone_pct / 100.0) : na
+zone_p = plot(zone_top_val, "Zona", color=color.new(color.green, 80), style=plot.style_linebr)
+fill(zone_p, bb_l_p, color.new(color.green, 93))
+
+// ─── FONDO ───────────────────────────────────────────────────────────────────
+bgcolor(not macro_bull               ? color.new(color.red,    97) : na)
+bgcolor(is_setup and not is_signal   ? color.new(color.yellow, 92) : na)
+bgcolor(is_signal and not is_strong  ? color.new(color.green,  88) : na)
+bgcolor(is_strong                    ? color.new(color.lime,   82) : na)
+
+// ─── SHAPES ──────────────────────────────────────────────────────────────────
+plotshape(is_setup and not is_signal, title="Setup",  style=shape.triangleup, location=location.belowbar, color=color.new(color.orange, 20), size=size.tiny)
+plotshape(is_signal and not is_strong, title="V1",    style=shape.labelup,    location=location.belowbar, color=color.new(color.green, 0),  text="LONG",   textcolor=color.white, size=size.small)
+plotshape(is_strong,                  title="Strong", style=shape.labelup,    location=location.belowbar, color=color.new(color.lime, 0),   text="LONG!!", textcolor=color.black, size=size.normal)
+plotshape(is_v3,                      title="V3",     style=shape.labelup,    location=location.belowbar, color=color.new(color.yellow, 0), text="V3",     textcolor=color.black, size=size.small)
+
+// ─── LABEL DE ENTRADA ────────────────────────────────────────────────────────
+var label entry_lbl = na
+label.delete(entry_lbl)
+
+if is_signal or is_v3
+    sig_str  = is_strong ? "STRONG" : is_v3 ? "V3 REV" : "V1 LONG"
+    body_str = str.format("{0}\nENTRY  {1}\nTP1    {2}\nTP2    {3}\nSL     {4}", sig_str, str.tostring(math.round(close, 2)), str.tostring(math.round(long_tp1, 2)), str.tostring(math.round(long_tp2, 2)), str.tostring(math.round(long_sl, 2)))
+    lbl_col  = is_strong ? color.new(color.lime, 20) : is_v3 ? color.new(color.yellow, 20) : color.new(color.green, 20)
+    entry_lbl := label.new(bar_index + 2, low - sl_dist * 0.5, body_str, color=lbl_col, textcolor=color.white, style=label.style_label_upper_left, size=size.normal)
+
+// ─── LÍNEAS TP/SL ────────────────────────────────────────────────────────────
+var line ln_tp1 = na
+var line ln_tp2 = na
+var line ln_sl  = na
+
+if is_signal or is_v3
+    line.delete(ln_tp1)
+    line.delete(ln_tp2)
+    line.delete(ln_sl)
+    ln_tp1 := line.new(bar_index, long_tp1, bar_index + 40, long_tp1, color=color.green, width=2, style=line.style_dashed)
+    ln_tp2 := line.new(bar_index, long_tp2, bar_index + 40, long_tp2, color=color.blue,  width=2, style=line.style_dashed)
+    ln_sl  := line.new(bar_index, long_sl,  bar_index + 40, long_sl,  color=color.red,   width=2, style=line.style_dashed)
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+if barstate.islast
+    var table t = table.new(position.top_right, 2, 9, bgcolor=color.new(color.black, 10), border_color=color.new(color.gray, 40), border_width=1, frame_color=color.new(color.aqua, 20), frame_width=2)
+
+    hdr_bg  = is_eth ? color.new(color.red, 40) : macro_bull ? color.new(color.green, 45) : color.new(color.red, 55)
+    hdr_txt = is_eth ? "ETH BLOQUEADO" : macro_bull ? "BULL  SEÑALES ON" : "BEAR  SIN SEÑALES"
+    table.cell(t, 0, 0, "ZENITH V14", text_color=color.white, text_size=size.normal, bgcolor=hdr_bg)
+    table.cell(t, 1, 0, hdr_txt,      text_color=color.white, text_size=size.normal, bgcolor=hdr_bg)
+
+    estado     = is_strong ? "STRONG SIGNAL" : is_signal ? "LONG CONFIRMADO" : is_v3 ? "V3 REVERSAL" : is_setup ? "SETUP - wait" : macro_bull ? "Esperando zona" : "Bear - no operar"
+    estado_col = is_signal or is_strong ? color.lime : is_v3 ? color.yellow : is_setup ? color.orange : color.silver
+    table.cell(t, 0, 1, "Estado", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 1, estado,   text_color=estado_col,   text_size=size.small)
+
+    rsi_col = rsi <= 30 ? color.lime : rsi <= rsi_thresh ? color.green : color.silver
+    rsi_str = str.format("RSI {0}  {1}  lim {2}", str.tostring(math.round(rsi, 1)), rsi_rising ? "sube" : "baja", str.tostring(rsi_thresh, "#"))
+    table.cell(t, 0, 2, "RSI",   text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 2, rsi_str, text_color=rsi_col,      text_size=size.small)
+
+    dist_pct = math.round((close - bb_l) / bb_l * 100, 1)
+    zone_col = in_zone ? color.green : color.silver
+    zone_str = in_zone ? str.format("EN ZONA  +{0}%", str.tostring(dist_pct)) : str.format("+{0}% sobre BB", str.tostring(dist_pct))
+    table.cell(t, 0, 3, "BB Zone", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 3, zone_str,  text_color=zone_col,     text_size=size.small)
+
+    filt_val = use_bbw ? str.format("BBW {0}%", str.tostring(math.round(bbw, 1))) : use_willr ? str.format("WR {0}", str.tostring(math.round(willr, 1))) : use_adx ? str.format("ADX {0}", str.tostring(math.round(adx_val, 1))) : "Sin filtro"
+    filt_str = str.format("{0}  {1}", filt_val, filter_ok ? "OK" : "falta")
+    filt_col = filter_ok ? color.green : color.orange
+    table.cell(t, 0, 4, "Filtro",  text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 4, filt_str,  text_color=filt_col,     text_size=size.small)
+
+    show_lvl = is_signal or is_v3
+    tp1_col  = show_lvl ? color.green  : color.new(color.gray, 50)
+    tp2_col  = show_lvl ? color.blue   : color.new(color.gray, 50)
+    sl_col   = show_lvl ? color.red    : color.new(color.gray, 50)
+    tp1_str  = show_lvl ? str.tostring(math.round(long_tp1, 2)) : "--"
+    tp2_str  = show_lvl ? str.tostring(math.round(long_tp2, 2)) : "--"
+    sl_str   = show_lvl ? str.tostring(math.round(long_sl,  2)) : "--"
+    table.cell(t, 0, 5, "TP1", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 5, tp1_str, text_color=tp1_col,   text_size=size.small)
+    table.cell(t, 0, 6, "TP2", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 6, tp2_str, text_color=tp2_col,   text_size=size.small)
+    table.cell(t, 0, 7, "SL",  text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 7, sl_str,  text_color=sl_col,    text_size=size.small)
+
+    prof_str = is_btc ? "BTC  BB Width  88.9% WR" : is_tao ? "TAO  Williams  66.7% WR" : is_zec ? "ZEC  ADX  65.5% WR" : is_eth ? "ETH AVOID  13.3% WR" : "BASE"
+    table.cell(t, 0, 8, "Perfil",  text_color=color.new(color.gray, 30), text_size=size.tiny)
+    table.cell(t, 1, 8, prof_str,  text_color=is_eth ? color.red : color.new(color.gray, 20), text_size=size.tiny)
+
+// ─── ALERTAS ─────────────────────────────────────────────────────────────────
+alertcondition(is_strong,                   "Zenith - STRONG",  "STRONG SIGNAL | {{ticker}} @ {{close}}")
+alertcondition(is_signal and not is_strong, "Zenith - V1 Long", "V1 LONG | {{ticker}} @ {{close}}")
+alertcondition(is_v3,                       "Zenith - V3",      "V3 REVERSAL | {{ticker}} @ {{close}}")
+alertcondition(is_setup and not is_signal,  "Zenith - Setup",   "SETUP FORMANDO | {{ticker}} @ {{close}}")

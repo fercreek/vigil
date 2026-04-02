@@ -1,0 +1,297 @@
+//@version=5
+// =============================================================================
+//  ZENITH TRADING SUITE V13 — Auto-Calibrated per Symbol
+//  Estrategia: V1-TECH LONG FOCUS (BTC / TAO / ZEC)
+//
+//  El script detecta el ticker automáticamente y aplica el perfil óptimo:
+//    BTC  → BB Width ≥ 3%       → 88.9% WR backtest (N=9)
+//    TAO  → Williams %R ≤ -85   → 66.7% WR backtest (N=6)
+//    ZEC  → ADX ≥ 20, RSI ≤ 48 → 65.5% WR backtest (N=29)
+//    ETH  → ⛔ NO OPERAR         → 13.3% WR descartado
+//    Otro → Sin filtro extra (base: 56% WR en BTC forward sim)
+//
+//  Timeframe recomendado: 1H
+//  Backtest: 365 días | 2025-03-29 → 2026-03-29
+// =============================================================================
+indicator("Zenith Suite V13 — Auto-Calibrated", overlay=true, max_lines_count=10, max_labels_count=50)
+
+// ─── INPUTS ──────────────────────────────────────────────────────────────────
+grp_core = "⚙️ Core Indicators"
+ema_len  = input.int(200,  "EMA Period",  group=grp_core, minval=1)
+bb_len   = input.int(20,   "BB Period",   group=grp_core, minval=1)
+bb_mult  = input.float(2.0,"BB Mult",     group=grp_core, step=0.1)
+rsi_len  = input.int(14,   "RSI Period",  group=grp_core, minval=1)
+atr_len  = input.int(14,   "ATR Period",  group=grp_core, minval=1)
+atr_sl   = input.float(2.0,"ATR × SL",   group=grp_core, step=0.1)
+atr_tp1  = input.float(2.0,"ATR × TP1",  group=grp_core, step=0.1)
+atr_tp2  = input.float(3.5,"ATR × TP2",  group=grp_core, step=0.1)
+
+grp_sym = "🎯 Symbol Profile"
+auto_profile = input.bool(true, "Auto-detect symbol profile (BTC/TAO/ZEC)",
+                           tooltip="ON: aplica filtros calibrados automáticamente según el ticker.\nOFF: usa configuración manual abajo.",
+                           group=grp_sym)
+
+grp_manual = "🔧 Manual Override (solo si Auto está OFF)"
+man_rsi_thresh  = input.float(42.0,  "RSI Threshold",      group=grp_manual, minval=20, maxval=60)
+man_use_bbw     = input.bool(false,  "Usar BB Width ≥ X%", group=grp_manual)
+man_bbw_thresh  = input.float(3.0,   "Min BB Width %",     group=grp_manual, step=0.5)
+man_use_willr   = input.bool(false,  "Usar Williams ≤ X",  group=grp_manual)
+man_willr_t     = input.float(-85.0, "Max Williams %R",    group=grp_manual, step=5.0)
+man_use_adx     = input.bool(false,  "Usar ADX ≥ X",       group=grp_manual)
+man_adx_thresh  = input.float(20.0,  "Min ADX",            group=grp_manual, step=5.0)
+
+grp_tf = "📡 Macro Trend (4H)"
+ema4h_len = input.int(200,  "4H EMA Period", group=grp_tf)
+use_4h    = input.bool(true, "Require Macro BULL (1H + 4H)",
+                        tooltip="Recomendado ON. Solo opera cuando ambas EMAs apuntan arriba.", group=grp_tf)
+
+grp_vis = "🎨 Visuals"
+show_dash = input.bool(true, "Show Dashboard", group=grp_vis)
+show_tps  = input.bool(true, "Show TP/SL Lines", group=grp_vis)
+
+// ─── SYMBOL AUTO-DETECTION ───────────────────────────────────────────────────
+// syminfo.basecurrency = "BTC", "TAO", "ZEC", "ETH", etc.
+is_btc = syminfo.basecurrency == "BTC"
+is_tao = syminfo.basecurrency == "TAO"
+is_zec = syminfo.basecurrency == "ZEC"
+is_eth = syminfo.basecurrency == "ETH"
+
+// Auto-profile parameters
+// RSI threshold: ZEC uses 48, all others 42
+auto_rsi_thresh = is_zec ? 48.0 : 42.0
+
+// Which filter to apply per symbol
+// BTC → BB Width;  TAO → Williams %R;  ZEC → ADX;  other → no extra filter
+auto_use_bbw   = is_btc
+auto_use_willr = is_tao
+auto_use_adx   = is_zec
+
+// Thresholds are fixed from backtest (not overridden by user in auto mode)
+bbw_thresh   = 3.0    // BTC: 88.9% WR
+willr_thresh = -85.0  // TAO: 66.7% WR
+adx_thresh   = 20.0   // ZEC: 65.5% WR
+
+// Resolve active config
+rsi_thresh  = auto_profile ? auto_rsi_thresh : man_rsi_thresh
+use_bbw     = auto_profile ? auto_use_bbw   : man_use_bbw
+use_willr   = auto_profile ? auto_use_willr : man_use_willr
+use_adx     = auto_profile ? auto_use_adx   : man_use_adx
+eff_bbw_t   = auto_profile ? bbw_thresh     : man_bbw_thresh
+eff_willr_t = auto_profile ? willr_thresh   : man_willr_t
+eff_adx_t   = auto_profile ? adx_thresh     : man_adx_thresh
+
+// Derive profile label for dashboard
+profile_label = auto_profile ?
+    (is_btc ? "BTC → BB Width" :
+     is_tao ? "TAO → Williams" :
+     is_zec ? "ZEC → ADX" :
+     is_eth ? "⛔ ETH AVOID" : "Base (no filter)") :
+    "Manual"
+
+// ─── CORE CALCULATIONS ───────────────────────────────────────────────────────
+ema200 = ta.ema(close, ema_len)
+[bb_mid, bb_u, bb_l] = ta.bb(close, bb_len, bb_mult)
+rsi    = ta.rsi(close, rsi_len)
+atr    = ta.atr(atr_len)
+rsi_rising = rsi > rsi[1]
+
+// BB Width %
+bbw = (bb_u - bb_l) / bb_mid * 100
+
+// Williams %R (14-period)
+hh14  = ta.highest(high, 14)
+ll14  = ta.lowest(low, 14)
+willr = -100.0 * (hh14 - close) / (hh14 - ll14)
+
+// ADX (14-period)
+[di_plus, di_minus, adx_val] = ta.dmi(14, 14)
+
+// 4H EMA macro filter
+ema4h = request.security(syminfo.tickerid, "240",
+        ta.ema(close, ema4h_len), lookahead=barmerge.lookahead_off)
+
+// ─── TREND ───────────────────────────────────────────────────────────────────
+bull_1h    = close > ema200
+bull_4h    = close > ema4h
+macro_bull = use_4h ? (bull_1h and bull_4h) : bull_1h
+
+// ─── CALIBRATED FILTERS ──────────────────────────────────────────────────────
+bbw_ok   = use_bbw   ? bbw >= eff_bbw_t   : true
+willr_ok = use_willr ? willr <= eff_willr_t : true
+adx_ok   = use_adx   ? adx_val >= eff_adx_t : true
+
+// All active filters must pass (AND logic within the assigned filter)
+filter_pass = bbw_ok and willr_ok and adx_ok
+
+// ─── ENTRY CONDITIONS ────────────────────────────────────────────────────────
+near_bb_l = close <= bb_l * 1.015
+
+// V1-TECH LONG: primary — requires macro BULL
+long_v1 = macro_bull and near_bb_l and rsi <= rsi_thresh and rsi_rising and filter_pass
+
+// V3 Reversal: extreme oversold RSI ≤ 30, filters NOT required (emergency signal)
+long_v3 = (not use_4h or bull_4h) and rsi <= 30 and rsi_rising and near_bb_l
+
+// ETH warning: suppress V1 signals, allow V3 only as warning
+eth_block = is_eth and auto_profile  // Block V1 on ETH when auto mode
+
+buy_signal = (long_v1 and not eth_block) or long_v3
+
+// ─── SL / TP ─────────────────────────────────────────────────────────────────
+sl_dist  = math.max(atr * atr_sl, close * 0.007)
+long_sl  = close - sl_dist
+long_tp1 = close + sl_dist * atr_tp1
+long_tp2 = close + sl_dist * atr_tp2
+
+// ─── VISUALS: EMA + BB ───────────────────────────────────────────────────────
+ema_col = macro_bull ? color.new(color.green, 20) : color.new(color.red, 20)
+plot(ema200, "EMA 200", color=ema_col, linewidth=2)
+
+bb_u_p = plot(bb_u, "BB Upper", color=color.new(color.gray, 70), linewidth=1)
+bb_l_p = plot(bb_l, "BB Lower", color=color.new(color.gray, 70), linewidth=1)
+fill(bb_u_p, bb_l_p, color=color.new(color.blue, 94))
+
+// ─── VISUALS: SIGNALS ────────────────────────────────────────────────────────
+plotshape(long_v1 and not eth_block, "V1 LONG",
+          shape.labelup, location.belowbar, color.new(color.lime, 0),
+          text="V1▲", textcolor=color.black, size=size.small)
+
+plotshape(long_v3 and not long_v1,  "V3 REVERSAL",
+          shape.labelup, location.belowbar, color.new(color.yellow, 0),
+          text="V3▲", textcolor=color.black, size=size.small)
+
+// ETH warning label
+plotshape(is_eth and auto_profile and near_bb_l and rsi <= 45, "ETH AVOID",
+          shape.xcross, location.belowbar, color.new(color.red, 0),
+          size=size.tiny)
+
+// ─── VISUALS: TP/SL LINES ────────────────────────────────────────────────────
+var line line_tp1 = na
+var line line_tp2 = na
+var line line_sl  = na
+
+if buy_signal and show_tps
+    line.delete(line_tp1)
+    line.delete(line_tp2)
+    line.delete(line_sl)
+    line_tp1 := line.new(bar_index, long_tp1, bar_index + 40, long_tp1,
+                         color=color.new(color.green, 0), width=2, style=line.style_dashed)
+    line_tp2 := line.new(bar_index, long_tp2, bar_index + 40, long_tp2,
+                         color=color.new(color.blue,  0), width=2, style=line.style_dashed)
+    line_sl  := line.new(bar_index, long_sl,  bar_index + 40, long_sl,
+                         color=color.new(color.red,   0), width=2, style=line.style_dashed)
+
+// ─── BACKGROUND: highlight near-signal bars ───────────────────────────────────
+// Subtle green glow when all conditions except filter are met
+pre_signal = macro_bull and near_bb_l and rsi <= rsi_thresh and rsi_rising
+bgcolor(pre_signal and not buy_signal ? color.new(color.yellow, 95) : na,
+        title="Pre-Signal Glow")
+bgcolor(buy_signal ? color.new(color.green, 90) : na,
+        title="Signal Bar")
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+if show_dash and barstate.islast
+    var table t = table.new(position.top_right, 2, 13,
+                            bgcolor=color.new(color.black, 25),
+                            border_color=color.new(color.gray, 55),
+                            border_width=1,
+                            frame_color=color.new(color.aqua, 30),
+                            frame_width=1)
+
+    // ── Header ──
+    header_bg = is_eth and auto_profile ? color.new(color.red, 50) : color.new(color.navy, 40)
+    table.cell(t, 0, 0, "ZENITH V13",      text_color=color.aqua,  text_size=size.small, bgcolor=header_bg)
+    table.cell(t, 1, 0, "AUTO-CALIBRATED", text_color=color.white, text_size=size.small, bgcolor=header_bg)
+
+    // ── Symbol Profile ──
+    prof_col = is_eth and auto_profile ? color.red :
+               auto_profile           ? color.lime : color.yellow
+    table.cell(t, 0, 1, "Profile",       text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 1, profile_label,   text_color=prof_col,   text_size=size.tiny)
+
+    // ── RSI Threshold ──
+    table.cell(t, 0, 2, "RSI Threshold", text_color=color.gray,   text_size=size.tiny)
+    table.cell(t, 1, 2, "≤ " + str.tostring(rsi_thresh, "#.#"),
+               text_color=color.white, text_size=size.tiny)
+
+    // ── Macro Trend ──
+    macro_label = macro_bull ? "BULL 🟢" : (bull_1h ? "NEUTRAL ⚡" : "BEAR 🔴")
+    macro_col   = macro_bull ? color.green : (bull_1h ? color.yellow : color.red)
+    table.cell(t, 0, 3, "Macro (1H+4H)", text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 3, macro_label,     text_color=macro_col,  text_size=size.tiny)
+
+    // ── RSI ──
+    rsi_col = rsi <= 30 ? color.lime : rsi <= rsi_thresh ? color.green : rsi >= 70 ? color.red : color.white
+    table.cell(t, 0, 4, "RSI / Hook",   text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 4, str.tostring(math.round(rsi, 1)) + (rsi_rising ? " ↑" : " ↓"),
+               text_color=rsi_col, text_size=size.tiny)
+
+    // ── BB Status ──
+    bb_label = near_bb_l ? "NEAR LOWER ✅" : close >= bb_u * 0.99 ? "NEAR UPPER ⚠️" : "Mid Range"
+    bb_col   = near_bb_l ? color.green : close >= bb_u * 0.99 ? color.red : color.gray
+    table.cell(t, 0, 5, "BB Position",  text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 5, bb_label,       text_color=bb_col,     text_size=size.tiny)
+
+    // ── BB Width (shown always, active when BTC) ──
+    bbw_active = use_bbw
+    bbw_col = not bbw_active ? color.gray : bbw >= eff_bbw_t ? color.green : color.orange
+    bbw_tag = bbw_active ? (bbw_ok ? " ✅" : " ✗") : " (inactivo)"
+    table.cell(t, 0, 6, "BB Width",     text_color=bbw_active ? color.gray : color.new(color.gray, 60), text_size=size.tiny)
+    table.cell(t, 1, 6, str.tostring(math.round(bbw, 2)) + "%" + bbw_tag,
+               text_color=bbw_col, text_size=size.tiny)
+
+    // ── Williams %R (shown always, active when TAO) ──
+    wr_active = use_willr
+    wr_col  = not wr_active ? color.gray : willr_ok ? color.green : color.orange
+    wr_tag  = wr_active ? (willr_ok ? " ✅" : " ✗") : " (inactivo)"
+    table.cell(t, 0, 7, "Williams %R",  text_color=wr_active ? color.gray : color.new(color.gray, 60), text_size=size.tiny)
+    table.cell(t, 1, 7, str.tostring(math.round(willr, 1)) + wr_tag,
+               text_color=wr_col, text_size=size.tiny)
+
+    // ── ADX (shown always, active when ZEC) ──
+    adx_active = use_adx
+    adx_col = not adx_active ? color.gray : adx_ok ? color.green : color.orange
+    adx_tag = adx_active ? (adx_ok ? " ✅" : " ✗") : " (inactivo)"
+    table.cell(t, 0, 8, "ADX",          text_color=adx_active ? color.gray : color.new(color.gray, 60), text_size=size.tiny)
+    table.cell(t, 1, 8, str.tostring(math.round(adx_val, 1)) + adx_tag,
+               text_color=adx_col, text_size=size.tiny)
+
+    // ── ATR / SL ──
+    table.cell(t, 0, 9, "ATR / SL Dist", text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 9, str.tostring(math.round(atr, 4)) + " / " + str.tostring(math.round(sl_dist, 4)),
+               text_color=color.yellow, text_size=size.tiny)
+
+    // ── TP Levels ──
+    table.cell(t, 0, 10, "TP1 / TP2",  text_color=color.gray,  text_size=size.tiny)
+    table.cell(t, 1, 10, str.tostring(math.round(long_tp1, 2)) + " / " + str.tostring(math.round(long_tp2, 2)),
+               text_color=color.blue, text_size=size.tiny)
+
+    // ── Signal ──
+    sig_label = eth_block and near_bb_l and rsi <= 45 ? "⛔ ETH BLOCKED" :
+                long_v1 ? "V1 LONG 🚀" :
+                long_v3 ? "V3 REVERSAL ⚡" : "Waiting..."
+    sig_col   = buy_signal ? color.lime : eth_block ? color.red : color.gray
+    table.cell(t, 0, 11, "Signal",      text_color=color.gray, text_size=size.tiny)
+    table.cell(t, 1, 11, sig_label,     text_color=sig_col,    text_size=size.tiny)
+
+    // ── Backtest WR hint ──
+    bt_label = is_btc ? "BT: 88.9% WR (BB Width)" :
+               is_tao ? "BT: 66.7% WR (Williams)" :
+               is_zec ? "BT: 65.5% WR (ADX)" :
+               is_eth ? "BT: 13.3% — AVOID ETH" : "BT: ~56% base"
+    bt_col   = is_eth ? color.red : color.new(color.gray, 30)
+    table.cell(t, 0, 12, "Backtest",   text_color=color.new(color.gray, 40), text_size=size.tiny)
+    table.cell(t, 1, 12, bt_label,     text_color=bt_col,     text_size=size.tiny)
+
+// ─── ALERT CONDITIONS ────────────────────────────────────────────────────────
+alertcondition(long_v1 and not eth_block,
+    "Zenith V13 — V1 LONG",
+    "🚀 ZENITH V1 LONG | {{ticker}} @ {{close}} | RSI: {{plot('RSI')}} | Profile: AUTO")
+
+alertcondition(long_v3 and not long_v1,
+    "Zenith V13 — V3 Reversal",
+    "⚡ ZENITH V3 REVERSAL | {{ticker}} @ {{close}} | RSI ≤ 30 EXTREMO")
+
+alertcondition(buy_signal,
+    "Zenith V13 — Any Signal",
+    "ZENITH SIGNAL | {{ticker}} @ {{close}}")

@@ -1,0 +1,57 @@
+# Zenith Trading Suite - Rules for Agents
+
+Act as a **Senior Software Architect** and **Algorithmic Trading Expert** when working on this project. Adhere to these standards to ensure 24/7 production stability, risk mitigation, and code maintainability.
+
+## 1. Strategy Architecture & Modularity
+- **Modular Design**: Keep strategies, indicators, and execution logic strictly separated.
+    - `indicators.py`: Technical analysis calculations.
+    - `trading_executor.py`: Execution and order management.
+    - `tracker.py`: Persistence and performance metrics.
+    - `gemini_analyzer.py`: AI-driven sentiment and logic.
+- **Inheritance**: New strategies should ideally inherit from a common base class (to be implemented if not present) or follow the interface pattern established in `scalp_alert_bot.py`.
+- **Statelessness**: Favor stateless functions for calculations; use `GLOBAL_CACHE` or database for persistent state.
+- **Symbol Support**: Always refer to `config.py` for active `SYMBOLS` and `MACRO_WATCH` lists.
+
+## 2. Security & Risk Management
+- **Secrets**: Never hardcode API Keys, IDs, or Tokens. Always use `os.getenv()` and ensure `.env` is in `.gitignore`.
+- **Mandatory Stop-Loss (SL)**: Every trade MUST have a calculated SL. Use `ATR_SL_MULT` from `config.py` as the default.
+- **Position Sizing**:
+    - Default risk: 1% of equity (`RISK_PER_TRADE_PCT`).
+    - Minimum balance check: Never attempt trades if balance < `MIN_BALANCE_USD`.
+- **Validation**:
+    - Validate SL/TP prices to prevent "fat finger" errors (e.g., SL must be below entry for Long).
+    - Check for zero/null prices before calculations.
+- **Execution Mode**: Default all agents to `EXECUTION_MODE="PAPER"` unless explicitly instructed for production deployment.
+
+## 3. Code Quality (PEP 8 & Typing)
+- **Formatting**: Strictly follow **PEP 8**. Use 4 spaces for indentation.
+- **Type Hinting**: Use static typing with `mypy`. All new functions must include type hints for parameters and return values.
+- **Documentation**: 
+    - Every function must have a docstring (Google or Sphinx style) explaining its purpose, parameters, and return value.
+    - Trading logic decisions must be commented, especially if using "magic numbers" from `config.py`.
+- **Clean Code**: Keep functions small and focused on a single responsibility.
+
+## 4. Data Handling & Efficiency
+- **Pandas/NumPy**:
+    - Use `pandas` for OHLCV processing and indicator calculation.
+    - Use vectorized operations where possible; avoid iterating over DataFrames.
+- **Cache Management**:
+    - Respect Toggles and TTLs defined in `config.py` (e.g., `TTL_PRICES`, `TTL_INDICATORS`).
+    - Always check the cache before making external API calls (Binance/CoinGecko).
+- **Data Cleaning**: Handle missing data (NaN) explicitly in DataFrames before passing to indicator functions.
+
+## 5. Logging & Error Handling
+- **Resilience**: The bot must run 24/7. Use the `logger` from `logger_core.py` for all logs.
+- **Exceptions**:
+    - Wrap network calls and database transactions in `try-except` blocks.
+    - Never let an exception stop the main loop. Implement fallbacks (e.g., returning the last cached value).
+- **AI Decision Logging**: Use `log_ai_decision` for all LLM/Gemini interactions to maintain an audit trail of "bot thoughts".
+- **Real-Time Alerts**: Critical errors (e.g., API authentication failure) should trigger a high-priority Telegram message.
+
+## 6. Project Conventions
+- **Naming**: 
+    - Variables/Functions: `snake_case`.
+    - Classes: `PascalCase`.
+    - Constants: `SCREAMING_SNAKE_CASE`.
+- **Testing**: Use `pytest` for unit tests. Test all new indicators and execution logic in isolation before integration.
+- **Config-First**: If a value is used in multiple places, move it to `config.py`.

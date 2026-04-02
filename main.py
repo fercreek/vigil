@@ -5,7 +5,7 @@ from app import app
 import scalp_alert_bot
 
 # Cargamos .env para ejecución local (Replit usa Secrets de sistema)
-load_dotenv()
+load_dotenv(override=True)
 
 def run_flask():
     """Ejecuta el Dashboard Web en el puerto 8080 (requerido por Replit)."""
@@ -53,10 +53,10 @@ if __name__ == "__main__":
     swing_thread = threading.Thread(target=run_swing_bot)
     swing_thread.daemon = True
     swing_thread.start()
-    # 3. Hilo para Stock Watchdog (DESHABILITADO - Solo Macro)
-    # watchdog_thread = threading.Thread(target=run_stock_watchdog)
-    # watchdog_thread.daemon = True
-    # watchdog_thread.start()
+    # 3. Hilo para Telegram Listener (Agente Interactivo)
+    telegram_thread = threading.Thread(target=scalp_alert_bot.run_telegram_worker)
+    telegram_thread.daemon = True
+    telegram_thread.start()
     
     # 4. Hilo principal para Flask (Keep-Alive)
     run_flask()

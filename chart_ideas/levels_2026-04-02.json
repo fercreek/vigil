@@ -1,0 +1,57 @@
+{
+  "extracted_at": "2026-04-02",
+  "source": "TradingView screenshots → chart_ideas/assets",
+  "ideas": [
+    {
+      "symbol": "SPY",
+      "timeframe": "1h",
+      "price_snapshot": { "close": 649.48 },
+      "levels": [681.9, 666.64, 654.06, 632, 649.48],
+      "notes": "Descending channel; V-recovery; overhead resistance zones",
+      "image": "assets/image-6840aa6f-f644-4ab2-b159-95baef3d00eb.png"
+    },
+    {
+      "symbol": "GDX",
+      "timeframe": "1D",
+      "price_snapshot": { "close": 94.24 },
+      "levels": [109.39, 102.88, 97.75, 92.78, 82.16],
+      "notes": "Horizontal ladder; author Dmarin on chart",
+      "image": "assets/image-f4b5f36d-49a2-47a7-b8f5-5a66a586c0eb.png"
+    },
+    {
+      "symbol": "IWM",
+      "timeframe": "1D",
+      "price_snapshot": { "close": 247.89 },
+      "levels": [260.84, 242.3, 234.06, 210.35, 194.05, 172.45],
+      "notes": "Bearish continuation range; Spanish commentary in extraction md",
+      "image": "assets/image-fb604b91-ebea-482e-a3ac-0d023057ceba.png"
+    },
+    {
+      "symbol": "TSLA",
+      "timeframe": "2h",
+      "price_snapshot": { "close": 382.02 },
+      "levels": [410, 400, 380, 320, 270, 220],
+      "notes": "Short-term bounce toward 400-410 then bearish path to ~220 (Sep 2026 idea on chart)",
+      "image": "assets/image-7ad477e2-c2c6-4429-a1c6-7f12463bf476.png"
+    },
+    {
+      "symbol": "SPX",
+      "instrument": "SPXCFD",
+      "timeframe": "3D",
+      "price_snapshot": { "close": 6602.11 },
+      "levels": [6858.73, 6741.79, 6493.34, 6175.3, 5667.88],
+      "key_trigger": 6858,
+      "notes": "Break ZR up at 6858 → look for highs; red path toward ~5667",
+      "image": "assets/image-9e2f288a-9ea9-46d1-a5dc-a69e0a75b775.png"
+    },
+    {
+      "symbol": "SPX",
+      "instrument": "FXCM",
+      "timeframe": "1M",
+      "price_snapshot": { "open": 6522.58, "high": 6605.27, "low": 6518.85, "close": 6599.28 },
+      "levels": [6500, 7000],
+      "notes": "Monthly guidance; March dump April bounce; possible larger drawdown after month-open bounce",
+      "image": "assets/image-2f321999-998d-4a2b-8438-279fece1837a.png"
+    }
+  ]
+}

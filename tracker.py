@@ -38,7 +38,9 @@ def init_db():
         ("conf_score", "INTEGER"),
         ("ai_analysis", "TEXT"),
         ("macro_bias", "TEXT"),
-        ("inst_score", "INTEGER")
+        ("inst_score", "INTEGER"),
+        ("alert_type", "TEXT DEFAULT 'unknown'"),
+        ("trigger_conditions", "TEXT DEFAULT NULL")
     ]
     for col, type_def in columns:
         try:
@@ -160,17 +162,19 @@ def get_backtest_days():
     conn.close()
     return rows
 
-def log_trade(symbol, type, entry, tp1, tp2, sl, msg_id, version="V1-TECH", rsi=0.0, bb="", atr=0.0, elliott="", score=0, ai_analysis="", macro_bias="", inst_score=0):
+def log_trade(symbol, type, entry, tp1, tp2, sl, msg_id, version="V1-TECH", rsi=0.0, bb="", atr=0.0, elliott="", score=0, ai_analysis="", macro_bias="", inst_score=0, alert_type="unknown", trigger_conditions=None):
+    import json
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conditions_json = json.dumps(trigger_conditions) if trigger_conditions else None
     c.execute('''
         INSERT INTO trades (
             symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, strategy_version,
-            rsi_entry, bb_status, atr, elliott_wave, conf_score, ai_analysis, macro_bias, inst_score
+            rsi_entry, bb_status, atr, elliott_wave, conf_score, ai_analysis, macro_bias, inst_score, alert_type, trigger_conditions
         )
-        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now, version, rsi, bb, atr, elliott, score, ai_analysis, macro_bias, inst_score))
+        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now, version, rsi, bb, atr, elliott, score, ai_analysis, macro_bias, inst_score, alert_type, conditions_json))
     conn.commit()
     trade_id = c.lastrowid
     conn.close()
@@ -246,6 +250,50 @@ def get_win_rate(version: str = None):
     total = full_won + partial_won + lost
     return full_won, partial_won, lost, total
 
+def get_alert_stats():
+    """Desglose de win rate por tipo de alerta (alert_type) para comparar estrategias."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        SELECT alert_type, strategy_version, symbol, status, COUNT(*) as n
+        FROM trades
+        WHERE status IN ('FULL_WON', 'PARTIAL_WON', 'PARTIAL_CLOSED', 'LOST')
+        GROUP BY alert_type, strategy_version, symbol, status
+    ''')
+    rows = c.fetchall()
+    conn.close()
+
+    # Aggregate into {alert_type: {symbol: {wins, losses, total, wr}}}
+    stats = {}
+    for alert_type, version, symbol, status, n in rows:
+        key = alert_type or 'unknown'
+        if key not in stats:
+            stats[key] = {"version": version, "by_symbol": {}, "total": {"wins": 0, "losses": 0}}
+        if symbol not in stats[key]["by_symbol"]:
+            stats[key]["by_symbol"][symbol] = {"wins": 0, "losses": 0}
+        is_win = status in ('FULL_WON', 'PARTIAL_WON', 'PARTIAL_CLOSED')
+        if is_win:
+            stats[key]["by_symbol"][symbol]["wins"] += n
+            stats[key]["total"]["wins"] += n
+        else:
+            stats[key]["by_symbol"][symbol]["losses"] += n
+            stats[key]["total"]["losses"] += n
+
+    result = []
+    for alert_type, data in stats.items():
+        total = data["total"]["wins"] + data["total"]["losses"]
+        wr = round(data["total"]["wins"] / total * 100, 1) if total > 0 else 0.0
+        result.append({
+            "alert_type": alert_type,
+            "version": data["version"],
+            "total": total,
+            "wins": data["total"]["wins"],
+            "losses": data["total"]["losses"],
+            "win_rate": wr,
+            "by_symbol": data["by_symbol"]
+        })
+    return sorted(result, key=lambda x: x["total"], reverse=True)
+
 def get_daily_pnl():
     """Obtiene operaciones cerradas HOY para PnL rápido."""
     conn = sqlite3.connect(DB_FILE)
@@ -313,16 +361,25 @@ def get_audit_metrics():
     }
 
 def get_all_trades(limit=50):
+    import json
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''
         SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, close_time, strategy_version,
-               rsi_entry, bb_status, atr, elliott_wave, conf_score
-        FROM trades 
+               rsi_entry, bb_status, atr, elliott_wave, conf_score, alert_type, trigger_conditions
+        FROM trades
         ORDER BY id DESC LIMIT ?
     ''', (limit,))
     cols = [desc[0] for desc in c.description]
-    rows = [dict(zip(cols, row)) for row in c.fetchall()]
+    rows = []
+    for row in c.fetchall():
+        d = dict(zip(cols, row))
+        if d.get("trigger_conditions"):
+            try:
+                d["trigger_conditions"] = json.loads(d["trigger_conditions"])
+            except Exception:
+                pass
+        rows.append(d)
     conn.close()
     return rows
 

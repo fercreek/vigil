@@ -1,0 +1,77 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Zenith_Institutional_Bot (Antigravity Assistant)
+// @version=6
+indicator("Zenith V6.0: The Volume Prophet (SMC + Multi-TP)", overlay=true, max_bars_back=1000)
+
+// --- INPUTS ---
+src = input.source(close, "Fuente")
+ema_period = input.int(200, "EMA Institucional")
+atr_period = input.int(14, "ATR Period")
+atr_mult = input.float(2.0, "ATR SL Multiplier")
+vp_lookback = input.int(300, "Volume Profile Lookback")
+vp_bins = input.int(50, "Volume Profile Rows")
+
+// --- INDICATORS ---
+ema200 = ta.ema(src, ema_period)
+plot(ema200, "EMA 200", color.new(color.blue, 0), 2)
+
+// --- VOLUME PROFILE (POC) ---
+var float poc = na
+var float vah = na
+var float val = na
+
+if barstate.islast
+    float max_vol = 0.0
+    float min_p = ta.lowest(vp_lookback)
+    float max_p = ta.highest(vp_lookback)
+    float step = (max_p - min_p) / vp_bins
+    
+    for i = 0 to vp_bins - 1
+        float bin_low = min_p + (i * step)
+        float bin_high = bin_low + step
+        float bin_vol = 0.0
+        
+        for j = 1 to vp_lookback
+            if close[j] >= bin_low and close[j] < bin_high
+                bin_vol += volume[j]
+        
+        if bin_vol > max_vol
+            max_vol := bin_vol
+            poc := (bin_low + bin_high) / 2
+
+// Plot POC as a magnetic line
+plot(poc, "POC Magnet", color.new(color.purple, 30), 2, style=plot.style_linebr)
+
+// --- SMC: ORDER BLOCKS (Simplified) ---
+is_bull_ob = close > open and close[1] < open[1] and close > high[1] and volume > ta.sma(volume, 20) * 1.5
+is_bear_ob = close < open and close[1] > open[1] and close < low[1] and volume > ta.sma(volume, 20) * 1.5
+
+plotshape(is_bull_ob, "Bull OB", shape.labelup, location.belowbar, color.new(color.green, 20), text="BULL_OB", textcolor=color.white, size=size.small)
+plotshape(is_bear_ob, "Bear OB", shape.labeldown, location.abovebar, color.new(color.red, 20), text="BEAR_OB", textcolor=color.white, size=size.small)
+
+// --- ZENITH V6 EXECUTION ENGINE (3 TPs) ---
+atr = ta.atr(atr_period)
+tp1_mult = 2.0
+tp2_mult = 4.0
+tp3_mult = 7.0
+
+// Solo dibujar si hay una señal o estamos en modo visual
+var label target_labels = na
+if is_bull_ob or is_bear_ob
+    float entry = src
+    float sl_dist = math.max(atr * atr_mult, entry * 0.007)
+    float sl = is_bull_ob ? entry - sl_dist : entry + sl_dist
+    float tp1 = is_bull_ob ? entry + (sl_dist * tp1_mult) : entry - (sl_dist * tp1_mult)
+    float tp2 = is_bull_ob ? entry + (sl_dist * tp2_mult) : entry - (sl_dist * tp2_mult)
+    float tp3 = is_bull_ob ? entry + (sl_dist * tp3_mult) : entry - (sl_dist * tp3_mult)
+    
+    line.new(bar_index, tp1, bar_index + 10, tp1, color=color.new(color.green, 50), style=line.style_dashed, extend=extend.right)
+    line.new(bar_index, tp2, bar_index + 10, tp2, color=color.new(color.green, 30), style=line.style_dashed, extend=extend.right)
+    line.new(bar_index, tp3, bar_index + 10, tp3, color=color.new(color.green, 10), style=line.style_dashed, extend=extend.right)
+    line.new(bar_index, sl, bar_index + 10, sl, color=color.new(color.red, 40), style=line.style_solid, extend=extend.right)
+    
+    label.new(bar_index + 11, tp3, "TP3 (Moonshot)", color=color.new(color.green, 80), style=label.style_label_left, textcolor=color.white)
+
+// --- ALERTS ---
+alertcondition(is_bull_ob, "Zenith BULL OB", "Nueva señal de compra institucional detectada.")
+alertcondition(is_bear_ob, "Zenith BEAR OB", "Nueva señal de venta (Distribución) detectada.")

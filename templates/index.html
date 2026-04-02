@@ -7,28 +7,39 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0a0f1e;
-            --surface: #111827;
-            --surface2: #1e2740;
-            --border: rgba(255,255,255,0.08);
-            --text: #f1f5f9;
-            --muted: #64748b;
-            --green: #10b981;
-            --red: #ef4444;
-            --yellow: #f59e0b;
+            --bg-dark: #05070a;
+            --surface: rgba(15, 23, 42, 0.9);
+            --surface2: rgba(30, 41, 59, 1);
+            --border: rgba(255, 255, 255, 0.12);
+            --text: #ffffff;
+            --muted: #e2e8f0;
+            --green: #22c55e;
+            --red: #f87171;
+            --yellow: #fbbf24;
             --blue: #38bdf8;
-            --purple: #818cf8;
-            --pink: #ec4899;
+            --purple: #c084fc;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.15);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--bg-dark);
+            background: radial-gradient(circle at 50% -20%, #1e1b4b 0%, #070b14 60%);
             color: var(--text);
             min-height: 100vh;
             padding: 1.5rem 2rem;
         }
-        .container { max-width: 1300px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 300px; gap: 2rem; }
+        @media (max-width: 1100px) { .container { grid-template-columns: 1fr; } }
+
+        /* Sidebar: Neural Memory */
+        .sidebar {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+            padding: 1.5rem; backdrop-filter: blur(20px); height: fit-content; position: sticky; top: 1.5rem;
+        }
+        .sidebar-title { font-size: 0.75rem; color: var(--purple); text-transform: uppercase; letter-spacing: 2px; font-weight: 800; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 4px; }
+        .memory-item { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.75rem; font-size: 0.8rem; border-left: 3px solid var(--purple); }
+        .memory-time { font-size: 0.65rem; color: var(--muted); margin-bottom: 4px; }
 
         /* Header */
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
@@ -83,7 +94,7 @@
         .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
         table { width: 100%; border-collapse: collapse; }
         th { padding: 0.875rem 1rem; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); text-align: left; }
-        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.875rem; vertical-align: middle; }
+        td { padding: 1.1rem 1rem; background: rgba(255, 255, 255, 0.04); border-bottom: 1px solid var(--border); font-size: 0.9rem; color: var(--text); }
         tr:last-child td { border-bottom: none; }
 
         /* Badges */
@@ -210,20 +221,27 @@
     </style>
 </head>
 <body>
+<div id="error-banner" style="display:none; background:#ff4444; color:white; padding:8px 16px; font-size:12px; position:fixed; top:0; left:0; right:0; z-index:9999; font-weight:bold; text-align:center;"></div>
 <div class="container">
-
-    <header>
-        <div class="logo">⚡ <span>Zenith Institutional V3</span></div>
-        <div class="live-badge">
-            <div class="badge-mode">🛡️ MODO: INSTITUTIONAL LONG-ONLY ACTIVE</div>
-        </div>
-    </header>
+    <div class="main-content">
+        <header>
+            <div class="logo">⚡ <span>Zenith Institutional V6</span></div>
+            <div style="text-align:right">
+                <div id="last-update-label" style="font-size:0.75rem; font-weight:700; margin-bottom:4px">Sincronizando...</div>
+                <div class="live-badge">
+                    <div class="badge-mode">🚀 V6.0 VOLUME PROPHET ACTIVE</div>
+                </div>
+            </div>
+        </header>
 
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="switchTab('live', this)">📡 Live Scalps</button>
         <button class="tab-btn" onclick="switchTab('reports', this)">📊 Reportes & Backtesting</button>
         <button class="tab-btn" onclick="switchTab('monthly', this)">📈 Mensual</button>
         <button class="tab-btn" onclick="switchTab('analysis', this)">🔬 Análisis</button>
+        <button class="tab-btn" onclick="switchTab('alerts', this); loadAlertsMap()">⚡ Alertas</button>
+        <button class="tab-btn" onclick="switchTab('budget', this); loadAiBudget()">💰 IA Budget</button>
+        <button class="tab-btn" onclick="switchTab('flow', this)">🔀 Flujo</button>
     </div>
 
     <!-- ─── TAB: LIVE ─── -->
@@ -316,13 +334,386 @@
         </div>
     </div>
 
+    <!-- ─── TAB: ALERTAS ─── -->
+    <div id="tab-alerts" class="tab-content">
+        <div style="margin-bottom:1.5rem">
+            <h2 style="color:var(--blue);margin:0 0 0.4rem">⚡ Registro de Alertas Configuradas</h2>
+            <p style="color:var(--muted);margin:0;font-size:0.85rem">Tipos de alerta activos, condiciones de disparo y win rate histórico. Úsalo para decidir qué estrategias seguir según tu perfil de riesgo.</p>
+        </div>
+        <!-- Profile selector -->
+        <div style="display:flex;gap:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
+            <button onclick="filterAlerts('all')" id="filter-all" style="padding:0.4rem 1rem;border-radius:6px;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;font-size:0.8rem">Todos</button>
+            <button onclick="filterAlerts('CONSERVADOR')" id="filter-cons" style="padding:0.4rem 1rem;border-radius:6px;border:1px solid #00ff88;background:transparent;color:#00ff88;cursor:pointer;font-size:0.8rem">🟢 Conservador</button>
+            <button onclick="filterAlerts('MODERADO')" id="filter-mod" style="padding:0.4rem 1rem;border-radius:6px;border:1px solid var(--blue);background:transparent;color:var(--blue);cursor:pointer;font-size:0.8rem">🔵 Moderado</button>
+            <button onclick="filterAlerts('AGRESIVO')" id="filter-agg" style="padding:0.4rem 1rem;border-radius:6px;border:1px solid var(--purple);background:transparent;color:var(--purple);cursor:pointer;font-size:0.8rem">🟣 Agresivo</button>
+        </div>
+        <div id="alerts-map-content" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem">
+            <div style="color:var(--muted);padding:2rem">Cargando mapa de alertas...</div>
+        </div>
+        <!-- Backtest findings summary -->
+        <div class="card" style="margin-top:1.5rem">
+            <div style="color:var(--blue);font-weight:700;margin-bottom:0.75rem;font-size:0.9rem">📊 HALLAZGOS DEL BACKTEST (365 días, 1H)</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.75rem;font-size:0.8rem">
+                <div style="background:#0d1117;padding:0.75rem;border-radius:6px;border-left:3px solid #00ff88">
+                    <div style="color:#00ff88;font-weight:700">BTC — Mejor Filtro</div>
+                    <div style="color:var(--muted);margin-top:0.3rem">Williams %R ≤ -85</div>
+                    <div style="color:#fff;font-size:1rem;font-weight:700;margin-top:0.2rem">80% WR (N=5)</div>
+                    <div style="color:var(--muted);margin-top:0.2rem">+ BB Width ≥ 3% → 72.7% (N=11)</div>
+                </div>
+                <div style="background:#0d1117;padding:0.75rem;border-radius:6px;border-left:3px solid var(--blue)">
+                    <div style="color:var(--blue);font-weight:700">TAO — Mejor Filtro</div>
+                    <div style="color:var(--muted);margin-top:0.3rem">Williams %R ≤ -85</div>
+                    <div style="color:#fff;font-size:1rem;font-weight:700;margin-top:0.2rem">66.7% WR (N=6)</div>
+                    <div style="color:var(--muted);margin-top:0.2rem">Base sin filtro: 50% (N=42)</div>
+                </div>
+                <div style="background:#0d1117;padding:0.75rem;border-radius:6px;border-left:3px solid var(--purple)">
+                    <div style="color:var(--purple);font-weight:700">ZEC — Mejor Filtro</div>
+                    <div style="color:var(--muted);margin-top:0.3rem">ADX ≥ 20</div>
+                    <div style="color:#fff;font-size:1rem;font-weight:700;margin-top:0.2rem">65.5% WR (N=29)</div>
+                    <div style="color:var(--muted);margin-top:0.2rem">RSI thresh especial: 48</div>
+                </div>
+                <div style="background:#0d1117;padding:0.75rem;border-radius:6px;border-left:3px solid #ff4444">
+                    <div style="color:#ff4444;font-weight:700">ETH — Descartado</div>
+                    <div style="color:var(--muted);margin-top:0.3rem">Win rate histórico</div>
+                    <div style="color:#fff;font-size:1rem;font-weight:700;margin-top:0.2rem">13.3% WR (-$87)</div>
+                    <div style="color:var(--muted);margin-top:0.2rem">Recomendado: eliminar del bot</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── TAB: IA BUDGET ─── -->
+    <div id="tab-budget" class="tab-content">
+        <div style="margin-bottom:1.5rem">
+            <h2 style="color:var(--blue);margin:0 0 0.4rem">💰 Consumo de APIs de IA</h2>
+            <p style="color:var(--muted);margin:0;font-size:0.85rem">Máximo $10 USD/mes · 15 decisiones críticas/día. Claude Haiku para JSON, Gemini para narrativa.</p>
+        </div>
+
+        <!-- Budget gauge row -->
+        <div class="stats-row" style="margin-bottom:1.5rem">
+            <div class="stat-card blue" id="budget-monthly-used">
+                <div class="stat-label">GASTADO ESTE MES</div>
+                <div class="stat-value" id="budget-total-usd">–</div>
+                <div class="stat-change" id="budget-pct">de $10.00 máximo</div>
+            </div>
+            <div class="stat-card" id="budget-remaining-card">
+                <div class="stat-label">RESTANTE</div>
+                <div class="stat-value" id="budget-remaining">–</div>
+                <div class="stat-change" id="budget-bar-txt">–</div>
+            </div>
+            <div class="stat-card" id="budget-claude-card">
+                <div class="stat-label">CLAUDE (decisiones JSON)</div>
+                <div class="stat-value" id="budget-claude">–</div>
+                <div class="stat-change" style="color:var(--muted)">Haiku 4.5 · $0.80/MTok in</div>
+            </div>
+            <div class="stat-card" id="budget-gemini-card">
+                <div class="stat-label">GEMINI (narrativa)</div>
+                <div class="stat-value" id="budget-gemini">–</div>
+                <div class="stat-change" style="color:var(--muted)">Flash 2.5 · free tier</div>
+            </div>
+        </div>
+
+        <!-- Daily decisions -->
+        <div class="card" style="margin-bottom:1.5rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+                <span style="color:var(--blue);font-weight:700;font-size:0.9rem">⚡ DECISIONES HOY</span>
+                <span id="budget-daily-badge" style="background:#1a2332;padding:0.25rem 0.75rem;border-radius:12px;font-size:0.85rem;color:#fff">– / 15</span>
+            </div>
+            <div style="background:#0d1117;border-radius:6px;height:12px;overflow:hidden">
+                <div id="budget-daily-bar" style="height:100%;width:0%;background:var(--blue);border-radius:6px;transition:width 0.5s"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:0.4rem;font-size:0.75rem;color:var(--muted)">
+                <span>0</span><span id="budget-daily-remaining">– restantes</span><span>15</span>
+            </div>
+        </div>
+
+        <!-- Recent calls table -->
+        <div class="card">
+            <div style="color:var(--blue);font-weight:700;margin-bottom:0.75rem;font-size:0.9rem">🕐 ÚLTIMAS LLAMADAS</div>
+            <div style="overflow-x:auto">
+            <table id="budget-calls-table">
+                <thead><tr>
+                    <th style="text-align:left;padding:0.4rem 0.6rem;color:var(--muted);font-size:0.75rem;font-weight:600">HORA</th>
+                    <th style="text-align:left;padding:0.4rem 0.6rem;color:var(--muted);font-size:0.75rem;font-weight:600">PROVEEDOR</th>
+                    <th style="text-align:left;padding:0.4rem 0.6rem;color:var(--muted);font-size:0.75rem;font-weight:600">TIPO</th>
+                    <th style="text-align:left;padding:0.4rem 0.6rem;color:var(--muted);font-size:0.75rem;font-weight:600">SÍMBOLO</th>
+                    <th style="text-align:right;padding:0.4rem 0.6rem;color:var(--muted);font-size:0.75rem;font-weight:600">TOKENS IN</th>
+                    <th style="text-align:right;padding:0.4rem 0.6rem;color:var(--muted);font-size:0.75rem;font-weight:600">TOKENS OUT</th>
+                    <th style="text-align:right;padding:0.4rem 0.6rem;color:var(--muted);font-size:0.75rem;font-weight:600">COSTO</th>
+                    <th style="text-align:center;padding:0.4rem 0.6rem;color:var(--muted);font-size:0.75rem;font-weight:600">OK</th>
+                </tr></thead>
+                <tbody id="budget-calls-body">
+                    <tr><td colspan="8" style="padding:1.5rem;text-align:center;color:var(--muted)">Sin llamadas registradas</td></tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── TAB: FLUJO ─── -->
+    <div id="tab-flow" class="tab-content">
+        <div style="margin-bottom:1.5rem">
+            <h2 style="color:var(--blue);margin:0 0 0.3rem">🔀 Flujo del Sistema — Embudo de Señales</h2>
+            <p style="color:var(--muted);margin:0;font-size:0.82rem">De las APIs externas hasta la alerta en Telegram. Cada etapa filtra y enriquece la señal para minimizar consultas innecesarias a la IA.</p>
+        </div>
+
+        <style>
+            .flow-stage { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.1rem 1.25rem; position:relative; }
+            .flow-stage-title { font-size:0.72rem; text-transform:uppercase; letter-spacing:1.5px; font-weight:800; margin-bottom:0.6rem; }
+            .flow-tag { display:inline-block; padding:0.15rem 0.5rem; border-radius:4px; font-size:0.7rem; font-weight:700; margin:0.15rem 0.1rem; }
+            .flow-arrow { text-align:center; color:var(--muted); font-size:1.4rem; line-height:1; margin:0.3rem 0; }
+            .flow-model-badge { display:inline-flex; align-items:center; gap:0.3rem; background:#0d1117; border:1px solid var(--border); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.72rem; font-weight:700; }
+            .flow-row { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+            .flow-persona { display:flex; align-items:flex-start; gap:0.5rem; padding:0.5rem; background:#0d1117; border-radius:8px; margin-bottom:0.4rem; }
+            .flow-persona-emoji { font-size:1.1rem; flex-shrink:0; margin-top:0.05rem; }
+            .flow-persona-info { font-size:0.75rem; }
+            .flow-persona-name { color:#fff; font-weight:700; }
+            .flow-persona-desc { color:var(--muted); margin-top:0.1rem; line-height:1.4; }
+            .flow-budget-note { background:#0d1117; border-left:3px solid var(--blue); padding:0.5rem 0.75rem; border-radius:0 6px 6px 0; font-size:0.75rem; color:var(--muted); margin-top:0.6rem; }
+        </style>
+
+        <!-- STEP 1: APIs -->
+        <div class="flow-stage" style="border-left:4px solid #64748b">
+            <div class="flow-stage-title" style="color:#94a3b8">① FUENTES DE DATOS — APIs Externas</div>
+            <div style="display:flex;flex-wrap:wrap;gap:0.5rem;font-size:0.78rem">
+                <div style="background:#0d1117;padding:0.4rem 0.75rem;border-radius:8px;border:1px solid #1e293b">
+                    <div style="color:#f0a500;font-weight:700">Binance / CCXT</div>
+                    <div style="color:var(--muted);margin-top:0.15rem">OHLCV 1H · precios en vivo</div>
+                    <div style="color:#475569;font-size:0.68rem;margin-top:0.1rem">ZEC · TAO · BTC · ETH</div>
+                </div>
+                <div style="background:#0d1117;padding:0.4rem 0.75rem;border-radius:8px;border:1px solid #1e293b">
+                    <div style="color:#22c55e;font-weight:700">yfinance</div>
+                    <div style="color:var(--muted);margin-top:0.15rem">Macro: SPY · NVDA · PLTR</div>
+                    <div style="color:#475569;font-size:0.68rem;margin-top:0.1rem">DXY · VIX · OIL (TTL 15min)</div>
+                </div>
+                <div style="background:#0d1117;padding:0.4rem 0.75rem;border-radius:8px;border:1px solid #1e293b">
+                    <div style="color:#818cf8;font-weight:700">CoinGecko</div>
+                    <div style="color:var(--muted);margin-top:0.15rem">Dominancias globales</div>
+                    <div style="color:#475569;font-size:0.68rem;margin-top:0.1rem">USDT.D · BTC.D (TTL 10min)</div>
+                </div>
+            </div>
+            <div style="font-size:0.72rem;color:#475569;margin-top:0.6rem">Cache resiliente: si falla la red se usan valores anteriores. Fallo repetido >10x → alerta en Telegram.</div>
+        </div>
+
+        <div class="flow-arrow">▼</div>
+
+        <!-- STEP 2: Indicadores -->
+        <div class="flow-stage" style="border-left:4px solid #3b82f6">
+            <div class="flow-stage-title" style="color:var(--blue)">② INDICADORES TÉCNICOS — indicators.py</div>
+            <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
+                <span class="flow-tag" style="background:#1e3a5f;color:#60a5fa">RSI 15p</span>
+                <span class="flow-tag" style="background:#1e3a5f;color:#60a5fa">BB 20/2σ</span>
+                <span class="flow-tag" style="background:#1e3a5f;color:#60a5fa">EMA 200</span>
+                <span class="flow-tag" style="background:#1e3a5f;color:#60a5fa">ATR 14</span>
+                <span class="flow-tag" style="background:#1e3a5f;color:#60a5fa">ADX 14</span>
+                <span class="flow-tag" style="background:#1e3a5f;color:#60a5fa">Williams %R</span>
+                <span class="flow-tag" style="background:#1e3a5f;color:#60a5fa">BB Width</span>
+                <span class="flow-tag" style="background:#1e2a3a;color:#94a3b8">Elliott Wave (texto)</span>
+                <span class="flow-tag" style="background:#1e2a3a;color:#94a3b8">Order Blocks</span>
+                <span class="flow-tag" style="background:#1e2a3a;color:#94a3b8">DXY / VIX</span>
+            </div>
+            <div style="font-size:0.72rem;color:#475569;margin-top:0.6rem">TTL Indicadores: 2min. Todos calculados localmente sin llamadas a IA.</div>
+        </div>
+
+        <div class="flow-arrow">▼</div>
+
+        <!-- STEP 3: Estrategias -->
+        <div class="flow-stage" style="border-left:4px solid #10b981">
+            <div class="flow-stage-title" style="color:#10b981">③ FILTROS DE ESTRATEGIA — scalp_alert_bot.py</div>
+            <div class="flow-row">
+                <div style="background:#0d1117;padding:0.65rem;border-radius:8px">
+                    <div style="color:#10b981;font-weight:700;font-size:0.78rem">V1-TECH LONG</div>
+                    <div style="color:var(--muted);font-size:0.72rem;margin-top:0.3rem;line-height:1.6">
+                        Precio &lt; BB Inferior<br>
+                        RSI ≤ 42 (ZEC: 48)<br>
+                        Precio &gt; EMA 200<br>
+                        RSI subiendo (rising)<br>
+                        <span style="color:#64748b">+ ADX ≥ 20 (ZEC) · Williams ≤ -85 (BTC/TAO)</span>
+                    </div>
+                </div>
+                <div style="background:#0d1117;padding:0.65rem;border-radius:8px">
+                    <div style="color:#f59e0b;font-weight:700;font-size:0.78rem">V3 Reversal LONG</div>
+                    <div style="color:var(--muted);font-size:0.72rem;margin-top:0.3rem;line-height:1.6">
+                        Precio &lt; EMA 200 (contra tendencia)<br>
+                        RSI ≤ 35 (oversold extremo)<br>
+                        Cerca BB Inferior<br>
+                        Confluence Score ≥ 3/6<br>
+                        <span style="color:#64748b">Solo scalping agresivo · SL ajustado</span>
+                    </div>
+                </div>
+                <div style="background:#0d1117;padding:0.65rem;border-radius:8px">
+                    <div style="color:#818cf8;font-weight:700;font-size:0.78rem">V2-AI Consensus</div>
+                    <div style="color:var(--muted);font-size:0.72rem;margin-top:0.3rem;line-height:1.6">
+                        V1 aprobado primero<br>
+                        Score Confluencia ≥ umbral<br>
+                        Sin posición abierta (TTL 1H)<br>
+                        <span style="color:#64748b">→ Pasa al bloque IA</span>
+                    </div>
+                </div>
+                <div style="background:#0d1117;padding:0.65rem;border-radius:8px">
+                    <div style="color:#ef4444;font-weight:700;font-size:0.78rem">ETH — BLOQUEADO</div>
+                    <div style="color:var(--muted);font-size:0.72rem;margin-top:0.3rem;line-height:1.6">
+                        WR histórico 13.3%<br>
+                        Descartado por backtest<br>
+                        <span style="color:#64748b">No genera alertas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flow-arrow">▼</div>
+
+        <!-- STEP 4: Confluence Score -->
+        <div class="flow-stage" style="border-left:4px solid #f59e0b">
+            <div class="flow-stage-title" style="color:#f59e0b">④ CONFLUENCE SCORE — 0 a 6 puntos</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.4rem;font-size:0.75rem">
+                <div style="background:#0d1117;padding:0.4rem 0.6rem;border-radius:6px"><span style="color:#22c55e">+1/+2</span> <span style="color:var(--muted)">RSI extremo (≤30 da +2)</span></div>
+                <div style="background:#0d1117;padding:0.4rem 0.6rem;border-radius:6px"><span style="color:#22c55e">+1</span> <span style="color:var(--muted)">Precio cerca BB Inferior</span></div>
+                <div style="background:#0d1117;padding:0.4rem 0.6rem;border-radius:6px"><span style="color:#22c55e">+1</span> <span style="color:var(--muted)">Precio &gt; EMA 200</span></div>
+                <div style="background:#0d1117;padding:0.4rem 0.6rem;border-radius:6px"><span style="color:#22c55e">+1</span> <span style="color:var(--muted)">USDT.D favorable (≤8%)</span></div>
+                <div style="background:#0d1117;padding:0.4rem 0.6rem;border-radius:6px"><span style="color:#22c55e">+1</span> <span style="color:var(--muted)">Elliott Wave alcista</span></div>
+                <div style="background:#0d1117;padding:0.4rem 0.6rem;border-radius:6px"><span style="color:#ef4444">-1</span> <span style="color:var(--muted)">Corrección Elliott ABC</span></div>
+                <div style="background:#0d1117;padding:0.4rem 0.6rem;border-radius:6px"><span style="color:#22c55e">±0.5</span> <span style="color:var(--muted)">Social score (Gemini)</span></div>
+            </div>
+            <div style="font-size:0.72rem;color:#475569;margin-top:0.6rem">Score mínimo para disparar alerta: configurable en <code style="color:#f59e0b">config.py</code>. Calculado 100% local, sin IA.</div>
+        </div>
+
+        <div class="flow-arrow">▼</div>
+
+        <!-- STEP 5: Agentes IA -->
+        <div class="flow-stage" style="border-left:4px solid #a855f7">
+            <div class="flow-stage-title" style="color:#a855f7">⑤ AGENTES IA — gemini_analyzer.py</div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+                <!-- Claude -->
+                <div style="background:#0d1117;padding:0.75rem;border-radius:8px;border:1px solid #2d1b69">
+                    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem">
+                        <span class="flow-model-badge" style="border-color:#7c3aed;color:#a78bfa">🤖 Claude Haiku 4.5</span>
+                    </div>
+                    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">Decisiones JSON críticas · Máx 15/día · Presupuesto compartido</div>
+                    <div class="flow-persona">
+                        <div class="flow-persona-emoji">🔵</div>
+                        <div class="flow-persona-info"><div class="flow-persona-name">CONSERVADOR</div><div class="flow-persona-desc">Valida señal V1-TECH. Solo LONGs, filtra ruido bajista. Retorna CONFIRM/REJECT.</div></div>
+                    </div>
+                    <div class="flow-persona">
+                        <div class="flow-persona-emoji">⚡</div>
+                        <div class="flow-persona-info"><div class="flow-persona-name">SCALPER</div><div class="flow-persona-desc">Valida señal V2-AI. Enfocado en micropatrones intradía. Retorna CONFIRM/REJECT.</div></div>
+                    </div>
+                    <div class="flow-persona">
+                        <div class="flow-persona-emoji">🏛️</div>
+                        <div class="flow-persona-info"><div class="flow-persona-name">INSTITUTIONAL_STRATEGIST</div><div class="flow-persona-desc">Determina Bias Semanal. Retorna BIAS: BULL / BEAR / ACCUMULATION.</div></div>
+                    </div>
+                </div>
+                <!-- Gemini -->
+                <div style="background:#0d1117;padding:0.75rem;border-radius:8px;border:1px solid #1a3a2a">
+                    <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem">
+                        <span class="flow-model-badge" style="border-color:#16a34a;color:#4ade80">✨ Gemini 2.5 Flash</span>
+                        <span style="font-size:0.65rem;color:#475569">free tier</span>
+                    </div>
+                    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">Narrativa institucional · Sin límite diario · No cuenta en presupuesto</div>
+                    <div class="flow-persona">
+                        <div class="flow-persona-emoji">🎩</div>
+                        <div class="flow-persona-info"><div class="flow-persona-name">Genesis</div><div class="flow-persona-desc">Capital institucional. Visión de acumulación de largo plazo. Sesgo estructural BULL.</div></div>
+                    </div>
+                    <div class="flow-persona">
+                        <div class="flow-persona-emoji">⚡</div>
+                        <div class="flow-persona-info"><div class="flow-persona-name">Exodo</div><div class="flow-persona-desc">Proyección tecnológica TAO/ZEC. Sesgo AGRESIVO BULL.</div></div>
+                    </div>
+                    <div class="flow-persona">
+                        <div class="flow-persona-emoji">🔔</div>
+                        <div class="flow-persona-info"><div class="flow-persona-name">Salmos</div><div class="flow-persona-desc">Confluencia Elliott + Volumen. Detecta God Candles y trampas bajistas.</div></div>
+                    </div>
+                    <div class="flow-persona">
+                        <div class="flow-persona-emoji">💀</div>
+                        <div class="flow-persona-info"><div class="flow-persona-name">Apocalipsis</div><div class="flow-persona-desc">Riesgo macro/geopolítico. Puede VETAR si VIX &gt; 30 o contexto es hostil.</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Budget guard -->
+            <div class="flow-budget-note">
+                🛡️ <b>Budget Guard:</b> Antes de cada llamada a Claude se verifica presupuesto mensual ($10 límite) y cuota diaria (15 decisiones). Si se supera → fallback automático a Gemini.
+            </div>
+
+            <!-- Multi-signal -->
+            <div class="flow-budget-note" style="border-left-color:#f59e0b;margin-top:0.4rem">
+                ⚡ <b>Evento Multi-Símbolo:</b> Si ≥2 símbolos disparan señales en &lt;5 min → <code>get_market_scan()</code> usa 1 solo call de IA (no N). Resultado enviado por Telegram.
+            </div>
+
+            <!-- Shadow Intel -->
+            <div class="flow-budget-note" style="border-left-color:#475569;margin-top:0.4rem">
+                🧠 <b>Shadow Intel (sidebar):</b> <span style="color:#64748b">Simulador JS del frontend.</span> Genera mensajes cada 15s con POC/zona detectados. <b>No hace llamadas a la API.</b> Es una demo visual del concepto de memoria de agente.
+            </div>
+        </div>
+
+        <div class="flow-arrow">▼</div>
+
+        <!-- STEP 6: Alerta -->
+        <div class="flow-stage" style="border-left:4px solid #06b6d4">
+            <div class="flow-stage-title" style="color:#06b6d4">⑥ ALERTA TELEGRAM</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.75rem">
+                <div>
+                    <div style="color:#fff;font-weight:700;margin-bottom:0.3rem">Contenido de la alerta</div>
+                    <div style="color:var(--muted);line-height:1.8">
+                        Símbolo · Precio de entrada<br>
+                        SL = precio − 2.0 × ATR<br>
+                        TP1 = precio + 2.5 × ATR → cerrar 50%<br>
+                        TP2 = precio + 5.0 × ATR → cerrar 30%<br>
+                        TP3 = precio + 8.0 × ATR → runner 20%<br>
+                        R:R por target · instrucción breakeven<br>
+                        Debate Cuadrante Zenith (Gemini)
+                    </div>
+                </div>
+                <div>
+                    <div style="color:#fff;font-weight:700;margin-bottom:0.3rem">Clasificación PTS</div>
+                    <div style="background:#0d1117;padding:0.5rem;border-radius:6px;margin-bottom:0.4rem">
+                        <span style="color:#22c55e;font-weight:700">SWING</span> <span style="color:var(--muted)">— Alta confianza macro. Posición normal.</span>
+                    </div>
+                    <div style="background:#0d1117;padding:0.5rem;border-radius:6px">
+                        <span style="color:#f59e0b;font-weight:700">RÁPIDA</span> <span style="color:var(--muted)">— Baja confianza. Posición mínima. BE agresivo.</span>
+                    </div>
+                    <div style="color:#475569;font-size:0.7rem;margin-top:0.4rem">Cooldown por símbolo: 4H. Position Guard TTL: 1H.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flow-arrow">▼</div>
+
+        <!-- STEP 7: Tracker -->
+        <div class="flow-stage" style="border-left:4px solid #10b981">
+            <div class="flow-stage-title" style="color:#10b981">⑦ TRACKER + BUDGET — SQLite</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.75rem">
+                <div>
+                    <div style="color:#fff;font-weight:700;margin-bottom:0.3rem">trades</div>
+                    <div style="color:var(--muted);line-height:1.7">symbol · side · entry_price<br>tp1 / tp2 / sl · alert_type<br>status: FULL_WON · PARTIAL_WON · LOST<br>win_rate por alert_type → tab Alertas</div>
+                </div>
+                <div>
+                    <div style="color:#fff;font-weight:700;margin-bottom:0.3rem">ai_calls</div>
+                    <div style="color:var(--muted);line-height:1.7">provider · model · call_type<br>tokens_in · tokens_out · cost_usd<br>approved (bloqueado por budget)<br>Visible en tab 💰 IA Budget</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom note -->
+        <div style="margin-top:1.25rem;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:0.75rem;color:var(--muted);line-height:1.7">
+            <b style="color:#fff">Principio del embudo:</b> Las APIs y los indicadores corren en <b>cada ciclo de 35s</b> sin costo.
+            La IA solo entra si el score ≥ umbral y no hay posición abierta — evitando llamadas redundantes.
+            Con uso real del bot el costo estimado de Claude es <b style="color:#22c55e">&lt; $1 USD/mes</b>.
+        </div>
+    </div>
+
 </div>
 
 <script>
-    // ─── Init: set default date to yesterday ────────────────────────────
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    document.getElementById('report-date').value = yesterday.toISOString().split('T')[0];
+    // ─── Init: set default date to yesterday (local timezone, not UTC) ──
+    (function() {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        const yyyy = d.getFullYear();
+        const mm   = String(d.getMonth() + 1).padStart(2, '0');
+        const dd   = String(d.getDate()).padStart(2, '0');
+        document.getElementById('report-date').value = `${yyyy}-${mm}-${dd}`;
+    })();
 
     // ─── Monthly Performance tab ─────────────────────────────────────────
     async function fetchMonthlyPerformance() {
@@ -401,19 +792,83 @@
 
         if (tab === 'analysis') fetchAnalysis();
         if (tab === 'monthly') fetchMonthlyPerformance();
+        if (tab === 'budget') loadAiBudget();
+    }
+
+    // ─── AI Budget tab ───────────────────────────────────────────────────
+    async function loadAiBudget() {
+        try {
+            const r = await fetch('/api/ai_budget');
+            const d = await r.json();
+
+            // Gauges
+            document.getElementById('budget-total-usd').textContent = `$${d.total_usd.toFixed(4)}`;
+            document.getElementById('budget-pct').textContent = `${d.budget_used_pct.toFixed(1)}% de $${d.max_monthly_usd.toFixed(0)} máximo`;
+            document.getElementById('budget-remaining').textContent = `$${d.remaining_usd.toFixed(4)}`;
+            document.getElementById('budget-claude').textContent = `$${d.claude_usd.toFixed(4)}`;
+            document.getElementById('budget-gemini').textContent = `$${d.gemini_usd.toFixed(4)}`;
+
+            // Progress bar color
+            const pct = d.budget_used_pct;
+            const barColor = pct >= 85 ? '#ff4444' : pct >= 60 ? '#f0a500' : 'var(--blue)';
+            const remaining = document.getElementById('budget-remaining');
+            remaining.style.color = pct >= 85 ? '#ff4444' : pct >= 60 ? '#f0a500' : '#00ff88';
+
+            // Monthly bar text
+            const filled = Math.round(pct / 10);
+            document.getElementById('budget-bar-txt').innerHTML =
+                `<span style="font-family:monospace;letter-spacing:1px">${'█'.repeat(filled)}${'░'.repeat(10-filled)}</span> ${pct.toFixed(1)}%`;
+
+            // Daily decisions
+            const daily = d.daily_decisions;
+            const maxDaily = d.max_daily_decisions;
+            const dailyPct = Math.min(100, (daily / maxDaily) * 100);
+            const dailyColor = dailyPct >= 80 ? '#ff4444' : dailyPct >= 60 ? '#f0a500' : 'var(--blue)';
+            document.getElementById('budget-daily-badge').textContent = `${daily} / ${maxDaily}`;
+            document.getElementById('budget-daily-bar').style.width = dailyPct + '%';
+            document.getElementById('budget-daily-bar').style.background = dailyColor;
+            document.getElementById('budget-daily-remaining').textContent = `${d.daily_remaining} restantes`;
+
+            // Recent calls table
+            const tbody = document.getElementById('budget-calls-body');
+            if (!d.recent_calls || d.recent_calls.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="padding:1.5rem;text-align:center;color:var(--muted)">Sin llamadas registradas aún</td></tr>';
+            } else {
+                tbody.innerHTML = d.recent_calls.map(c => {
+                    const provColor = c.provider === 'claude' ? 'var(--blue)' : '#f0a500';
+                    const typeColor = ['decision','bias'].includes(c.call_type) ? '#00ff88' : 'var(--muted)';
+                    const okIcon   = c.approved ? '✅' : '🚫';
+                    const cost     = c.cost_usd > 0 ? `$${c.cost_usd.toFixed(5)}` : '–';
+                    return `<tr>
+                        <td style="padding:0.4rem 0.6rem;font-size:0.78rem;color:var(--muted)">${c.ts.replace('T',' ')}</td>
+                        <td style="padding:0.4rem 0.6rem;font-size:0.78rem;color:${provColor};font-weight:600">${c.provider}</td>
+                        <td style="padding:0.4rem 0.6rem;font-size:0.78rem;color:${typeColor}">${c.call_type}</td>
+                        <td style="padding:0.4rem 0.6rem;font-size:0.78rem;color:#fff">${c.symbol || '–'}</td>
+                        <td style="padding:0.4rem 0.6rem;font-size:0.78rem;color:var(--muted);text-align:right">${(c.tokens_in||0).toLocaleString()}</td>
+                        <td style="padding:0.4rem 0.6rem;font-size:0.78rem;color:var(--muted);text-align:right">${(c.tokens_out||0).toLocaleString()}</td>
+                        <td style="padding:0.4rem 0.6rem;font-size:0.78rem;color:#fff;text-align:right;font-family:monospace">${cost}</td>
+                        <td style="padding:0.4rem 0.6rem;text-align:center">${okIcon}</td>
+                    </tr>`;
+                }).join('');
+            }
+        } catch(e) {
+            console.error('Error loading AI budget:', e);
+        }
     }
 
     // ─── Live Dashboard ──────────────────────────────────────────────────
     async function fetchDashboard() {
         try {
-            const [s1r, s2r, tr] = await Promise.all([
+            const [s1r, s2r, tr, ir] = await Promise.all([
                 fetch('/api/stats?version=V1-TECH'),
                 fetch('/api/stats?version=V2-AI'),
-                fetch('/api/trades')
+                fetch('/api/trades'),
+                fetch('/api/indicators')
             ]);
             const d1 = await s1r.json();
             const d2 = await s2r.json();
             const trades = await tr.json();
+            const indicators = await ir.json();
 
             document.getElementById('wr-v1').innerText = d1.win_rate + '%';
             document.getElementById('wr-v2').innerText = d2.win_rate + '%';
@@ -443,16 +898,29 @@
                 const waveTxt = t.elliott || t.elliott_wave || '—';
                 const waveColor = waveTxt.includes('Onda 3') ? '#38BDF8' : 'var(--muted)';
                 const waveBadge = `<span class="badge" style="background:rgba(56,189,248,0.1); border:1px solid ${waveColor}; color:${waveColor}">${waveTxt}</span>`;
+                
+                // V6.0 Volume Prophet: POC Badge
+                const symKey = t.symbol.replace('/USDT', '');
+                const pocVal = indicators[symKey] ? indicators[symKey].poc : 0;
+                const pocBadge = pocVal > 0 ? `<div class="poc-badge">🧲 POC: $${pocVal.toFixed(2)}</div>` : '';
+
+                // V6.0 Progress Tracking: 3 TPs
+                const isPartial = t.status === 'PARTIAL_WON';
+                const progressHtml = `<div class="progress-multi">
+                    <div class="p-step active"></div>
+                    <div class="p-step ${isPartial ? 'active' : ''}"></div>
+                    <div class="p-step"></div>
+                </div>`;
 
                 tbody.innerHTML += `<tr>
                     <td style="color:var(--muted); font-size:0.8rem">${new Date(t.open_time).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'})}</td>
-                    <td><b>${t.symbol}</b></td>
+                    <td><b>${t.symbol}</b> ${pocBadge}</td>
                     <td>${vBadge}</td>
                     <td><span class="badge ${t.type === 'SHORT' ? 'badge-short' : 'badge-long'}">${t.type}</span></td>
                     <td>$${t.entry_price}</td>
-                    <td><div style="display:flex; gap:4px">${rsiBadge}${bbBadge}</div></td>
-                    <td>${waveBadge}</td>
-                    <td style="color:${statusColor}; font-weight:600">${t.status}</td>
+                    <td><div style="display:flex; gap:4px; flex-direction:column">${rsiBadge} ${bbBadge}</div></td>
+                    <td>${waveBadge} ${progressHtml}</td>
+                    <td style="color:${statusColor}; font-weight:700">${t.status}</td>
                 </tr>`;
             });
         } catch(e) { console.error(e); }
@@ -462,9 +930,33 @@
         try {
             const r = await fetch('/api/macro');
             const data = await r.json();
+            
+            if (data.error) throw new Error(data.error);
+
             if (data.nvda) document.getElementById('macro-nvda').innerText = '$' + data.nvda.toFixed(2);
             if (data.pltr) document.getElementById('macro-pltr').innerText = '$' + data.pltr.toFixed(2);
-        } catch(e) { console.error(e); }
+            
+            // Sync timestamp label
+            if (data.last_updated) {
+                const elapsed = Math.round((Date.now()/1000) - data.last_updated);
+                const label = document.getElementById('last-update-label');
+                label.innerText = `Actualizado hace ${elapsed}s`;
+                label.style.color = elapsed > 60 ? '#ff4444' : '#22c55e';
+            }
+            
+            // Hide error banner if success
+            document.getElementById('error-banner').style.display = 'none';
+
+        } catch(e) {
+            console.error(e);
+            // Solo mostrar banner si hay servidor Flask pero falla (no si abrimos el HTML directamente)
+            const isNetworkError = e instanceof TypeError && e.message.includes('fetch');
+            const noServer = !window.location.port && window.location.protocol === 'file:';
+            if (!noServer && !isNetworkError) {
+                document.getElementById('error-banner').style.display = 'block';
+                document.getElementById('error-banner').innerText = `⚠️ Error de datos Macro: ${e.message}`;
+            }
+        }
     }
 
     // ─── Report Generator ─────────────────────────────────────────────────
@@ -698,8 +1190,8 @@
     // Init
     fetchDashboard();
     fetchMacro();
-    setInterval(fetchDashboard, 5000);
-    setInterval(fetchMacro, 30000);
+    setInterval(fetchDashboard, 30000);  // 30s — el bot cicla cada 35s, no tiene sentido más rápido
+    setInterval(fetchMacro, 90000);      // 90s — macro TTL interno es 15min, 90s es suficiente
     loadSavedDays();
 
     // Auto-carga si viene de URL directa /report/<date>
@@ -713,6 +1205,120 @@
         document.getElementById('tab-reports').classList.add('active');
         setTimeout(() => runReport(false), 300);
     }
+    // ─── Alerts Map ───────────────────────────────────────────────────────────
+    let _alertsData = null;
+    async function loadAlertsMap() {
+        if (_alertsData) { renderAlertsMap(_alertsData, 'all'); return; }
+        try {
+            const r = await fetch('/api/alerts/map');
+            _alertsData = await r.json();
+            renderAlertsMap(_alertsData, 'all');
+        } catch(e) {
+            document.getElementById('alerts-map-content').innerHTML =
+                `<div style="color:#ff4444">Error cargando mapa: ${e.message}</div>`;
+        }
+    }
+    function filterAlerts(profile) {
+        if (!_alertsData) return;
+        renderAlertsMap(_alertsData, profile);
+    }
+    function renderAlertsMap(data, profile) {
+        const types = data.alert_types || [];
+        const filtered = profile === 'all' ? types : types.filter(a => a.risk_profile === profile);
+        const riskColor = { 'CONSERVADOR': '#00ff88', 'MODERADO': 'var(--blue)', 'AGRESIVO': 'var(--purple)', 'DESACTIVADO': '#555' };
+        const container = document.getElementById('alerts-map-content');
+        if (!filtered.length) { container.innerHTML = '<div style="color:var(--muted)">Sin alertas para este perfil.</div>'; return; }
+        container.innerHTML = filtered.map(a => {
+            const rc = riskColor[a.risk_profile] || '#aaa';
+            const disabled = a.risk_profile === 'DESACTIVADO';
+            const liveWR = a.live_win_rate != null ? `<span style="color:${a.live_win_rate >= 55 ? '#00ff88' : (a.live_win_rate >= 45 ? 'var(--blue)' : '#ff4444')}">${a.live_win_rate}%</span>` : '<span style="color:var(--muted)">Sin datos</span>';
+            const btWR = a.backtest_wr != null ? `<span style="color:${a.backtest_wr >= 55 ? '#00ff88' : (a.backtest_wr >= 45 ? 'var(--blue)' : '#ff8800')}">${a.backtest_wr}%</span> <span style="color:var(--muted)">(N=${a.backtest_n})</span>` : '<span style="color:var(--muted)">—</span>';
+            const conditions = (a.conditions || []).map(c => `<li style="color:var(--muted);margin:0.2rem 0">${c}</li>`).join('');
+            const symbolBreakdown = Object.entries(a.live_by_symbol || {}).map(([sym, s]) => {
+                const t = s.wins + s.losses;
+                const wr = t > 0 ? Math.round(s.wins/t*100) : 0;
+                return `<span style="margin-right:0.75rem">${sym}: ${wr}% (${t})</span>`;
+            }).join('');
+            return `<div class="card" style="border-left:3px solid ${rc};opacity:${disabled ? 0.45 : 1}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem">
+                    <div>
+                        <div style="color:${rc};font-weight:700;font-size:0.95rem">${a.name}</div>
+                        <div style="color:var(--muted);font-size:0.75rem;margin-top:0.2rem">${a.direction} · ${a.version}</div>
+                    </div>
+                    <span style="background:${rc}22;color:${rc};padding:0.2rem 0.6rem;border-radius:12px;font-size:0.7rem;font-weight:700">${a.risk_profile}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem">
+                    <div style="background:#0d1117;padding:0.5rem;border-radius:4px;text-align:center">
+                        <div style="color:var(--muted);font-size:0.65rem">WR BACKTEST</div>
+                        <div style="font-size:0.95rem;font-weight:700">${btWR}</div>
+                    </div>
+                    <div style="background:#0d1117;padding:0.5rem;border-radius:4px;text-align:center">
+                        <div style="color:var(--muted);font-size:0.65rem">WR EN VIVO (${a.live_total} trades)</div>
+                        <div style="font-size:0.95rem;font-weight:700">${liveWR}</div>
+                    </div>
+                </div>
+                ${symbolBreakdown ? `<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.6rem">${symbolBreakdown}</div>` : ''}
+                <details style="margin-top:0.5rem">
+                    <summary style="color:var(--blue);cursor:pointer;font-size:0.8rem">Condiciones de disparo</summary>
+                    <ul style="margin:0.5rem 0 0;padding-left:1.2rem;font-size:0.78rem">${conditions}</ul>
+                </details>
+                <div style="color:var(--muted);font-size:0.72rem;margin-top:0.6rem;font-style:italic">${a.notes}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // Shadow Intel Simulator — JS puro, sin llamadas a APIs.
+    // Intervalo aleatorio entre 20 y 40 minutos → 1-3 actualizaciones/hora.
+    const SHADOW_MESSAGES = [
+        sym => `POC detectado en ${sym}. Zona de acumulación institucional activa.`,
+        sym => `Volumen anómalo en ${sym}. Posible Order Block en formación.`,
+        sym => `${sym} tocando soporte clave. Monitoreo activo activado.`,
+        sym => `Imbalance de liquidez detectado en ${sym}. Zona de interés marcada.`,
+        sym => `${sym}: RSI divergencia potencial en H4. Seguimiento pendiente.`,
+        sym => `Macro correlación DXY↓ favorece acumulación en ${sym}.`,
+    ];
+
+    function scheduleShadowUpdate() {
+        const msMin = 20 * 60 * 1000;   // 20 min
+        const msMax = 40 * 60 * 1000;   // 40 min
+        const delay = msMin + Math.random() * (msMax - msMin);
+        setTimeout(() => {
+            const items = document.getElementById('memory-feed');
+            if (items) {
+                const symbols = ["ZEC", "TAO", "BTC"];
+                const sym = symbols[Math.floor(Math.random() * symbols.length)];
+                const msgFn = SHADOW_MESSAGES[Math.floor(Math.random() * SHADOW_MESSAGES.length)];
+                const now = new Date();
+                const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+                const newItem = document.createElement('div');
+                newItem.className = 'memory-item';
+                newItem.innerHTML = `<div class="memory-time">${timeStr}</div>${msgFn(sym)}`;
+                items.prepend(newItem);
+                // Mantener máx 8 entradas en el feed
+                while (items.children.length > 8) items.removeChild(items.lastChild);
+            }
+            scheduleShadowUpdate(); // Reagendar para el siguiente intervalo
+        }, delay);
+    }
+    scheduleShadowUpdate();
 </script>
+
+    </div> <!-- End Main Content -->
+
+    <!-- Sidebar: Shadow Intelligence -->
+    <div class="sidebar">
+        <div class="sidebar-title">🧠 Shadow Intel <span style="font-size:0.6rem;color:#475569;font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px">JS simulator · sin API</span></div>
+        <div id="memory-feed">
+            <div class="memory-item">
+                <div class="memory-time">JUSTO AHORA</div>
+                Monitoreando ZEC (V6.0). POC detectado en $216.18 - Zona de Re-entrada.
+            </div>
+            <div class="memory-item">
+                <div class="memory-time">HACE 5 MIN</div>
+                Toma de parcial en ZEC ($254) exitosa. Manteniendo 50% para TP2.
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

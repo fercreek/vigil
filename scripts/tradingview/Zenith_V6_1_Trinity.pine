@@ -1,0 +1,80 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Zenith Institutional Bot V6.1 (Trinity Architecture)
+
+//@version=5
+indicator("Zenith V6.1 - Trinity Architecture", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// --- INPUTS ---
+ema_len = input.int(200, "EMA Institutional Length", minval=1)
+bb_len = input.int(20, "Bollinger Bands Length")
+bb_mult = input.float(2.0, "Bollinger Mult")
+lookback_vol = input.int(24, "Volume Profile Lookback")
+show_labels = input.bool(true, "Show AI Consensus Labels")
+
+// --- INDICATORS ---
+ema_200 = ta.ema(close, ema_len)
+[bb_mid, bb_upper, bb_lower] = ta.bb(close, bb_len, bb_mult)
+
+// --- VOLUME PROFILE (POC SIMULATION) ---
+var float poc = na
+var float vah = na
+var float val = na
+
+if barstate.islast
+    float max_vol = 0.0
+    float sum_vol = 0.0
+    int best_idx = 0
+    
+    // Simple lookback to find POC (Point of Control)
+    for i = 0 to lookback_vol
+        if volume[i] > max_vol
+            max_vol := volume[i]
+            best_idx := i
+    
+    poc := close[best_idx]
+    vah := poc * 1.01
+    val := poc * 0.99
+
+// --- SMC: ORDER BLOCKS (BULL/BEAR) ---
+is_bull_ob = low[1] < low[2] and close > high[1]
+is_bear_ob = high[1] > high[2] and close < low[1]
+
+// --- SIGNAL LOGIC (TRINITY CONSENSUS) ---
+// Condition: Price near BB Lower, EMA 200 Support, RVOL > 1.2
+rvol = volume / ta.sma(volume, 24)
+buy_signal = close < bb_lower * 1.01 and close > ema_200 and rvol > 1.2 and is_bull_ob
+
+// --- VISUALS: EMA & BB ---
+plot(ema_200, "EMA 200", color.new(color.purple, 30), 2)
+p1 = plot(bb_upper, "BB Upper", color.new(color.blue, 60))
+p2 = plot(bb_lower, "BB Lower", color.new(color.blue, 60))
+fill(p1, p2, color.new(color.blue, 95), "BB Fill")
+
+// --- VISUALS: POC MAGNET ---
+plot(poc, "POC Magnet", color.new(color.orange, 0), 2, style=plot.style_linebr)
+line.new(bar_index - lookback_vol, poc, bar_index, poc, color=color.new(color.orange, 50), width=2, style=line.style_dashed)
+
+// --- LABELS: AI DEBATE V6.1 ---
+if buy_signal and show_labels
+    label.new(bar_index, low, 
+         "🚀 ZENITH V6.1: TRINITY BUY\n" +
+         "------------------------\n" +
+         "🎩 Genesis: Capital Institucional detectado. 🟢\n" +
+         "⚡ Exodo: Estructura técnica convergente. 🟢\n" +
+         "🔔 Salmos: Confluencia Alcista / Wave 3. 🟢\n" +
+         "------------------------\n" +
+         "🎯 TP1: " + str.tostring(close * 1.02) + " (50%)\n" +
+         "🎯 TP2: " + str.tostring(close * 1.04) + " (25%)\n" +
+         "🎯 TP3: " + str.tostring(close * 1.07) + " (25%)\n" +
+         "🛑 SL: " + str.tostring(close * 0.985),
+         color=color.new(color.green, 20),
+         textcolor=color.white,
+         style=label.style_label_up,
+         size=size.normal)
+
+// --- PLOTS ---
+plotshape(buy_signal, "Buy Signal", shape.triangleup, location.belowbar, color.green, size=size.small)
+plotshape(is_bear_ob, "Bear OB", shape.triangledown, location.abovebar, color.red, size=size.tiny)
+
+// --- ALERTS ---
+alertcondition(buy_signal, "Zenith Trinity Signal", "Trinity Consensus BUY Detected")
