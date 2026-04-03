@@ -11,7 +11,7 @@ from datetime import datetime
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-fired = {}
+fired: dict[str, dict] = {}  # {key: {"ts": float, "count": int}}
 
 
 def safe_html(text: str) -> str:
@@ -162,12 +162,14 @@ def alert(key: str, msg: str, version: str = "V1-TECH", cooldown: int = 300,
         str: ID del mensaje, o None si cooldown no cumplido
     """
     now = time.time()
-    if fired.get(key, 0) + cooldown < now:
-        fired[key] = now
+    entry = fired.get(key, {"ts": 0, "count": 0})
+    if entry["ts"] + cooldown < now:
+        new_count = entry["count"] + 1
+        fired[key] = {"ts": now, "count": new_count}
         ts = datetime.now().strftime("%H:%M")
         header = "🛡️ <b>[V1-TECH]</b>" if version == "V1-TECH" else "🤖 <b>[V2-AI-GEMINI]</b>"
         full = f"{header} — <code>{ts}</code>\n{msg}"
-        print(f"[{version}] {key} alert sent.")
+        print(f"[{version}] {key} alert sent (hit #{new_count}).")
 
         if inline_keyboard:
             url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -188,6 +190,11 @@ def alert(key: str, msg: str, version: str = "V1-TECH", cooldown: int = 300,
                 return None
         return send_telegram(full, reply_to)
     return None
+
+
+def get_alert_hit_count(key: str) -> int:
+    """Retorna cuántas veces se ha disparado una clave de alerta."""
+    return fired.get(key, {"count": 0})["count"]
 
 
 def get_alert_inline_keyboard(sym: str, side: str = "LONG") -> dict:

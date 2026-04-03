@@ -1029,10 +1029,14 @@ def check_strategies(prices: dict):
         # --- ALERTAS ESTRATÉGICAS: USDT.D BREAKOUT (V15: Institutional Grade) ---
         for level in [8.08, 8.044, 7.953]:
             if abs(usdt_d - level) < 0.005:
-                # Clasificar dirección del movimiento (breakout vs. rechazo)
+                # Contador de recurrencia (memoria del agente)
+                alert_key = f"usdtd_break_{level}"
+                hit_count = alert_manager.get_alert_hit_count(alert_key) + 1  # Lo que será tras enviarse
+
+                # Clasificar dirección del movimiento
                 prev_usdt_d = GLOBAL_CACHE["prices"].get("USDT_D_PREV", usdt_d)
                 direction = "🔺 SUBIENDO" if usdt_d >= prev_usdt_d else "🔻 CAYENDO"
-                
+
                 # Contexto por nivel institucional
                 if level == 8.08:
                     nivel_nombre = "🚨 ZONA DE PÁNICO"
@@ -1056,13 +1060,41 @@ def check_strategies(prices: dict):
                     accion_btc = "💎 BTC en zona de acumulación. Alerta V1 probable en próximas horas."
                     emoji_nivel = "🟢"
 
-                # Contexto de activos en tiempo real
+                # --- MEMORIA DEL AGENTE: Contexto de recurrencia ---
+                if hit_count == 1:
+                    recurrence_ctx = ""  # Primera vez: sin contexto adicional
+                    urgency_prefix = ""
+                elif hit_count == 2:
+                    recurrence_ctx = (
+                        f"\n\n🔁 <b>PERSISTENCIA DETECTADA</b> (2ª vez en sesión)\n"
+                        f"<i>El nivel {level}% se mantiene como zona clave. "
+                        f"Mercado indeciso — confirmar ruptura antes de actuar.</i>"
+                    )
+                    urgency_prefix = "⚡ "
+                elif hit_count == 3:
+                    recurrence_ctx = (
+                        f"\n\n🧠 <b>NIVEL DEFENDIDO 3 VECES — ALERTA NIVEL 2</b>\n"
+                        f"<i>Este nivel ha sido tocado {hit_count}x. Esto indica que "
+                        f"{'las instituciones están ABSORBIENDO la venta' if direction == '🔻 CAYENDO' else 'existe RESISTENCIA INSTITUCIONAL REAL en este nivel'}. "
+                        f"Probabilidad de breakout definitivo aumenta con cada toque.</i>"
+                    )
+                    urgency_prefix = "🚨🚨 "
+                else:
+                    recurrence_ctx = (
+                        f"\n\n🔥 <b>TOQUE #{hit_count} — NIVEL CRÍTICO INSTITUCIONAL</b>\n"
+                        f"<i>Recurrencia extrema. Este nivel ha actuado como imán de precio. "
+                        f"El siguiente movimiento será de alta magnitud. "
+                        f"{'SHORT activo si rompe al alza definitivamente.' if level == 8.08 else 'LONG de alta conviction si rompe a la baja confirmado.'}</i>"
+                    )
+                    urgency_prefix = "🔥🔥 "
+
+                # Pulso de activos en tiempo real
                 zec_rsi = prices.get("ZEC_RSI", 50.0)
                 tao_rsi = prices.get("TAO_RSI", 50.0)
                 btc_rsi = prices.get("BTC_RSI", 50.0)
-                
+
                 msg = (
-                    f"{emoji_nivel} <b>USDT.D INSTITUCIONAL: {nivel_nombre}</b>\n\n"
+                    f"{urgency_prefix}{emoji_nivel} <b>USDT.D INSTITUCIONAL: {nivel_nombre}</b>\n\n"
                     f"📍 Nivel: <b>{level}%</b> {direction}\n"
                     f"📊 Actual: <b>{usdt_d:.3f}%</b> | BTC.D: <b>{btc_d:.1f}%</b>\n"
                     f"💨 VIX: {vix:.1f} | DXY: {dxy:.2f}\n\n"
@@ -1076,8 +1108,10 @@ def check_strategies(prices: dict):
                     f"🎯 <b>PLAYBOOK INSTITUCIONAL:</b>\n"
                     f"• {accion_zec}\n"
                     f"• {accion_btc}"
+                    f"{recurrence_ctx}"
                 )
-                alert(f"usdtd_break_{level}", msg, version="MACRO", cooldown=3600)
+                alert(alert_key, msg, version="MACRO", cooldown=3600)
+
 
 def monitor_open_trades(prices: dict):
     open_trades = tracker.get_open_trades()
