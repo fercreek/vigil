@@ -17,6 +17,9 @@ import trading_executor
 import ccxt
 import yfinance as yf
 import social_analyzer
+from config import (V4_EMA_PROXIMITY_MAX, V4_EMA_PROXIMITY_MIN, V4_RSI_LOW,
+                    V4_RSI_HIGH, V4_RSI_HIGH_ZEC, V4_MIN_CONFLUENCE,
+                    V4_ATR_SL_MULT, V4_COOLDOWN)
 
 # Cargar variables de entorno
 load_dotenv(override=True)
@@ -966,6 +969,61 @@ def check_strategies(prices: dict):
                         _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v2_ai_long", phase, rsi_threshold=entry_rsi)
                         tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, conf_score, ai_analysis=full_analysis, macro_bias=macro_status, alert_type="v2_ai_long", trigger_conditions=_tc)
                         register_signal_event(sym.replace("/USDT", ""), prices)
+
+        # --- ESTRATEGIA V4: EMA 200 BOUNCE (MEAN REVERSION) ---
+        elif phase == "LONG" and p > ema_200 * V4_EMA_PROXIMITY_MIN and p <= ema_200 * V4_EMA_PROXIMITY_MAX:
+            rsi_high = V4_RSI_HIGH_ZEC if sym == "ZEC" else V4_RSI_HIGH
+            if V4_RSI_LOW <= rsi <= rsi_high and rsi > prev_rsi:
+                if is_position_open(sym, "LONG"):
+                    print(f"⏸️ [Position Guard] {sym} LONG (V4-EMA) ya abierto")
+                    continue
+
+                side = "LONG"
+                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), ob_detected=ob_detected)
+                conf_score = round(conf_score + social_adj, 2)
+
+                if conf_score < V4_MIN_CONFLUENCE:
+                    print(f"⏩ [V4-EMA] {sym} ignorada (Score {conf_score} < {V4_MIN_CONFLUENCE})")
+                    continue
+
+                register_signal_event(sym.replace("/USDT", ""), prices)
+                badge = get_confluence_badge(conf_score)
+                trade_label = "⚡ RAPIDA" if trade_type == "RAPIDA" else "📈 SWING"
+                ema_dist_pct = ((p - ema_200) / ema_200) * 100
+
+                sl_dist = max(atr * V4_ATR_SL_MULT, p * 0.007)
+                sl = round(p - sl_dist, 2)
+                tp1 = round(p + (sl_dist * 2.0), 2)
+                tp2 = round(p + (sl_dist * 3.0), 2)
+
+                msg = (f"{badge}\n\n"
+                       f"📐 <b>SEÑAL V4: EMA 200 BOUNCE (15m-1H)</b> 📐\n\n"
+                       f"🌊 {elliott_ctx}\n"
+                       f"📈 Proximidad EMA200: {ema_dist_pct:.2f}%\n"
+                       f"{macro_ctx}\n"
+                       f"🛡️ <b>SMC SHIELD:</b> {'🟢 DETECTED' if ob_detected else '⚪ NONE'}\n\n"
+                       f"📊 <b>ESTADO TECNICO:</b>\n"
+                       f"• RSI: {rsi:.1f} (prev: {prev_rsi:.1f}) | {bb_ctx}\n"
+                       f"• EMA 200: ${ema_200:,.2f}\n"
+                       f"⭐ <b>Confiabilidad: {format_confidence(conf_score)}</b>\n\n"
+                       f"🌍 <b>CONTEXTO MACRO:</b>\n"
+                       f"• USDT.D: {usdt_d}% | BTC.D: {btc_d}%\n"
+                       f"• DXY: {dxy:.2f} | VIX: {vix:.1f}\n"
+                       f"• Tipo: {trade_label}\n\n"
+                       f"🪙 <b>{sym}</b> @ ${p:,.2f}\n"
+                       f"🎯 TP1: <b>${tp1:,.2f}</b> (2:1)\n"
+                       f"🎯 TP2: <b>${tp2:,.2f}</b> (3:1)\n"
+                       f"🛑 SL: <b>${sl:,.2f}</b>")
+
+                mid = alert(f"{sym}_v4_ema_bounce", msg, version="V1-TECH",
+                            cooldown=V4_COOLDOWN,
+                            inline_keyboard=get_alert_inline_keyboard(sym, "LONG"))
+                if mid:
+                    open_position(sym, "LONG")
+                    _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v4_ema_bounce", "LONG", rsi_threshold=rsi_high)
+                    tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v4_ema_bounce", trigger_conditions=_tc)
+                    gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
+                    register_signal_event(sym.replace("/USDT", ""), prices)
 
         # --- ESTRATEGIA V2: AI ENHANCED (LONG ONLY) ---
         if rsi <= 40:

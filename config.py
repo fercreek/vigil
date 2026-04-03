@@ -51,5 +51,15 @@ RISK_PER_TRADE_PCT   = 0.01   # 1% por defecto
 # ── Alertas / Cooldown ────────────────────────────────────────────────────────
 ALERT_COOLDOWN_SECONDS = 300  # 5 min entre alertas del mismo tipo
 
+# ── Estrategia V4: EMA 200 Bounce (Mean Reversion) ──────────────────────────
+V4_EMA_PROXIMITY_MAX = 1.02    # Precio max 2% arriba de EMA200
+V4_EMA_PROXIMITY_MIN = 1.001   # Precio min 0.1% arriba (confirma no quiebre)
+V4_RSI_LOW           = 35.0    # RSI minimo (zona de recuperacion)
+V4_RSI_HIGH          = 50.0    # RSI maximo (no sobrecomprado)
+V4_RSI_HIGH_ZEC      = 55.0    # ZEC: umbral mas alto por volatilidad
+V4_MIN_CONFLUENCE    = 3       # Confluencia minima (vs 4 de V1)
+V4_ATR_SL_MULT       = 1.5    # SL mas ajustado: 1.5x ATR
+V4_COOLDOWN          = 600     # 10 min cooldown (vs 5 min de V1)
+
 # ── Versiones de estrategia ───────────────────────────────────────────────────
-VERSIONS = ["V1-TECH", "V2-AI"]
+VERSIONS = ["V1-TECH", "V2-AI", "V4-EMA"]
