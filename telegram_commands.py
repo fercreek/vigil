@@ -174,7 +174,9 @@ def check_user_queries(prices: dict):
                     msg = f"📊 <b>MERCADO</b> {emoji} — {sentiment['bias']}\n\n"
                     for s in ["SOL", "BTC", "TAO", "ZEC"]:
                         msg += f"• <b>{s}</b>: ${prices.get(s,0):,.2f} | RSI {prices.get(f'{s}_RSI',0):.1f}\n"
-                    msg += f"\n🐋 Genesis: \"{sentiment.get('genesis', 'N/A')}\"\n⚡ Exodo: \"{sentiment.get('exodo', 'N/A')}\""
+                    msg += f"\n🎩 Genesis: \"{sentiment.get('genesis', 'N/A')}\"\n"
+                    msg += f"⚡ Exodo: \"{sentiment.get('exodo', 'N/A')}\"\n"
+                    msg += f"🌊 Salmos: \"{sentiment.get('salmos', 'N/A')}\""
                     send_telegram(msg, keyboard=get_main_menu())
 
                 elif text.startswith("/audit") or "Auditoría" in text:

@@ -843,9 +843,10 @@ def get_market_sentiment(prices: dict) -> dict:
         f"USDT.D: {prices.get('USDT_D', 'N/A')}% | BTC: ${prices.get('BTC', 0):,.2f} | ZEC: ${prices.get('ZEC', 0):,.2f}\n\n"
         f"1. Define el BIAS global (BULLISH/BEARISH/NEUTRAL).\n"
         f"2. Da una opinión de 12 palabras de GENESIS (Origen Institucional) 🎩.\n"
-        f"3. Da una opinión de 12 palabras de EXODO (Evolución Tecnológica) ⚡.\n\n"
+        f"3. Da una opinión de 12 palabras de EXODO (Evolución Tecnológica) ⚡.\n"
+        f"4. Da una opinión de 12 palabras de SALMOS (Profeta de Ondas/Elliott) 🌊.\n\n"
         f"Formato JSON: "
-        '{"bias": "...", "genesis": "...", "exodo": "..."}'
+        '{"bias": "...", "genesis": "...", "exodo": "...", "salmos": "..."}'
     )
     print(f"🧠 DEBUG: Solicitando sentimiento AI...")
     try:
@@ -872,13 +873,14 @@ def get_market_sentiment(prices: dict) -> dict:
         if data:
             return {
                 "bias": data.get("bias", "NEUTRAL"),
-                "genesis": data.get("genesis", data.get("gordon", "Mercado incierto.")),
-                "exodo": data.get("exodo", data.get("aiden", "Vibras mixtas."))
+                "genesis": data.get("genesis", "Mercado incierto."),
+                "exodo": data.get("exodo", "Vibras mixtas."),
+                "salmos": data.get("salmos", "Ondas en desarrollo.")
             }
-        return {"bias": "NEUTRAL", "genesis": "Mercado incierto.", "exodo": "Vibras mixtas."}
+        return {"bias": "NEUTRAL", "genesis": "Mercado incierto.", "exodo": "Vibras mixtas.", "salmos": "Ondas en desarrollo."}
     except Exception as e:
         print(f"[Sentiment Error] {e}")
-        return {"bias": "NEUTRAL", "genesis": "La conexión con la ballena falló.", "exodo": "El servidor de la tencología está laggeado."}
+        return {"bias": "NEUTRAL", "genesis": "Error AI.", "exodo": "Error AI.", "salmos": "Error AI."}
 
 def get_top_setup(prices_dict: dict) -> str:
     """Escanea las monedas foco (BTC, TAO, ZEC) y usa la IA para coronar al mejor setup."""
