@@ -640,7 +640,7 @@ def get_prices() -> dict:
     res["VIX"] = GLOBAL_CACHE["macro_metrics"].get("vix", 0.0)
 
     # 3. Datos Técnicos (TTL_INDICATORS para reducir carga)
-    for sym in ["TAO", "BTC", "ZEC", "SOL"]:
+    for sym in ["TAO", "BTC", "ZEC", "SOL", "ETH"]:
         last_ind_update = GLOBAL_CACHE["last_update"]["indicators"].get(sym, 0)
         
         if now - last_ind_update > TTL_INDICATORS:
@@ -1026,18 +1026,58 @@ def check_strategies(prices: dict):
                     tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, 5 if is_consensus else 4, ai_analysis=full_analysis, macro_bias=macro_status, alert_type="v2_ai_consensus", trigger_conditions=_tc)
                     gemini_analyzer.log_alert_to_context(sym, side, p, rsi, tp1, sl, "V2-AI")
 
-        # --- ALERTAS ESTRATÉGICAS: USDT.D BREAKOUT ---
+        # --- ALERTAS ESTRATÉGICAS: USDT.D BREAKOUT (V15: Institutional Grade) ---
         for level in [8.08, 8.044, 7.953]:
-            # Alerta si cruzamos nivel (con tolerancia de 0.005)
             if abs(usdt_d - level) < 0.005:
+                # Clasificar dirección del movimiento (breakout vs. rechazo)
+                prev_usdt_d = GLOBAL_CACHE["prices"].get("USDT_D_PREV", usdt_d)
+                direction = "🔺 SUBIENDO" if usdt_d >= prev_usdt_d else "🔻 CAYENDO"
+                
+                # Contexto por nivel institucional
                 if level == 8.08:
-                    desc = "Pánico y Alta Presión Vendedora (Precaución con los LONGs)"
+                    nivel_nombre = "🚨 ZONA DE PÁNICO"
+                    desc_corta = "Presión vendedora institucional máxima"
+                    impacto = "BEAR para crypto. Capital huyendo a stablecoins."
+                    accion_zec = "⛔ EVITAR longs. Esperar rechazo confirmado en este nivel."
+                    accion_btc = "👀 BTC puede rebotear si este nivel actúa como resistencia de USDT.D."
+                    emoji_nivel = "🔴"
                 elif level == 8.044:
-                    desc = "Tensión e Incertidumbre (Riesgo de corrección)"
-                else:
-                    desc = "Euforia y Dinero Entrando (Zona óptima para LONGs)"
-                    
-                alert(f"usdtd_break_{level}", f"🚨 *BREAKOUT USDT.D*: Nivel `{level}%` alcanzado.\n\n📖 *Significado*: {desc}\nContexto: {bb_ctx}", version="MACRO", cooldown=3600)
+                    nivel_nombre = "⚠️ ZONA DE TENSIÓN"
+                    desc_corta = "Incertidumbre y probable rotación"
+                    impacto = "NEUTRAL/BEAR. Mercado buscando dirección."
+                    accion_zec = "⏳ Reducir tamaño de posición. Esperar confirmación macro."
+                    accion_btc = "📊 BTC Dominancia clave: si sube junto a USDT.D, hedge activo."
+                    emoji_nivel = "🟡"
+                else:  # 7.953
+                    nivel_nombre = "✅ ZONA DE EUFORIA"
+                    desc_corta = "Capital fluyendo hacia activos de riesgo"
+                    impacto = "BULL para crypto. Instituciones entrando al mercado."
+                    accion_zec = "🚀 OPORTUNIDAD: Buscar setups de acumulación en ZEC/TAO."
+                    accion_btc = "💎 BTC en zona de acumulación. Alerta V1 probable en próximas horas."
+                    emoji_nivel = "🟢"
+
+                # Contexto de activos en tiempo real
+                zec_rsi = prices.get("ZEC_RSI", 50.0)
+                tao_rsi = prices.get("TAO_RSI", 50.0)
+                btc_rsi = prices.get("BTC_RSI", 50.0)
+                
+                msg = (
+                    f"{emoji_nivel} <b>USDT.D INSTITUCIONAL: {nivel_nombre}</b>\n\n"
+                    f"📍 Nivel: <b>{level}%</b> {direction}\n"
+                    f"📊 Actual: <b>{usdt_d:.3f}%</b> | BTC.D: <b>{btc_d:.1f}%</b>\n"
+                    f"💨 VIX: {vix:.1f} | DXY: {dxy:.2f}\n\n"
+                    f"🔬 <b>DIAGNÓSTICO:</b>\n"
+                    f"<i>{desc_corta}</i>\n"
+                    f"📈 Impacto: {impacto}\n\n"
+                    f"📊 <b>PULSO DE ACTIVOS:</b>\n"
+                    f"• BTC RSI: {btc_rsi:.1f} | BB: {bb_ctx}\n"
+                    f"• ZEC RSI: {zec_rsi:.1f}\n"
+                    f"• TAO RSI: {tao_rsi:.1f}\n\n"
+                    f"🎯 <b>PLAYBOOK INSTITUCIONAL:</b>\n"
+                    f"• {accion_zec}\n"
+                    f"• {accion_btc}"
+                )
+                alert(f"usdtd_break_{level}", msg, version="MACRO", cooldown=3600)
 
 def monitor_open_trades(prices: dict):
     open_trades = tracker.get_open_trades()
