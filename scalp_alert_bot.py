@@ -361,10 +361,10 @@ def alert(key: str, msg: str, version: str = "V1-TECH", cooldown: int = 300,
     import alert_manager
     return alert_manager.alert(key, msg, version, cooldown, reply_to, inline_keyboard)
 
-def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0, side="LONG", elliott="", spy=0.0, oil=0.0, ob_detected=False):
+def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0, side="LONG", elliott="", spy=0.0, oil=0.0, ob_detected=False, funding_signal=0):
     """Delegado a strategies.py — ver ese módulo."""
     import strategies
-    return strategies.calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy, oil, ob_detected)
+    return strategies.calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy, oil, ob_detected, funding_signal=funding_signal)
 
 def get_confluence_badge(score):
     """Delegado a strategies.py — ver ese módulo."""

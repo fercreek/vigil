@@ -329,6 +329,29 @@ def check_user_queries(prices: dict):
                     else:
                         send_telegram("❌ Agente no válido. Usa: Genesis, Exodo, Shadow, Salmos, Apocalipsis")
 
+                elif text.startswith("/funding"):
+                    import market_intel
+                    send_telegram(
+                        market_intel.get_funding_html(),
+                        keyboard=get_main_menu()
+                    )
+
+                elif text.startswith("/regime"):
+                    import market_intel
+                    send_telegram(
+                        market_intel.get_regime_html(),
+                        keyboard=get_main_menu()
+                    )
+
+                elif text.startswith("/liquidations"):
+                    import market_intel
+                    parts = text.split()
+                    _liq_sym = parts[1].upper() if len(parts) > 1 else "TAO"
+                    send_telegram(
+                        market_intel.get_liquidations_html(_liq_sym),
+                        keyboard=get_main_menu()
+                    )
+
                 elif text.lower().startswith("/wrong "):
                     raw = text.replace("/wrong ", "").strip().upper()
                     name_map = {"GENESIS": "CONSERVADOR", "EXODO": "SCALPER", "SHADOW": "SHADOW", "SALMOS": "SALMOS", "APOCALIPSIS": "APOCALIPSIS"}

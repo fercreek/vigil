@@ -93,6 +93,16 @@ def calculate_bollinger_bands(prices, period=20, std_dev=2):
     lower_band = sma - (std_dev * std)
     return upper_band.iloc[-1], sma.iloc[-1], lower_band.iloc[-1]
 
+def calculate_bb_width(prices, period=20, std_dev=2):
+    """Calcula el ancho relativo de las Bandas de Bollinger (porcentaje)."""
+    result = calculate_bollinger_bands(prices, period, std_dev)
+    if result is None:
+        return 0.0
+    upper, mid, lower = result
+    if mid == 0:
+        return 0.0
+    return (upper - lower) / mid
+
 def calculate_ema(prices, period=200):
     """Calcula la Media Móvil Exponencial (EMA)."""
     if len(prices) < period:
@@ -110,6 +120,44 @@ def calculate_atr(df, period=14):
     true_range = ranges.max(axis=1)
     # Wilder's Smoothing (RMA) using EWM
     return true_range.ewm(alpha=1/period, adjust=False).mean().iloc[-1]
+
+def calculate_adx(df, period=14):
+    """Calcula el ADX (Average Directional Index) con suavizado de Wilder.
+
+    ADX > 25 indica tendencia fuerte, < 20 indica mercado lateral.
+    Usa el mismo patron de Wilder smoothing que calculate_atr() y calculate_rsi().
+    """
+    if len(df) < period * 2:
+        return 0.0
+
+    high = df['high']
+    low = df['low']
+    close = df['close']
+
+    # +DM / -DM (Directional Movement)
+    plus_dm = high.diff()
+    minus_dm = -low.diff()
+    plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0.0)
+    minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0.0)
+
+    # True Range (misma logica que calculate_atr)
+    tr1 = high - low
+    tr2 = (high - close.shift()).abs()
+    tr3 = (low - close.shift()).abs()
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+
+    # Wilder smoothing (alpha=1/period, igual que ATR/RSI)
+    atr_smooth = tr.ewm(alpha=1/period, adjust=False).mean()
+    plus_di = 100 * (plus_dm.ewm(alpha=1/period, adjust=False).mean() / atr_smooth)
+    minus_di = 100 * (minus_dm.ewm(alpha=1/period, adjust=False).mean() / atr_smooth)
+
+    # DX → ADX
+    di_sum = plus_di + minus_di
+    di_sum = di_sum.replace(0, 1e-10)  # Evitar division por cero
+    dx = ((plus_di - minus_di).abs() / di_sum) * 100
+    adx = dx.ewm(alpha=1/period, adjust=False).mean()
+
+    return float(adx.iloc[-1])
 
 def calculate_volume_profile(df, bins=30):
     """Calcula el Volume Profile (POC, VAH, VAL) para detectar nodos de volumen."""

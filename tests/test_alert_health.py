@@ -122,7 +122,7 @@ class TestConfluenceScore:
 
     def test_score_in_valid_range(self):
         s = self._score()
-        assert 0 <= s <= 6, f"Score fuera de rango: {s}"
+        assert 0 <= s <= 7, f"Score fuera de rango: {s}"
 
     def test_extreme_bull_case(self):
         """Condiciones perfectas para LONG deben dar score alto (>= 4)."""
@@ -143,12 +143,12 @@ class TestConfluenceScore:
                         elliott="Corrección Correctiva profunda")
         assert s >= 0, f"Score no puede ser negativo: {s}"
 
-    def test_score_never_above_6(self):
-        """Score nunca debe superar 6."""
+    def test_score_never_above_7(self):
+        """Score nunca debe superar 7 (Phase 2: +1 funding signal)."""
         s = self._score(rsi=20, p=284, ema_200=280, bb_l=285,
                         usdt_d=7.5, elliott="Onda 3 alcista",
-                        ob_detected=True, spy=500.0)
-        assert s <= 6, f"Score no puede superar 6: {s}"
+                        ob_detected=True, spy=500.0, funding_signal=1)
+        assert s <= 7, f"Score no puede superar 7: {s}"
 
     def test_rsi_extreme_gives_bonus(self):
         """RSI <= 30 debe dar más puntos que RSI 35-40."""

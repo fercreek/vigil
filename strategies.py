@@ -18,10 +18,11 @@ from config import (
 
 def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0,
                                side="LONG", elliott="", spy=0.0, oil=0.0,
-                               ob_detected=False):
+                               ob_detected=False, funding_signal=0):
     """
-    Calcula un score de confluencia técnica + Macro (0-6 puntos).
-    V3.0: Añadido SMC (Order Block Detection).
+    Calcula un score de confluencia técnica + Macro (0-7 puntos).
+    V3.0: SMC (Order Block Detection).
+    V4.0 Phase 2: Funding Rate Contrarian signal.
     """
     # Lazy imports para evitar circularidad
     from scalp_alert_bot import GLOBAL_CACHE
@@ -69,7 +70,10 @@ def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0,
     if ob_detected:
         score += 1
 
-    return min(6, score)
+    # --- 8. FUNDING RATE CONTRARIAN (Phase 2) ---
+    score += funding_signal
+
+    return min(7, score)
 
 
 def get_confluence_badge(score):
@@ -175,6 +179,7 @@ def check_strategies(prices: dict):
     )
     import indicators
     from risk_manager import circuit_breaker
+    import market_intel
     import indicators_swing
     import tracker
     import gemini_analyzer
@@ -192,6 +197,12 @@ def check_strategies(prices: dict):
 
     phase = get_phase()
     usdt_d = prices.get("USDT_D", 8.0)
+
+    # ── Phase 2: Market Intelligence — Funding rates (batch, 1 call) ───
+    try:
+        funding_data = market_intel.get_funding_rates(["ZEC", "TAO", "ETH"])
+    except Exception:
+        funding_data = {}
 
     for sym in ["ZEC", "TAO", "ETH"]:
         p = prices.get(sym, 0.0)
@@ -276,17 +287,29 @@ def check_strategies(prices: dict):
         # --- RSI Hook (inercia) ---
         prev_rsi = GLOBAL_CACHE["last_rsi"].get(sym, 50.0)
 
+        # ── Phase 2: Regime Detection ─────────────────────────────────────
+        try:
+            regime_info = market_intel.detect_regime(sym)
+            regime = regime_info.get("regime", "TRENDING_UP")
+        except Exception:
+            regime = "TRENDING_UP"  # Safe default: no suprime senales
+
+        if regime == "RANGING":
+            print(f"⏸️ [Regime] {sym} en RANGING — suprimiendo senales")
+            continue
+
         # SHORT logic disabled — bot en modo LONG FOCUS institucional
 
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V3: REVERSAL / INTRADIA (AGRESIVA)
         # ═══════════════════════════════════════════════════════════════════
-        if phase == "LONG" and p < ema_200:
+        if phase == "LONG" and p < ema_200 and regime in ("VOLATILE", "TRENDING_DOWN"):
             reversal_rsi = 28.0 if sym == "TAO" else 26.0
             if rsi <= reversal_rsi:
                 register_signal_event(sym.replace("/USDT", ""), prices)
                 side = "LONG"
-                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"))
+                funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
+                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), funding_signal=funding_signal)
                 conf_score = round(conf_score + social_adj, 2)
 
                 sl_dist = max(atr * 2.0, p * 0.008)
@@ -321,7 +344,7 @@ def check_strategies(prices: dict):
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V1: Long V1 (Trend Alcista + Near BB + RSI 42 + RSI Rising)
         # ═══════════════════════════════════════════════════════════════════
-        elif phase == "LONG" and p > ema_200 and "BB" in bb_ctx:
+        elif phase == "LONG" and p > ema_200 and "BB" in bb_ctx and regime in ("TRENDING_UP", "VOLATILE"):
             entry_rsi = 48.0 if sym == "ZEC" else 42.0
             if rsi <= entry_rsi:
                 if rsi < prev_rsi:
@@ -338,7 +361,8 @@ def check_strategies(prices: dict):
                 caution = "⚠️ *PRECAUCIÓN: USDT.D ALTO*\n" if usdt_d > 8.05 else ""
 
                 side = "LONG"
-                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"))
+                funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
+                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), funding_signal=funding_signal)
                 conf_score = round(conf_score + social_adj, 2)
 
                 if conf_score < 4:
@@ -386,7 +410,7 @@ def check_strategies(prices: dict):
                         print(f"⏸️ [Position Guard] {sym} {side} (V2-AI) ya está abierto — omitiendo ejecución binance")
                         continue
 
-                    conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), ob_detected=ob_detected)
+                    conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), ob_detected=ob_detected, funding_signal=funding_signal)
                     conf_score = round(conf_score + social_adj, 2)
                     badge = get_confluence_badge(conf_score)
 
@@ -432,7 +456,7 @@ def check_strategies(prices: dict):
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V4: EMA 200 BOUNCE (MEAN REVERSION)
         # ═══════════════════════════════════════════════════════════════════
-        elif phase == "LONG" and p > ema_200 * V4_EMA_PROXIMITY_MIN and p <= ema_200 * V4_EMA_PROXIMITY_MAX:
+        elif phase == "LONG" and p > ema_200 * V4_EMA_PROXIMITY_MIN and p <= ema_200 * V4_EMA_PROXIMITY_MAX and regime == "TRENDING_UP":
             rsi_high = V4_RSI_HIGH_ZEC if sym == "ZEC" else V4_RSI_HIGH
             if V4_RSI_LOW <= rsi <= rsi_high and rsi > prev_rsi:
                 if is_position_open(sym, "LONG"):
@@ -440,7 +464,8 @@ def check_strategies(prices: dict):
                     continue
 
                 side = "LONG"
-                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), ob_detected=ob_detected)
+                funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
+                conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), ob_detected=ob_detected, funding_signal=funding_signal)
                 conf_score = round(conf_score + social_adj, 2)
 
                 if conf_score < V4_MIN_CONFLUENCE:
