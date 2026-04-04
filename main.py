@@ -61,7 +61,12 @@ if __name__ == "__main__":
     telegram_thread = threading.Thread(target=scalp_alert_bot.run_telegram_worker)
     telegram_thread.daemon = True
     telegram_thread.start()
+
+    # 4. Hilo para Centinela de Acciones (Watchdog)
+    stock_thread = threading.Thread(target=run_stock_watchdog)
+    stock_thread.daemon = True
+    stock_thread.start()
     
-    # 4. Hilo principal para Flask (Keep-Alive)
+    # 5. Hilo principal para Flask (Keep-Alive)
     run_flask()
 # Hot Reload Test

@@ -20,6 +20,7 @@ import social_analyzer
 from config import (V4_EMA_PROXIMITY_MAX, V4_EMA_PROXIMITY_MIN, V4_RSI_LOW,
                     V4_RSI_HIGH, V4_RSI_HIGH_ZEC, V4_MIN_CONFLUENCE,
                     V4_ATR_SL_MULT, V4_COOLDOWN)
+import alert_manager
 
 # Cargar variables de entorno
 load_dotenv(override=True)
@@ -101,7 +102,7 @@ def register_signal_event(sym: str, prices: dict) -> None:
         msg = (f"⚡ <b>EVENTO MULTI-SÍMBOLO [{ts_str}]</b>\n"
                f"Señales en: <code>{', '.join(symbols_firing)}</code>\n\n"
                f"{safe_html(scan)}")
-        _send_telegram(msg)
+        send_telegram(msg)
         print(f"[Multi-Signal] Scan enviado para {symbols_firing}")
         add_shadow_intel("MULTI", f"Análisis unificado para {', '.join(symbols_firing)} completado.")
     except Exception as e:
