@@ -298,7 +298,69 @@ def check_strategies(prices: dict):
             print(f"⏸️ [Regime] {sym} en RANGING — suprimiendo senales")
             continue
 
-        # SHORT logic disabled — bot en modo LONG FOCUS institucional
+        # ═══════════════════════════════════════════════════════════════════
+        # ESTRATEGIA V1-SHORT: Trend Bajista (Phase 3)
+        # Espejo de V1 Long: RSI >= 62, precio < EMA200, regime TRENDING_DOWN
+        # Risk SHORT: RAPIDA forzado (max 0.75% via risk_manager)
+        # ═══════════════════════════════════════════════════════════════════
+        if phase == "SHORT" and p < ema_200 and regime == "TRENDING_DOWN":
+            from config import RSI_SHORT_ENTRY
+            short_rsi = RSI_SHORT_ENTRY  # 62.0
+            if rsi >= short_rsi:
+                if rsi > prev_rsi:  # RSI subiendo = contra tendencia, skip
+                    pass
+                elif is_position_open(sym, "SHORT"):
+                    print(f"⏸️ [Position Guard] {sym} SHORT ya está abierto")
+                else:
+                    side = "SHORT"
+                    funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
+
+                    # Funding rate > 0 obligatorio para SHORT (longs pagando = confirma)
+                    fr_data = funding_data.get(sym, {})
+                    fr_rate = fr_data.get("rate", 0.0)
+                    if fr_rate <= 0:
+                        print(f"⏩ [V1-SHORT] {sym} ignorada: funding rate no confirma ({fr_rate:.6f})")
+                    else:
+                        conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), ob_detected=ob_detected, funding_signal=funding_signal)
+                        conf_score = round(conf_score + social_adj, 2)
+
+                        if conf_score < 4:
+                            print(f"⏩ [V1-SHORT] {sym} ignorada (Score {conf_score} < 4)")
+                        else:
+                            register_signal_event(sym.replace("/USDT", ""), prices)
+                            badge = get_confluence_badge(conf_score)
+                            # SHORT siempre es RAPIDA (max 0.75% risk)
+                            trade_type_short = "RAPIDA"
+
+                            sl_dist = max(atr * 2.0, p * 0.007)
+                            sl = round(p + sl_dist, 2)
+                            tp1 = round(p - (sl_dist * 2.0), 2)
+                            tp2 = round(p - (sl_dist * 3.5), 2)
+
+                            msg = (f"{badge}\n\n"
+                                   f"🔻 <b>SEÑAL V1-SHORT (15m)</b> 🔻\n\n"
+                                   f"🌍 {macro_ctx}\n"
+                                   f"🌊 {elliott_ctx}\n"
+                                   f"🏦 Funding: {fr_rate*100:+.4f}% (longs pagan)\n\n"
+                                   f"📊 <b>ESTADO TÉCNICO:</b>\n"
+                                   f"• RSI: {rsi:.1f} | BB: {bb_ctx}\n"
+                                   f"• EMA 200: ${ema_200:,.2f}\n"
+                                   f"• Régimen: {regime}\n"
+                                   f"⭐ <b>Confiabilidad: {format_confidence(conf_score)}</b>\n\n"
+                                   f"🪙 <b>{sym}</b> @ ${p:,.2f}\n"
+                                   f"🎯 TP1: <b>${tp1:,.2f}</b> (2:1)\n"
+                                   f"🎯 TP2: <b>${tp2:,.2f}</b> (3.5:1)\n"
+                                   f"🛑 SL: <b>${sl:,.2f}</b>\n"
+                                   f"⚡ Tipo: RAPIDA (SHORT = 75% risk)")
+
+                            mid = alert(f"{sym}_v1_short", msg, version="V1-TECH",
+                                        inline_keyboard=get_alert_inline_keyboard(sym, "SHORT"))
+                            if mid:
+                                open_position(sym, "SHORT")
+                                _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type_short, phy_bias, conf_score, "v1_short", "SHORT", rsi_threshold=short_rsi)
+                                tracker.log_trade(sym, "SHORT", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v1_short", trigger_conditions=_tc)
+                                gemini_analyzer.log_alert_to_context(sym, "SHORT", p, rsi, tp1, sl, "V1-TECH")
+                                register_signal_event(sym.replace("/USDT", ""), prices)
 
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V3: REVERSAL / INTRADIA (AGRESIVA)

@@ -73,6 +73,17 @@ def get_trades():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/metrics')
+def get_metrics():
+    """Metricas avanzadas: Sharpe, Sortino, MaxDD, SQN, Calmar, PF."""
+    try:
+        import metrics
+        trades = tracker.get_recent_outcomes(n=200)
+        report = metrics.generate_full_report(trades)
+        return jsonify(report)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/macro')
 def get_macro():
     try:

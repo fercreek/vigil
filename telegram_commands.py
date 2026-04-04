@@ -352,6 +352,15 @@ def check_user_queries(prices: dict):
                         keyboard=get_main_menu()
                     )
 
+                elif text.startswith("/metrics"):
+                    import metrics
+                    import tracker as _trk
+                    trades = _trk.get_recent_outcomes(n=100)
+                    send_telegram(
+                        metrics.get_metrics_html(trades),
+                        keyboard=get_main_menu()
+                    )
+
                 elif text.lower().startswith("/wrong "):
                     raw = text.replace("/wrong ", "").strip().upper()
                     name_map = {"GENESIS": "CONSERVADOR", "EXODO": "SCALPER", "SHADOW": "SHADOW", "SALMOS": "SALMOS", "APOCALIPSIS": "APOCALIPSIS"}
