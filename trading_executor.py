@@ -36,10 +36,11 @@ class ZenithExecutor:
             print(f"❌ Error obteniendo balance: {e}")
             return 0.0
 
-    def calculate_amount(self, symbol, entry, sl, balance):
-        """Calcula el tamaño de la posición basado en el riesgo (1% balance)."""
+    def calculate_amount(self, symbol, entry, sl, balance, dynamic_risk_pct=None):
+        """Calcula el tamaño de la posición basado en el riesgo dinámico."""
         try:
-            risk_amount = balance * self.risk_pct
+            risk_pct = dynamic_risk_pct if dynamic_risk_pct is not None else self.risk_pct
+            risk_amount = balance * risk_pct
             sl_distance = abs(entry - sl)
             if sl_distance == 0: return 0.1 # Fallback mínimo
             

@@ -402,5 +402,53 @@ def get_last_open_trade(symbol: str):
         }
     return None
 
+def get_recent_outcomes(n: int = 10) -> list:
+    """
+    Recupera los últimos N resultados de trades cerrados (para circuit breaker).
+    Retorna lista de dicts con status y pnl estimado.
+    """
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        SELECT id, symbol, type, entry_price, sl_price, tp1_price, tp2_price, status, close_time
+        FROM trades
+        WHERE status IN ('FULL_WON', 'LOST', 'PARTIAL_WON', 'PARTIAL_CLOSED')
+        ORDER BY id DESC LIMIT ?
+    ''', (n,))
+    rows = c.fetchall()
+    conn.close()
+
+    results = []
+    for r in rows:
+        entry = r[3] or 0
+        sl = r[4] or 0
+        tp1 = r[5] or 0
+        status = r[7]
+
+        # Estimar PnL % basado en status
+        if entry > 0 and sl > 0:
+            sl_dist = abs(entry - sl)
+            if status == "FULL_WON":
+                pnl_pct = (sl_dist * 2.0 / entry) * 100  # ~2:1 R:R
+            elif status in ("PARTIAL_WON", "PARTIAL_CLOSED"):
+                pnl_pct = (sl_dist * 1.0 / entry) * 100  # ~1:1 R:R
+            elif status == "LOST":
+                pnl_pct = -(sl_dist / entry) * 100
+            else:
+                pnl_pct = 0.0
+        else:
+            pnl_pct = 0.0
+
+        results.append({
+            "id": r[0],
+            "symbol": r[1],
+            "status": status,
+            "pnl_pct": round(pnl_pct, 2),
+            "is_win": status in ("FULL_WON", "PARTIAL_WON"),
+            "close_time": r[8],
+        })
+    return results
+
+
 # Inicializar BD al cargar el módulo
 init_db()

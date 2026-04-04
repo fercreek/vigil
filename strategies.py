@@ -174,6 +174,7 @@ def check_strategies(prices: dict):
         alert, get_alert_inline_keyboard, get_main_menu,
     )
     import indicators
+    from risk_manager import circuit_breaker
     import indicators_swing
     import tracker
     import gemini_analyzer
@@ -181,6 +182,12 @@ def check_strategies(prices: dict):
     import alert_manager
 
     if not prices:
+        return
+
+    # ── Circuit Breaker Gate ─────────────────────────────────────────────
+    can_trade, cb_reason, cb_multiplier = circuit_breaker.can_trade()
+    if not can_trade:
+        print(f"🚨 [CircuitBreaker] {cb_reason} — Estrategias bloqueadas")
         return
 
     phase = get_phase()

@@ -8,11 +8,12 @@ import indicators
 
 
 def monitor_open_trades(prices: dict):
-    """Monitorea posiciones abiertas y ejecuta TP/SL automático."""
+    """Monitorea posiciones abiertas, ejecuta TP/SL automático, y trailing stops."""
     # Lazy imports para evitar circularidad
     from scalp_alert_bot import send_telegram, alert, safe_html
     import tracker
     import gemini_analyzer
+    from risk_manager import circuit_breaker, trailing_stop_mgr
 
     open_trades = tracker.get_open_trades()
     for t in open_trades:
@@ -57,6 +58,7 @@ def monitor_open_trades(prices: dict):
                        f"• Motivo: El precio superó el techo proyectado.")
                 alert(f"t_{t['id']}_l", msg, version=t["version"], reply_to=reply)
                 gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
+                circuit_breaker.record_outcome(is_win=False, pnl_pct=-abs(pnl_pct))
             elif t["tp2_price"] > 0 and curr_p <= t["tp2_price"]:
                 tracker.update_trade_status(t["id"], "FULL_WON")
                 msg = (f"🟢 <b>TP2 ALCANZADO (STRIKE!)</b>\n\n"
@@ -68,11 +70,13 @@ def monitor_open_trades(prices: dict):
                        f"✨ El indicador predijo el retroceso correctamente.")
                 alert(f"t_{t['id']}_w", msg, version=t["version"], reply_to=reply)
                 gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
+                circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct))
             elif t["tp1_price"] > 0 and curr_p <= t["tp1_price"] and t["status"] == "OPEN":
                 tracker.update_trade_status(t["id"], "PARTIAL_WON")
                 new_sl = round(t["entry_price"] * 0.999, 2)
                 tracker.update_sl(t["id"], new_sl)
                 alert(f"t_{t['id']}_p", f"🟡 <b>TP1 ASEGURADO</b>\nTrailing BE (0.1%) Activado. Riesgo eliminado.", version=t["version"], reply_to=reply)
+                circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct) * 0.5)
         elif tipo == "LONG":
             if curr_p <= t["sl_price"]:
                 tracker.update_trade_status(t["id"], "LOST")
@@ -88,6 +92,7 @@ def monitor_open_trades(prices: dict):
                        f"• Motivo: Soporte perforado, el impulso falló.")
                 alert(f"t_{t['id']}_l", msg, version=t["version"], reply_to=reply)
                 gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
+                circuit_breaker.record_outcome(is_win=False, pnl_pct=-abs(pnl_pct))
             elif t["tp2_price"] > 0 and curr_p >= t["tp2_price"]:
                 tracker.update_trade_status(t["id"], "FULL_WON")
                 msg = (f"🟢 <b>TP2 ALCANZADO (STRIKE!)</b>\n\n"
@@ -99,8 +104,26 @@ def monitor_open_trades(prices: dict):
                        f"✨ Rebote técnico capturado con éxito.")
                 alert(f"t_{t['id']}_w", msg, version=t["version"], reply_to=reply)
                 gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
+                circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct))
             elif t["tp1_price"] > 0 and curr_p >= t["tp1_price"] and t["status"] == "OPEN":
                 tracker.update_trade_status(t["id"], "PARTIAL_WON")
                 new_sl = round(t["entry_price"] * 1.001, 2)
                 tracker.update_sl(t["id"], new_sl)
                 alert(f"t_{t['id']}_p", f"🚀 <b>TP1 ASEGURADO</b>\nTrailing BE (0.1%) Activado. Fondos protegidos.", version=t["version"], reply_to=reply)
+                circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct) * 0.5)
+
+    # ── Trailing Stop Updates ────────────────────────────────────────────
+    tsl_updates = trailing_stop_mgr.calculate_trailing_updates(open_trades, prices)
+    for upd in tsl_updates:
+        tracker.update_sl(upd["trade_id"], upd["new_sl"])
+        print(f"📐 [TrailingStop] {upd['reason']}")
+        alert(f"tsl_{upd['trade_id']}",
+              f"📐 <b>TRAILING STOP ACTUALIZADO</b>\n"
+              f"🪙 {upd['symbol']} {upd['side']}\n"
+              f"🛑 SL: ${upd['old_sl']:,.2f} → <b>${upd['new_sl']:,.2f}</b>\n"
+              f"📊 Precio: ${upd['current_price']:,.2f} | ATR: {upd['atr']:.2f}",
+              version="RISK", cooldown=120)
+
+    # Cleanup trailing tracking para trades cerrados
+    open_ids = {t["id"] for t in open_trades}
+    trailing_stop_mgr.cleanup_closed(open_ids)

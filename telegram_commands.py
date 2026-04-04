@@ -251,6 +251,34 @@ def check_user_queries(prices: dict):
                         keyboard=get_main_menu()
                     )
 
+                elif text.startswith("/circuit"):
+                    import risk_manager
+                    send_telegram(
+                        risk_manager.circuit_breaker.get_status_html(),
+                        keyboard=get_main_menu()
+                    )
+
+                elif text.startswith("/risk"):
+                    import risk_manager
+                    # Obtener datos del primer símbolo activo para mostrar risk actual
+                    _sym = "TAO"
+                    _atr = prices.get(f"{_sym}_ATR", 0.0)
+                    _price = prices.get(_sym, 0.0)
+                    _vix = prices.get("VIX", 0.0)
+                    _, _, cb_mult = risk_manager.circuit_breaker.can_trade()
+                    send_telegram(
+                        risk_manager.get_risk_summary_html(_atr, _price, _vix, "SWING", cb_mult),
+                        keyboard=get_main_menu()
+                    )
+
+                elif text.startswith("/circuit_reset"):
+                    import risk_manager
+                    risk_manager.circuit_breaker.force_reset()
+                    send_telegram(
+                        "🔄 <b>Circuit Breaker reseteado manualmente.</b>\nEstado: NORMAL",
+                        keyboard=get_main_menu()
+                    )
+
                 elif "flow" in t or text.startswith("/flow"):
                     send_telegram(
                         "🔀 <b>FLUJO ZENITH</b>\n\n"
