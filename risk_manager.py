@@ -422,9 +422,175 @@ class TrailingStopManager:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4. SINGLETON INSTANCES (importar desde otros módulos)
+# 4. DYNAMIC LEVERAGE (Phase 5)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from config import (
+    LEVERAGE_MIN, LEVERAGE_LOW, LEVERAGE_DEFAULT, LEVERAGE_MAX,
+    MAX_CONCURRENT_POSITIONS, MAX_PORTFOLIO_EXPOSURE,
+)
+
+
+def calculate_leverage(vix: float = 0.0, atr_pct: float = 0.0,
+                       regime: str = "TRENDING_UP",
+                       trade_type: str = "SWING") -> int:
+    """
+    Calcula leverage dinamico basado en volatilidad y regimen de mercado.
+
+    Logica:
+      - VIX > 35 o regime VOLATILE:  2x (proteger capital)
+      - VIX > 25 o trade RAPIDA:     3x (conservador)
+      - Normal (default):             5x
+      - Low vol (ATR < 1.5%) + TRENDING: 7x (aprovechar calma)
+
+    Args:
+        vix: Indice VIX actual
+        atr_pct: ATR como % del precio (e.g., 2.5 = 2.5%)
+        regime: Regimen de mercado ("TRENDING_UP", "TRENDING_DOWN", "VOLATILE", "RANGING")
+        trade_type: "RAPIDA" o "SWING"
+
+    Returns:
+        int: Nivel de leverage (2, 3, 5, o 7)
+    """
+    # Caso extremo: volatilidad alta
+    if vix > 35 or regime == "VOLATILE":
+        return LEVERAGE_MIN  # 2x
+
+    # Caso conservador
+    if vix > 25 or trade_type == "RAPIDA":
+        return LEVERAGE_LOW  # 3x
+
+    # Caso optimista: baja volatilidad + tendencia clara
+    if atr_pct < VOL_LOW_THRESHOLD and regime in ("TRENDING_UP", "TRENDING_DOWN"):
+        return LEVERAGE_MAX  # 7x
+
+    return LEVERAGE_DEFAULT  # 5x
+
+
+def get_leverage_html(vix: float, atr_pct: float, regime: str,
+                      trade_type: str) -> str:
+    """Genera HTML informativo de leverage para Telegram."""
+    lev = calculate_leverage(vix, atr_pct, regime, trade_type)
+    emoji = {2: "🔴", 3: "🟡", 5: "🟢", 7: "🚀"}.get(lev, "⚪")
+
+    return (
+        f"⚙️ <b>DYNAMIC LEVERAGE</b>\n\n"
+        f"{emoji} Leverage actual: <b>{lev}x</b>\n\n"
+        f"📊 Inputs:\n"
+        f"• VIX: {vix:.1f}\n"
+        f"• ATR/Price: {atr_pct:.2f}%\n"
+        f"• Regime: {regime}\n"
+        f"• Tipo: {trade_type}\n\n"
+        f"📐 Escala: {LEVERAGE_MIN}x (extreme) → {LEVERAGE_LOW}x → "
+        f"{LEVERAGE_DEFAULT}x → {LEVERAGE_MAX}x (calm)"
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5. PORTFOLIO RISK MANAGER (Phase 5)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class PortfolioRisk:
+    """
+    Gestion de riesgo a nivel portafolio.
+
+    Limites:
+      - Max 3 posiciones simultaneas
+      - Exposure total < 3x balance
+      - Pre-trade check antes de abrir nueva posicion
+    """
+
+    def __init__(self, max_positions=MAX_CONCURRENT_POSITIONS,
+                 max_exposure=MAX_PORTFOLIO_EXPOSURE):
+        self.max_positions = max_positions
+        self.max_exposure = max_exposure
+
+    def get_total_exposure(self, open_trades: list, prices: dict) -> float:
+        """
+        Calcula exposure total del portafolio en USD.
+
+        Args:
+            open_trades: Lista de trades abiertos [{symbol, entry_price, amount, type, ...}]
+            prices: Dict de precios actuales {symbol: price}
+
+        Returns:
+            float: Exposure total en USD (suma de notional values)
+        """
+        total = 0.0
+        for t in open_trades:
+            sym = t.get("symbol", "")
+            amount = t.get("amount", 0)
+            price = prices.get(sym, t.get("entry_price", 0))
+            total += abs(amount * price)
+        return round(total, 2)
+
+    def can_open_position(self, open_trades: list, prices: dict,
+                          balance: float) -> tuple:
+        """
+        Pre-trade check: verifica si se puede abrir una nueva posicion.
+
+        Returns:
+            (bool, str): (puede_abrir, razon)
+        """
+        # Check 1: max posiciones
+        n_open = len(open_trades)
+        if n_open >= self.max_positions:
+            return (False,
+                    f"Max posiciones alcanzado: {n_open}/{self.max_positions}")
+
+        # Check 2: exposure
+        if balance > 0:
+            exposure = self.get_total_exposure(open_trades, prices)
+            exposure_ratio = exposure / balance
+            if exposure_ratio >= self.max_exposure:
+                return (False,
+                        f"Exposure excesivo: {exposure_ratio:.1f}x "
+                        f"(max: {self.max_exposure}x)")
+
+        return (True, "OK — portfolio risk check passed")
+
+    def get_portfolio_html(self, open_trades: list, prices: dict,
+                           balance: float) -> str:
+        """Genera HTML de estado del portafolio para Telegram."""
+        n_open = len(open_trades)
+        exposure = self.get_total_exposure(open_trades, prices)
+        exposure_ratio = exposure / balance if balance > 0 else 0
+
+        can_open, reason = self.can_open_position(open_trades, prices, balance)
+        status_emoji = "🟢" if can_open else "🔴"
+
+        lines = [
+            f"📋 <b>PORTFOLIO RISK</b>\n",
+            f"• Posiciones abiertas: <b>{n_open}/{self.max_positions}</b>",
+            f"• Exposure: <b>${exposure:,.2f}</b> ({exposure_ratio:.1f}x balance)",
+            f"• Balance: ${balance:,.2f}",
+            f"• Max exposure: {self.max_exposure}x",
+            f"\n{status_emoji} Estado: {'Puede abrir' if can_open else 'Bloqueado'}",
+            f"<i>{reason}</i>",
+        ]
+
+        if open_trades:
+            lines.append(f"\n📊 <b>Posiciones:</b>")
+            for t in open_trades:
+                sym = t.get("symbol", "?")
+                tipo = t.get("type", "?")
+                entry = t.get("entry_price", 0)
+                curr = prices.get(sym, entry)
+                if tipo == "LONG":
+                    pnl = (curr - entry) / entry * 100 if entry else 0
+                else:
+                    pnl = (entry - curr) / entry * 100 if entry else 0
+                pnl_emoji = "🟢" if pnl >= 0 else "🔴"
+                lines.append(f"  {pnl_emoji} {sym} {tipo}: {pnl:+.2f}%")
+
+        return "\n".join(lines)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 6. SINGLETON INSTANCES (importar desde otros módulos)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Instancias globales — se crean al primer import
 circuit_breaker = CircuitBreaker()
 trailing_stop_mgr = TrailingStopManager()
+portfolio_risk = PortfolioRisk()

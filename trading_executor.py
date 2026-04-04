@@ -66,7 +66,8 @@ class ZenithExecutor:
             print(f"⚠️ Error calculando cantidad: {e}")
             return 0.0
 
-    def execute_bracket_order(self, symbol, side, entry, tp1, tp2, sl, tp3=None):
+    def execute_bracket_order(self, symbol, side, entry, tp1, tp2, sl, tp3=None,
+                              dynamic_leverage=None):
         """Ejecuta una orden Bracket (Entrada + 3 TPs + SL) en Binance."""
         print(f"💸 [Zenith Executor] Iniciando ciclo de ejecución V6 (3 TPs) para {symbol} ({side})...")
         
@@ -97,9 +98,10 @@ class ZenithExecutor:
                 self.exchange.fapiPrivatePostMarginType({'symbol': symbol + 'USDT', 'marginType': 'ISOLATED'})
             except Exception as e:
                 print(f"⚠️ [Executor] Margin type ya configurado o error no crítico: {e}")
+            leverage_to_use = dynamic_leverage if dynamic_leverage else self.leverage
             try:
-                self.exchange.set_leverage(self.leverage, exchange_symbol)
-                print(f"✅ [Executor] Leverage x{self.leverage} configurado para {exchange_symbol}")
+                self.exchange.set_leverage(leverage_to_use, exchange_symbol)
+                print(f"✅ [Executor] Leverage x{leverage_to_use} configurado para {exchange_symbol}")
             except Exception as e:
                 err_msg = str(e)
                 print(f"❌ [Executor] FALLO CRÍTICO: No se pudo configurar leverage para {exchange_symbol}: {err_msg}")

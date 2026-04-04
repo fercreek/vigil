@@ -361,6 +361,39 @@ def check_user_queries(prices: dict):
                         keyboard=get_main_menu()
                     )
 
+                elif text.startswith("/leverage"):
+                    import risk_manager
+                    # Usar valores cached o defaults si no hay data live
+                    try:
+                        from scalp_alert_bot import _CACHE
+                        vix = _CACHE.get("VIX", {}).get("v", 0)
+                    except Exception:
+                        vix = 0
+                    send_telegram(
+                        risk_manager.get_leverage_html(
+                            vix=vix, atr_pct=2.0, regime="TRENDING_UP",
+                            trade_type="SWING"
+                        ),
+                        keyboard=get_main_menu()
+                    )
+
+                elif text.startswith("/portfolio"):
+                    import risk_manager
+                    import tracker as _trk
+                    open_trades = _trk.get_open_trades() if hasattr(_trk, 'get_open_trades') else []
+                    try:
+                        from scalp_alert_bot import _CACHE
+                        p = {s: _CACHE.get(s, {}).get("v", 0) for s in ["TAO", "ZEC"]}
+                    except Exception:
+                        p = {}
+                    balance = 1000.0  # Paper default
+                    send_telegram(
+                        risk_manager.portfolio_risk.get_portfolio_html(
+                            open_trades, p, balance
+                        ),
+                        keyboard=get_main_menu()
+                    )
+
                 elif text.lower().startswith("/wrong "):
                     raw = text.replace("/wrong ", "").strip().upper()
                     name_map = {"GENESIS": "CONSERVADOR", "EXODO": "SCALPER", "SHADOW": "SHADOW", "SALMOS": "SALMOS", "APOCALIPSIS": "APOCALIPSIS"}

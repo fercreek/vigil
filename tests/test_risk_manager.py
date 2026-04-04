@@ -176,6 +176,146 @@ class TestDynamicRisk:
 # 3. TRAILING STOP TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2b. DYNAMIC LEVERAGE TESTS (Phase 5)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestDynamicLeverage:
+    """Tests para leverage dinamico."""
+
+    def test_extreme_vix_gives_2x(self):
+        from risk_manager import calculate_leverage
+        assert calculate_leverage(vix=40, atr_pct=2.0) == 2
+
+    def test_volatile_regime_gives_2x(self):
+        from risk_manager import calculate_leverage
+        assert calculate_leverage(vix=15, atr_pct=2.0, regime="VOLATILE") == 2
+
+    def test_high_vix_gives_3x(self):
+        from risk_manager import calculate_leverage
+        assert calculate_leverage(vix=28, atr_pct=2.0) == 3
+
+    def test_rapida_gives_3x(self):
+        from risk_manager import calculate_leverage
+        assert calculate_leverage(vix=15, atr_pct=2.0, trade_type="RAPIDA") == 3
+
+    def test_normal_gives_5x(self):
+        from risk_manager import calculate_leverage
+        assert calculate_leverage(vix=18, atr_pct=2.0, regime="TRENDING_UP") == 5
+
+    def test_low_vol_trending_gives_7x(self):
+        from risk_manager import calculate_leverage
+        assert calculate_leverage(vix=15, atr_pct=1.0, regime="TRENDING_UP") == 7
+
+    def test_low_vol_trending_down_gives_7x(self):
+        from risk_manager import calculate_leverage
+        assert calculate_leverage(vix=15, atr_pct=1.0, regime="TRENDING_DOWN") == 7
+
+    def test_low_vol_ranging_gives_5x(self):
+        """RANGING no califica para max leverage aunque vol sea baja."""
+        from risk_manager import calculate_leverage
+        assert calculate_leverage(vix=15, atr_pct=1.0, regime="RANGING") == 5
+
+    def test_leverage_html_output(self):
+        from risk_manager import get_leverage_html
+        html = get_leverage_html(vix=20, atr_pct=2.0, regime="TRENDING_UP",
+                                 trade_type="SWING")
+        assert "DYNAMIC LEVERAGE" in html
+        assert "5x" in html
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2c. PORTFOLIO RISK TESTS (Phase 5)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestPortfolioRisk:
+    """Tests para gestion de riesgo de portafolio."""
+
+    def _make_pr(self):
+        from risk_manager import PortfolioRisk
+        return PortfolioRisk(max_positions=3, max_exposure=3.0)
+
+    def test_empty_portfolio_can_open(self):
+        pr = self._make_pr()
+        can, reason = pr.can_open_position([], {}, balance=1000)
+        assert can is True
+
+    def test_max_positions_blocks(self):
+        pr = self._make_pr()
+        trades = [
+            {"symbol": "TAO", "entry_price": 300, "amount": 1, "type": "LONG"},
+            {"symbol": "ZEC", "entry_price": 50, "amount": 5, "type": "LONG"},
+            {"symbol": "ETH", "entry_price": 3000, "amount": 0.1, "type": "SHORT"},
+        ]
+        can, reason = pr.can_open_position(trades, {}, balance=1000)
+        assert can is False
+        assert "Max posiciones" in reason
+
+    def test_excess_exposure_blocks(self):
+        pr = self._make_pr()
+        # 2 trades con exposure total > 3x balance
+        trades = [
+            {"symbol": "TAO", "entry_price": 300, "amount": 10, "type": "LONG"},
+            # 300 * 10 = 3000, balance=1000, ratio=3.0 → >= max
+        ]
+        can, reason = pr.can_open_position(trades, {"TAO": 300}, balance=1000)
+        assert can is False
+        assert "Exposure" in reason
+
+    def test_moderate_exposure_allows(self):
+        pr = self._make_pr()
+        trades = [
+            {"symbol": "TAO", "entry_price": 300, "amount": 1, "type": "LONG"},
+        ]
+        can, reason = pr.can_open_position(trades, {"TAO": 300}, balance=1000)
+        assert can is True
+
+    def test_exposure_calculation(self):
+        pr = self._make_pr()
+        trades = [
+            {"symbol": "TAO", "entry_price": 300, "amount": 2, "type": "LONG"},
+            {"symbol": "ZEC", "entry_price": 50, "amount": 10, "type": "SHORT"},
+        ]
+        # TAO: 2*300=600, ZEC: 10*50=500 → total = 1100
+        exposure = pr.get_total_exposure(trades, {"TAO": 300, "ZEC": 50})
+        assert exposure == 1100.0
+
+    def test_exposure_uses_current_price(self):
+        """Usa precio actual en vez de entry si disponible."""
+        pr = self._make_pr()
+        trades = [
+            {"symbol": "TAO", "entry_price": 300, "amount": 1, "type": "LONG"},
+        ]
+        # Precio actual 350 (subio)
+        exposure = pr.get_total_exposure(trades, {"TAO": 350})
+        assert exposure == 350.0
+
+    def test_portfolio_html_output(self):
+        pr = self._make_pr()
+        trades = [
+            {"symbol": "TAO", "entry_price": 300, "amount": 1, "type": "LONG"},
+        ]
+        html = pr.get_portfolio_html(trades, {"TAO": 310}, balance=1000)
+        assert "PORTFOLIO RISK" in html
+        assert "1/3" in html
+        assert "TAO" in html
+
+    def test_portfolio_html_empty(self):
+        pr = self._make_pr()
+        html = pr.get_portfolio_html([], {}, balance=1000)
+        assert "PORTFOLIO RISK" in html
+        assert "0/3" in html
+
+    def test_zero_balance_no_crash(self):
+        pr = self._make_pr()
+        can, reason = pr.can_open_position([], {}, balance=0)
+        assert can is True  # No exposure check si balance=0
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3. TRAILING STOP TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
 class TestTrailingStop:
     """Tests para el trailing stop manager."""
 

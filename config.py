@@ -73,3 +73,11 @@ ATR_VOLATILE_PERCENTILE = 80     # ATR > percentil 80 = volatile
 REGIME_CACHE_TTL       = 900     # 15 min cache por simbolo
 FUNDING_CACHE_TTL      = 300     # 5 min cache
 COINGLASS_CACHE_TTL    = 600     # 10 min cache (limite free tier: 10 calls/min)
+
+# ── Phase 5: Dynamic Leverage + Portfolio Risk ───────────────────────────────
+LEVERAGE_MIN = 2           # VIX > 35 o VOLATILE
+LEVERAGE_LOW = 3           # VIX > 25 o RAPIDA
+LEVERAGE_DEFAULT = 5       # Normal
+LEVERAGE_MAX = 7           # Low vol + TRENDING
+MAX_CONCURRENT_POSITIONS = 3       # Maximo 3 posiciones simultaneas
+MAX_PORTFOLIO_EXPOSURE = 3.0       # Exposure < 3x balance
