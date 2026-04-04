@@ -2,6 +2,7 @@ import ccxt
 import os
 import time
 from dotenv import load_dotenv
+from config import DEFAULT_LEVERAGE, RISK_PER_TRADE_PCT, MIN_BALANCE_USD
 
 # Cargar variables de entorno
 load_dotenv()
@@ -11,7 +12,10 @@ class ZenithExecutor:
         self.api_key = os.getenv("BINANCE_API_KEY")
         self.api_secret = os.getenv("BINANCE_API_SECRET")
         self.mode = os.getenv("EXECUTION_MODE", "PAPER") # PAPER o LIVE
-        self.risk_pct = float(os.getenv("RISK_PER_TRADE", "0.01")) # 1% del balance
+        # Config centralizada: config.py es fuente de verdad, env var como override
+        self.risk_pct = float(os.getenv("RISK_PER_TRADE", str(RISK_PER_TRADE_PCT)))
+        self.leverage = int(os.getenv("DEFAULT_LEVERAGE", str(DEFAULT_LEVERAGE)))
+        self.min_balance = MIN_BALANCE_USD
         
         # Conectamos con Binance (Futures por defecto para capital institucional)
         self.exchange = ccxt.binance({
@@ -66,7 +70,7 @@ class ZenithExecutor:
         print(f"💸 [Zenith Executor] Iniciando ciclo de ejecución V6 (3 TPs) para {symbol} ({side})...")
         
         balance = self.get_balance()
-        if balance < 10:
+        if balance < self.min_balance:
             return {"status": "FAILED", "reason": f"Saldo insuficiente (${balance:.2f} < $10)"}
 
         amount = self.calculate_amount(symbol, entry, sl, balance)
@@ -93,8 +97,8 @@ class ZenithExecutor:
             except Exception as e:
                 print(f"⚠️ [Executor] Margin type ya configurado o error no crítico: {e}")
             try:
-                self.exchange.set_leverage(5, exchange_symbol)
-                print(f"✅ [Executor] Leverage x5 configurado para {exchange_symbol}")
+                self.exchange.set_leverage(self.leverage, exchange_symbol)
+                print(f"✅ [Executor] Leverage x{self.leverage} configurado para {exchange_symbol}")
             except Exception as e:
                 err_msg = str(e)
                 print(f"❌ [Executor] FALLO CRÍTICO: No se pudo configurar leverage para {exchange_symbol}: {err_msg}")
