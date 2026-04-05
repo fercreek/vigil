@@ -1,39 +1,26 @@
-Fernando Contreras
-Fernando Contreras
- < Ver todas las actualizaciones
+RADAR DE ACCIONES PTS
+Según último reporte cargado (5 de Abril 2026)
 
-imagen de perfil
-Daniel Marin
+📉 IWM (SHORT)
+• Precio Actual: $251.29
+• Entrada obj: $242.30
+• Nivel BE: $234.00
+• Target: $210.00
+• Stop: $260.84
+Operación bajista swing-posicional.
 
-25 de marzo de 2026 a las 10:10
+📉 TSLA (SHORT)
+• Precio Actual: $360.59
+• Entrada obj: $373.00
+Operación bajista, entrada en 373, se puede poner en BE.
 
-REBOTE DE ALIVIO A CORTO PLAZO: CUANDO VUELVE A CAER?
-(ANUNCIO IMPORTANTE):  –ULTIMOS DIAS– 31 DE MARZO CIERRE DE INSCRIPCIONES!
+🚀 XOM (LONG)
+• Precio Actual: $160.69
+Operación alcista exitosa, se puede poner en BE.
 
-1). Buenos dias Equipo, a corto plazo tenemos un rebote de alivio en proceso durante la semana, gracias al pump que le dio Trump a los mercados (y del cual es evidente que sus allegados estan haciendo insider trading). Sin embargo, considero que los Trump-Pumps son incapaces de cambiar la tendencia como ocurrio hace semana y media pero si ocasionan rebotes de alivio, durante los cuales solo debemos cuidar la gestion de riesgo por norma general, pero tambien usarlos como oportunidad de entrada en operaciones:
+📉 XLF (SHORT)
+• Precio Actual: $49.53
+• Stop: $50.00
+Operación bajista con ganancias, stop de ganancia en 50.
 
-Tambien, el SPY tiene su canal bajista muy bien delimitado, por lo que si en los proximos dias lo vuelve a trabajar, y lo rechaza, voy a enviar una reentrada en SPY para seguir operando los targets bajistas, ya que SPY es de los que genera mejor ganancias a la baja.
-
-Por dar un ejemplo, XLC y MAGS son suaves y de baja volatilidad, IWM y XLK son un poco mas volatiles y TSLA es la mas agresiva de todas pero la que mas ganancia potencial puede generar (pero requiere una cuenta grande).
-
-Tambien, XOM subio con fuerza y se puede poner en BE, las petroleras han sido las unicas que han tenido un comportamiento alcista contra viento y marea, superior a todos los sectores que han ido cayendo uno por uno, excepto petroleras.
-
-----------------------------------
-
-30 de marzo de 2026 a las 13:53
-NUEVA OPERACIÓN CON ALTO POTENCIAL!
-
-Para comentar: las operaciones de petroleras van todas excelente!! algunos miembros PTS estaban nerviosos por XOM por ejemplo, y pues bueno, su gráfico habla por sí mismo…. las operacioens de petroleras han sido un éxito rotundo.
-
-TSLA va por debajo del punto de entrada, va muy bien esta operación, y sin contar que tenga rebotes, su análisis sigue siendo válido, estamos dentro los que hemos entrado en 373: (quien desee ser muy conservador, la puede poner en BE)
-XLC en muy buenas ganancias, ya se puede poner en BE y se puede tener cero riesgo, incluso un stop de ganancia en 109,50
-XLF va en buenas ganancias también, ya se puede poner en BE o quien lo desee, puede poner stop de ganancia en 50
-SPY: ha llegado al primer target y va en muy buenas ganancias, puede tenerse en BE o puede ponerse stop de ganancia en 647.
-MAGS: va en excelentes ganancias, ya se puede poner en BE, y si se desea, se puede poner stop de ganancia en 57.05
-
-INSTRUCCIONES:
-IWM: OPERACIÓN BAJISTA SWING-POSICIONAL
-En short normal: Entrada en SHORT apenas alcance: 242.30/ stop 260.84/ poner BE si alcanza 234 / targets: 210-194-172/ GR: -2%
-
-AMD: OPERACIÓN BAJISTA SWING-POSICIONAL
-En short normal: Entrada en SHORT apenas alcance: 186.01/ stop 216.80/ poner BE si alcanza 163 / targets: 149-117-78/ GR: -3%
+🔄 Puedes editar el latest_report.txt en el bot para actualizar este radar.
