@@ -24,6 +24,12 @@ from config import (
     RSI_SHORT_ENTRY, ADX_TRENDING_THRESHOLD, BB_WIDTH_RANGING_PCT,
     V4_EMA_PROXIMITY_MAX, V4_EMA_PROXIMITY_MIN,
     V4_RSI_LOW, V4_RSI_HIGH, V4_MIN_CONFLUENCE,
+    V4_EMA_PROX_MAP,
+    V3_MIN_CONFLUENCE, V3_MAX_HOLDING_BARS,
+    V3_REQUIRE_DIVERGENCE, V3_REQUIRE_BB_SQUEEZE,
+    SHORT_MIN_CONFLUENCE, SHORT_REGIMES, SHORT_EMA_SLOPE_MIN,
+    ADX_CHOPPY_THRESHOLD, REGIME_COOLDOWN_BARS, RVOL_MIN_ENTRY,
+    RVOL_MIN_BTC,
 )
 
 # Nota: indicadores se calculan inline (vectorizado sobre todo el dataset)
@@ -149,6 +155,29 @@ class Backtester:
         # Previous RSI for "rising" filter
         df['rsi_prev'] = df['rsi'].shift(1)
 
+        # ── NEW INDICATORS (Phase 6: Robustness Filters) ────────────────
+        # RVOL — Relative Volume (institutional participation)
+        df['vol_sma'] = df['volume'].rolling(20).mean()
+        df['rvol'] = df['volume'] / df['vol_sma'].replace(0, 1e-10)
+
+        # EMA200 slope (5-bar) — declining = bearish confirmation for shorts
+        df['ema200_slope'] = df['ema_200'].diff(5) / df['ema_200'].shift(5).replace(0, 1e-10)
+
+        # RSI bullish divergence: price lower-low + RSI higher-low
+        df['price_ll'] = (df['low'] < df['low'].shift(1)) & (df['low'].shift(1) < df['low'].shift(2))
+        df['rsi_hl'] = (df['rsi'] > df['rsi'].shift(1)) & (df['rsi'].shift(1) > df['rsi'].shift(2))
+        df['rsi_divergence'] = df['price_ll'] & df['rsi_hl']
+
+        # BB Width squeeze (contracting = sell-off losing steam)
+        df['bb_width_sma'] = df['bb_width'].rolling(20).mean()
+        df['bb_squeeze'] = df['bb_width'] < df['bb_width_sma']
+
+        # EMA 50 as 4H trend proxy (50 * 1H ≈ 200 * 15min ≈ 4H trend)
+        df['ema_50'] = df['close'].ewm(span=50, adjust=False).mean()
+
+        # ATR-normalized EMA proximity (for V4 per-symbol adaptation)
+        df['ema_dist_atr'] = (df['close'] - df['ema_200']) / df['atr'].replace(0, 1e-10)
+
         df = df.dropna()
         return df
 
@@ -163,6 +192,8 @@ class Backtester:
             return "TRENDING_UP" if price > ema200 else "TRENDING_DOWN"
         elif bb_width < BB_WIDTH_RANGING_PCT:
             return "RANGING"
+        elif adx < ADX_CHOPPY_THRESHOLD and bb_width < 0.04:
+            return "CHOPPY"  # NEW: suppress all signals
         else:
             return "TRENDING_UP" if price > ema200 else "TRENDING_DOWN"
 
@@ -205,6 +236,12 @@ class Backtester:
 
         trades = []
         active = None
+        prev_regime = None
+        regime_cooldown = 0
+
+        # Per-symbol V4 proximity and RVOL threshold
+        v4_prox_max = V4_EMA_PROX_MAP.get(sym, V4_EMA_PROXIMITY_MAX)
+        rvol_min = RVOL_MIN_BTC if sym == "BTC" else RVOL_MIN_ENTRY
 
         for ts, row in df.iloc[WARMUP_BARS:].iterrows():
             price = row['close']
@@ -214,12 +251,29 @@ class Backtester:
             bb_l = row['bb_l']
             ema200 = row['ema_200']
             atr = row['atr']
+            rvol = row.get('rvol', 1.0)
 
             regime = self._detect_regime(row)
 
+            # ── Regime transition cooldown ────────────────────────────────
+            if prev_regime and regime != prev_regime:
+                regime_cooldown = REGIME_COOLDOWN_BARS
+            prev_regime = regime
+            if regime_cooldown > 0:
+                regime_cooldown -= 1
+
             # ── Gestionar trade activo ────────────────────────────────────
             if active:
+                active['bars_held'] = active.get('bars_held', 0) + 1
                 side = active['side']
+
+                # V3 max holding period — force close stale reversals
+                if active.get('version') == 'V3' and active['bars_held'] >= V3_MAX_HOLDING_BARS:
+                    pnl = self._apply_costs(active['entry'], price, side)
+                    trades.append(self._close_trade(active, ts, price, "TIMEOUT", pnl))
+                    active = None
+                    continue
+
                 if side == "LONG":
                     if price <= active['sl']:
                         pnl = self._apply_costs(active['entry'], active['sl'], side)
@@ -231,7 +285,6 @@ class Backtester:
                         active = None
                     elif price >= active['tp1'] and not active.get('tp1_hit'):
                         active['tp1_hit'] = True
-                        # Move SL to breakeven
                         active['sl'] = active['entry'] * 1.001
                 else:  # SHORT
                     if price >= active['sl']:
@@ -247,42 +300,60 @@ class Backtester:
                         active['sl'] = active['entry'] * 0.999
                 continue
 
-            # ── Skip RANGING ──────────────────────────────────────────────
-            if regime == "RANGING":
+            # ── Skip RANGING / CHOPPY / Cooldown ─────────────────────────
+            if regime in ("RANGING", "CHOPPY"):
+                continue
+            if regime_cooldown > 0:
                 continue
 
-            # ── V1 LONG ───────────────────────────────────────────────────
+            # ── V1 LONG (FIXED: removed BB hard gate, added RVOL) ────────
             if strategy in ("V1", "ALL"):
                 if (price > ema200 and regime in ("TRENDING_UP", "VOLATILE")
-                        and rsi <= rsi_thresh and rsi > rsi_prev):
-                    near_bb = price <= bb_l * 1.015
+                        and rsi <= rsi_thresh and rsi > rsi_prev
+                        and rvol >= rvol_min):
+                    # BB proximity is now a scoring bonus, not a hard gate
                     conf = _confluence_score(price, rsi, bb_u, bb_l, ema200, "LONG", usdt_d)
-                    if conf >= MIN_CONFLUENCE_SCORE and near_bb:
+                    # EMA50 trend confirmation bonus
+                    if row.get('ema_50', 0) > ema200:
+                        conf += 1
+                    min_conf = 3 if sym in ("BTC", "ETH") else MIN_CONFLUENCE_SCORE
+                    if conf >= min_conf:
                         sl_dist = max(atr * ATR_SL_MULT, price * ATR_MIN_SL_PCT)
                         active = self._open_trade(
                             ts, sym, "LONG", price, sl_dist, conf, rsi, "V1"
                         )
                         continue
 
-            # ── V3 REVERSAL ───────────────────────────────────────────────
+            # ── V3 REVERSAL (FIXED: divergence + BB squeeze + timeout) ───
             if strategy in ("V3", "ALL"):
                 if (price < ema200 and regime in ("VOLATILE", "TRENDING_DOWN")
                         and rsi <= reversal_rsi):
-                    conf = _confluence_score(price, rsi, bb_u, bb_l, ema200, "LONG", usdt_d)
-                    if conf >= 3:  # V3 es mas agresivo, min 3
-                        sl_dist = max(atr * ATR_SL_MULT, price * ATR_MIN_SL_REVERSAL)
-                        active = self._open_trade(
-                            ts, sym, "LONG", price, sl_dist, conf, rsi, "V3"
-                        )
-                        continue
+                    # Require structural confirmation
+                    has_divergence = row.get('rsi_divergence', False) if V3_REQUIRE_DIVERGENCE else True
+                    has_squeeze = row.get('bb_squeeze', False) if V3_REQUIRE_BB_SQUEEZE else True
+                    if has_divergence or has_squeeze:
+                        conf = _confluence_score(price, rsi, bb_u, bb_l, ema200, "LONG", usdt_d)
+                        if conf >= V3_MIN_CONFLUENCE:
+                            sl_dist = max(atr * ATR_SL_MULT, price * ATR_MIN_SL_REVERSAL)
+                            active = self._open_trade(
+                                ts, sym, "LONG", price, sl_dist, conf, rsi, "V3"
+                            )
+                            active['bars_held'] = 0
+                            continue
 
-            # ── V4 EMA BOUNCE ─────────────────────────────────────────────
+            # ── V4 EMA BOUNCE (IMPROVED: per-symbol + ATR proximity) ─────
             if strategy in ("V4", "ALL"):
                 ema_ratio = price / ema200 if ema200 > 0 else 1.0
+                ema_dist_atr = row.get('ema_dist_atr', 0)
                 if (regime == "TRENDING_UP"
-                        and V4_EMA_PROXIMITY_MIN <= ema_ratio <= V4_EMA_PROXIMITY_MAX
-                        and V4_RSI_LOW <= rsi <= V4_RSI_HIGH and rsi > rsi_prev):
+                        and V4_EMA_PROXIMITY_MIN <= ema_ratio <= v4_prox_max
+                        and 0.1 <= ema_dist_atr <= 3.0  # ATR-normalized proximity
+                        and V4_RSI_LOW <= rsi <= V4_RSI_HIGH and rsi > rsi_prev
+                        and rvol >= rvol_min):
                     conf = _confluence_score(price, rsi, bb_u, bb_l, ema200, "LONG", usdt_d)
+                    # 4H trend proxy bonus
+                    if row.get('ema_50', 0) > ema200:
+                        conf += 1
                     if conf >= V4_MIN_CONFLUENCE:
                         sl_dist = max(atr * 1.5, price * ATR_MIN_SL_PCT)
                         active = self._open_trade(
@@ -290,12 +361,15 @@ class Backtester:
                         )
                         continue
 
-            # ── V1-SHORT ──────────────────────────────────────────────────
+            # ── V1-SHORT (FIXED: lower RSI, VOLATILE regime, EMA slope) ──
             if strategy in ("V1-SHORT", "ALL"):
-                if (price < ema200 and regime == "TRENDING_DOWN"
-                        and rsi >= RSI_SHORT_ENTRY and rsi < rsi_prev):
+                ema_slope = row.get('ema200_slope', 0)
+                if (price < ema200 and regime in SHORT_REGIMES
+                        and rsi >= RSI_SHORT_ENTRY and rsi < rsi_prev
+                        and ema_slope < SHORT_EMA_SLOPE_MIN
+                        and rvol >= rvol_min):
                     conf = _confluence_score(price, rsi, bb_u, bb_l, ema200, "SHORT", usdt_d)
-                    if conf >= MIN_CONFLUENCE_SCORE:
+                    if conf >= SHORT_MIN_CONFLUENCE:
                         sl_dist = max(atr * ATR_SL_MULT, price * ATR_MIN_SL_PCT)
                         active = self._open_trade(
                             ts, sym, "SHORT", price, sl_dist, conf, rsi, "V1-SHORT"
@@ -347,6 +421,7 @@ class Backtester:
             "result": result,
             "pnl_pct": pnl_pct,
             "tp1_hit": active.get("tp1_hit", False),
+            "bars_held": active.get("bars_held", 0),
         }
 
     # ── Walk-Forward Validation ───────────────────────────────────────────
@@ -426,11 +501,14 @@ class Backtester:
 
         wins = sum(1 for t in trades if t["result"] == "WIN_FULL")
         losses = sum(1 for t in trades if t["result"] == "LOST")
+        timeouts = sum(1 for t in trades if t["result"] == "TIMEOUT")
         partials = sum(1 for t in trades if t.get("tp1_hit") and t["result"] != "WIN_FULL")
+        avg_bars = round(np.mean([t.get("bars_held", 0) for t in trades]), 1) if trades else 0
 
         lines = [
             f"═══ BACKTEST: {self.symbol} ═══",
-            f"Trades: {len(trades)} (W:{wins} L:{losses} P:{partials})",
+            f"Trades: {len(trades)} (W:{wins} L:{losses} T:{timeouts} P:{partials})",
+            f"Avg Hold: {avg_bars} bars",
             f"Win Rate: {report['win_rate']}%",
             f"Profit Factor: {report['profit_factor']}",
             f"Sharpe: {report['sharpe']}",

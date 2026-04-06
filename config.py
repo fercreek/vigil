@@ -10,12 +10,12 @@ SYMBOLS = ["ZEC", "TAO"]
 MACRO_WATCH = ["BTC", "ETH"]  # Solo para contexto macro, no se opera
 
 # ── Thresholds RSI ────────────────────────────────────────────────────────────
-RSI_LONG_ENTRY       = 42.0   # Entrada Long estándar
+RSI_LONG_ENTRY       = 45.0   # Entrada Long estándar (was 42 — too restrictive)
 RSI_LONG_ZEC_ENTRY   = 48.0   # ZEC tiene mayor volatilidad — entrada más conservadora
 RSI_LONG_EXTREME     = 30.0   # Entrada Long extrema (reversal / modo rescate)
 RSI_LONG_TAO_EXTREME = 28.0   # TAO modo rescate
 RSI_LONG_ZEC_EXTREME = 26.0   # ZEC modo rescate agresivo
-RSI_SHORT_ENTRY      = 62.0   # Entrada Short estándar
+RSI_SHORT_ENTRY      = 55.0   # Entrada Short estándar (was 62 — casi nunca en downtrend)
 RSI_SHORT_EXTREME    = 70.0   # Entrada Short extrema
 
 # ── ATR Multipliers (gestión de riesgo) ───────────────────────────────────────
@@ -24,7 +24,7 @@ ATR_TP1_MULT        = 2.0    # TP1 = 2:1 R:R
 ATR_TP2_MULT        = 3.5    # TP2 = 3.5:1 R:R
 ATR_TP3_MULT        = 7.0    # TP3 = 7:1 R:R (moonshot, V2-AI)
 ATR_MIN_SL_PCT      = 0.007  # SL mínimo: 0.7% del precio (evita SL muy ajustados)
-ATR_MIN_SL_REVERSAL = 0.008  # SL mínimo para reversals (mayor margen)
+ATR_MIN_SL_REVERSAL = 0.010  # SL mínimo para reversals (wider = less noise stops)
 
 # ── Confluence Score ──────────────────────────────────────────────────────────
 MIN_CONFLUENCE_SCORE = 4     # Score mínimo para disparar alerta
@@ -52,7 +52,7 @@ RISK_PER_TRADE_PCT   = 0.01   # 1% por defecto
 ALERT_COOLDOWN_SECONDS = 300  # 5 min entre alertas del mismo tipo
 
 # ── Estrategia V4: EMA 200 Bounce (Mean Reversion) ──────────────────────────
-V4_EMA_PROXIMITY_MAX = 1.02    # Precio max 2% arriba de EMA200
+V4_EMA_PROXIMITY_MAX = 1.02    # Precio max 2% arriba de EMA200 (BTC default)
 V4_EMA_PROXIMITY_MIN = 1.001   # Precio min 0.1% arriba (confirma no quiebre)
 V4_RSI_LOW           = 35.0    # RSI minimo (zona de recuperacion)
 V4_RSI_HIGH          = 50.0    # RSI maximo (no sobrecomprado)
@@ -60,6 +60,25 @@ V4_RSI_HIGH_ZEC      = 55.0    # ZEC: umbral mas alto por volatilidad
 V4_MIN_CONFLUENCE    = 3       # Confluencia minima (vs 4 de V1)
 V4_ATR_SL_MULT       = 1.5    # SL mas ajustado: 1.5x ATR
 V4_COOLDOWN          = 600     # 10 min cooldown (vs 5 min de V1)
+# Per-symbol EMA proximity (altcoins need wider window due to higher ATR/price)
+V4_EMA_PROX_MAP = {"BTC": 1.02, "ETH": 1.025, "TAO": 1.03, "ZEC": 1.03}
+
+# ── V3 Reversal improvements ────────────────────────────────────────────────
+V3_MIN_CONFLUENCE    = 4       # Was 3 — too many false reversals
+V3_MAX_HOLDING_BARS  = 48      # Force-close stale V3 trades after 48 bars (48h)
+V3_REQUIRE_DIVERGENCE = True   # RSI bullish divergence required
+V3_REQUIRE_BB_SQUEEZE = True   # BB width contracting (sell-off losing steam)
+
+# ── V1-SHORT improvements ───────────────────────────────────────────────────
+SHORT_MIN_CONFLUENCE = 3       # Was 4 — hard to accumulate for shorts
+SHORT_REGIMES = ("TRENDING_DOWN", "VOLATILE")  # Was only TRENDING_DOWN
+SHORT_EMA_SLOPE_MIN  = -0.001  # EMA200 must be declining
+
+# ── Regime improvements ─────────────────────────────────────────────────────
+ADX_CHOPPY_THRESHOLD = 20      # ADX < 20 + BB 2-4% = CHOPPY (suppress all)
+REGIME_COOLDOWN_BARS = 6       # Bars to wait after regime transition
+RVOL_MIN_ENTRY       = 1.0     # Relative Volume minimum for entries
+RVOL_MIN_BTC         = 0.7    # BTC has stable volume — less aggressive filter
 
 # ── Versiones de estrategia ───────────────────────────────────────────────────
 VERSIONS = ["V1-TECH", "V2-AI", "V4-EMA"]
