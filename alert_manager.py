@@ -26,6 +26,8 @@ def safe_html(text: str) -> str:
     t = re.sub(r"^\s*[\*\-]\s+", "• ", text, flags=re.MULTILINE)
 
     # Pre-procesar etiquetas HTML comunes
+    t = t.replace("<html>", "").replace("</html>", "")
+    t = t.replace("<body>", "").replace("</body>", "")
     t = t.replace("<ul>", "").replace("</ul>", "")
     t = t.replace("<li>", "• ").replace("</li>", "\n")
     for i in range(1, 6):

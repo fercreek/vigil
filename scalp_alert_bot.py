@@ -623,10 +623,7 @@ def trigger_salmos_prophecy(prices):
         # Buscamos el mejor setup para Salmos
         setup = gemini_analyzer.get_top_setup(prices)
         if "LONG" in setup or "🟢" in setup:
-             msg = (f"🔔 <b>PROFÉCIA DE SALMOS: THE BULLISH PULSE</b>\n\n"
-                    f"{safe_html(setup)}\n\n"
-                    f"💡 <i>Salmos confirma confluencia técnica e institucional. Sesgo alcista validado por la cuadrilla.</i>")
-             send_telegram(msg)
+             send_telegram(f"🔔 <b>SETUP DETECTADO</b>\n\n{safe_html(setup)}")
     except Exception as e:
         print(f"❌ Error en profecía de Salmos: {e}")
 
@@ -659,12 +656,19 @@ def main():
                 if now - last_insight_time > 3600:
                     # V3.4: Actualizamos el tiempo ANTES para evitar bucles si falla la IA o Telegram
                     last_insight_time = now 
-                    print("[Robot] Generando panorama horario (Conservador + Scalper)...")
+                    print("[Robot] Generando panorama horario...")
                     panoramas = gemini_analyzer.get_hourly_panorama(prices)
-                    # Enviar ambas perspectivas por separado
-                    send_telegram(f"🤖 <b>PANORAMA DEL ROBOT</b>\n\n{safe_html(panoramas.get('conservador', 'Sin datos'))}")
-                    send_telegram(f"🤖 <b>PANORAMA DEL ROBOT</b>\n\n{safe_html(panoramas.get('scalper', 'Sin datos'))}")
-                    send_telegram(f"🤖 <b>PANORAMA DEL ROBOT</b>\n\n{safe_html(panoramas.get('salmos', 'Sin datos'))}")
+                    ts_now = datetime.now().strftime("%H:%M")
+                    btc_p   = prices.get("BTC", 0)
+                    btc_rsi = prices.get("BTC_RSI", 0)
+                    tao_p   = prices.get("TAO", 0)
+                    tao_rsi = prices.get("TAO_RSI", 0)
+                    usdt_d  = prices.get("USDT_D", 0)
+                    header = (f"🤖 <b>PANORAMA [{ts_now}]</b>\n"
+                              f"<code>BTC ${btc_p:,.0f} RSI:{btc_rsi:.0f} | TAO ${tao_p:,.2f} RSI:{tao_rsi:.0f} | USDT.D {usdt_d:.2f}%</code>\n"
+                              f"━━━━━━━━━━━━━\n")
+                    panel = panoramas.get('salmos', panoramas.get('conservador', 'Sin datos'))
+                    send_telegram(f"{header}{safe_html(panel)}")
                 
                 # --- SALMOS PROPHECY (Cada 30 Minutos) ---
                 if now - last_salmos_time > 1800:

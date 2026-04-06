@@ -511,24 +511,17 @@ def get_hourly_panorama(prices_dict: dict) -> dict:
         rsi = (prices_dict.get(f"{sym}_RSI") or 50.0)
         context_line += f"- {sym}: ${ (price or 0.0):,.2f} (RSI: { (rsi or 0.0):.1f})\n"
 
-    prompt = f"""PANORAMA DEL MERCADO [{ts}]:
-{context_line}
-- USDT.D: { (usdt_d or 0.0):.2f}%
-- S&P 500 (SPY): ${ (prices_dict.get('SPY') or 0.0):,.2f}
-- Tech Sentinels: NVDA ${ (prices_dict.get('NVDA') or 0.0):,.2f} | PLTR ${ (prices_dict.get('PLTR') or 0.0):,.2f}
-- Petróleo (OIL): ${ (prices_dict.get('OIL') or 0.0):,.2f}
+    prompt = f"""PANORAMA [{ts}]:
+{context_line}- USDT.D: {(usdt_d or 0.0):.2f}%
+- SPY: ${(prices_dict.get('SPY') or 0.0):,.2f} | OIL: ${(prices_dict.get('OIL') or 0.0):,.2f}
 
-Basándote en tu personalidad:
-1. Lectura actual (1-2 frases).
-2. Diferencia clave respecto a horas previas.
-3. Recomendación próxima hora.
+FORMATO OBLIGATORIO — responde exactamente en este esquema, sin añadir nada más:
+BIAS: [ALCISTA/BAJISTA/NEUTRAL]
+CLAVE: [1 línea — dato más relevante ahora mismo]
+ACCIÓN: [1 línea — qué hacer o esperar en la próxima hora]
 
-📌 **RESUMEN EJECUTIVO** (Sección obligatoria al final con 2-3 viñetas).
-
-IMPORTANTE: 
-- USA DOBLE SALTO DE LÍNEA entre puntos.
-- USA SOLO <b>, <i>, <code>.
-- No uses listas ul/li."""
+Prohibido: narrativas, metáforas, listas, encabezados, frases poéticas.
+Solo <b>, <i>, <code>. Máximo 5 líneas totales."""
 
     results = {}
     for persona in ["CONSERVADOR", "SCALPER", "SALMOS", "APOCALIPSIS"]:
