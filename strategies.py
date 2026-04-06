@@ -11,7 +11,9 @@ import time
 from config import (
     V4_EMA_PROXIMITY_MAX, V4_EMA_PROXIMITY_MIN, V4_RSI_LOW,
     V4_RSI_HIGH, V4_RSI_HIGH_ZEC, V4_MIN_CONFLUENCE,
-    V4_ATR_SL_MULT, V4_COOLDOWN,
+    V4_ATR_SL_MULT, V4_COOLDOWN, V4_EMA_PROX_MAP,
+    RSI_SHORT_ENTRY, SHORT_MIN_CONFLUENCE, SHORT_REGIMES,
+    SHORT_EMA_SLOPE_MIN, RVOL_MIN_ENTRY,
 )
 
 
@@ -300,37 +302,46 @@ def check_strategies(prices: dict):
             continue
 
         # ═══════════════════════════════════════════════════════════════════
-        # ESTRATEGIA V1-SHORT: Trend Bajista (Phase 3)
-        # Espejo de V1 Long: RSI >= 62, precio < EMA200, regime TRENDING_DOWN
+        # ESTRATEGIA V1-SHORT: Trend Bajista (v2.1 — siempre activa)
+        # NO depende de phase.txt — shorts operan independientemente
+        # Filtros: RSI >= 55, EMA200 declining, regime TRENDING_DOWN/VOLATILE
         # Risk SHORT: RAPIDA forzado (max 0.75% via risk_manager)
         # ═══════════════════════════════════════════════════════════════════
-        if phase == "SHORT" and p < ema_200 and regime == "TRENDING_DOWN":
-            from config import RSI_SHORT_ENTRY
-            short_rsi = RSI_SHORT_ENTRY  # 62.0
-            if rsi >= short_rsi:
-                if rsi > prev_rsi:  # RSI subiendo = contra tendencia, skip
-                    pass
-                elif is_position_open(sym, "SHORT"):
+        if p < ema_200 and regime in SHORT_REGIMES:
+            short_rsi = RSI_SHORT_ENTRY  # 55.0 (was 62)
+            if rsi >= short_rsi and rsi < prev_rsi:  # RSI falling = confirma presión bajista
+                if is_position_open(sym, "SHORT"):
                     print(f"⏸️ [Position Guard] {sym} SHORT ya está abierto")
                 else:
-                    side = "SHORT"
-                    funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
+                    # EMA200 slope check (must be declining)
+                    ema_slope_ok = True
+                    try:
+                        df_1h = indicators.get_df(sym, "1h")
+                        if df_1h is not None and len(df_1h) > 5:
+                            ema_vals = df_1h['close'].ewm(span=200, adjust=False).mean()
+                            slope = (ema_vals.iloc[-1] - ema_vals.iloc[-6]) / ema_vals.iloc[-6]
+                            ema_slope_ok = slope < SHORT_EMA_SLOPE_MIN
+                    except Exception:
+                        pass
 
-                    # Funding rate > 0 obligatorio para SHORT (longs pagando = confirma)
-                    fr_data = funding_data.get(sym, {})
-                    fr_rate = fr_data.get("rate", 0.0)
-                    if fr_rate <= 0:
-                        print(f"⏩ [V1-SHORT] {sym} ignorada: funding rate no confirma ({fr_rate:.6f})")
+                    if not ema_slope_ok:
+                        print(f"⏩ [V1-SHORT] {sym}: EMA200 no declina — skip")
                     else:
+                        side = "SHORT"
+                        funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
+
+                        # Funding: bonus en confluencia, NO hard gate
+                        fr_data = funding_data.get(sym, {})
+                        fr_rate = fr_data.get("rate", 0.0)
+
                         conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), ob_detected=ob_detected, funding_signal=funding_signal)
                         conf_score = round(conf_score + social_adj, 2)
 
-                        if conf_score < 4:
-                            print(f"⏩ [V1-SHORT] {sym} ignorada (Score {conf_score} < 4)")
+                        if conf_score < SHORT_MIN_CONFLUENCE:  # 3 (was 4)
+                            print(f"⏩ [V1-SHORT] {sym} ignorada (Score {conf_score} < {SHORT_MIN_CONFLUENCE})")
                         else:
                             register_signal_event(sym.replace("/USDT", ""), prices)
                             badge = get_confluence_badge(conf_score)
-                            # SHORT siempre es RAPIDA (max 0.75% risk)
                             trade_type_short = "RAPIDA"
 
                             sl_dist = max(atr * 2.0, p * 0.007)
@@ -338,14 +349,15 @@ def check_strategies(prices: dict):
                             tp1 = round(p - (sl_dist * 2.0), 2)
                             tp2 = round(p - (sl_dist * 3.5), 2)
 
+                            funding_info = f"\n🏦 Funding: {fr_rate*100:+.4f}%" if fr_rate != 0 else ""
+
                             msg = (f"{badge}\n\n"
-                                   f"🔻 <b>SEÑAL V1-SHORT (15m)</b> 🔻\n\n"
+                                   f"🔻 <b>SEÑAL V1-SHORT v2.1 (15m)</b> 🔻\n\n"
                                    f"🌍 {macro_ctx}\n"
-                                   f"🌊 {elliott_ctx}\n"
-                                   f"🏦 Funding: {fr_rate*100:+.4f}% (longs pagan)\n\n"
+                                   f"🌊 {elliott_ctx}{funding_info}\n\n"
                                    f"📊 <b>ESTADO TÉCNICO:</b>\n"
-                                   f"• RSI: {rsi:.1f} | BB: {bb_ctx}\n"
-                                   f"• EMA 200: ${ema_200:,.2f}\n"
+                                   f"• RSI: {rsi:.1f} (cayendo) | BB: {bb_ctx}\n"
+                                   f"• EMA 200: ${ema_200:,.2f} (declinando)\n"
                                    f"• Régimen: {regime}\n"
                                    f"⭐ <b>Confiabilidad: {format_confidence(conf_score)}</b>\n\n"
                                    f"🪙 <b>{sym}</b> @ ${p:,.2f}\n"
@@ -405,10 +417,11 @@ def check_strategies(prices: dict):
                     register_signal_event(sym.replace("/USDT", ""), prices)
 
         # ═══════════════════════════════════════════════════════════════════
-        # ESTRATEGIA V1: Long V1 (Trend Alcista + Near BB + RSI 42 + RSI Rising)
+        # ESTRATEGIA V1: Long V1 (Trend Alcista + RSI 45 + RSI Rising)
+        # v2.1: BB touch ahora es bonus en confluencia, no hard gate
         # ═══════════════════════════════════════════════════════════════════
-        elif phase == "LONG" and p > ema_200 and "BB" in bb_ctx and regime in ("TRENDING_UP", "VOLATILE"):
-            entry_rsi = 48.0 if sym == "ZEC" else 42.0
+        elif phase == "LONG" and p > ema_200 and regime in ("TRENDING_UP", "VOLATILE"):
+            entry_rsi = 48.0 if sym == "ZEC" else 45.0  # was 42
             if rsi <= entry_rsi:
                 if rsi < prev_rsi:
                     continue
@@ -519,7 +532,7 @@ def check_strategies(prices: dict):
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V4: EMA 200 BOUNCE (MEAN REVERSION)
         # ═══════════════════════════════════════════════════════════════════
-        elif phase == "LONG" and p > ema_200 * V4_EMA_PROXIMITY_MIN and p <= ema_200 * V4_EMA_PROXIMITY_MAX and regime == "TRENDING_UP":
+        elif phase == "LONG" and p > ema_200 * V4_EMA_PROXIMITY_MIN and p <= ema_200 * V4_EMA_PROX_MAP.get(sym, V4_EMA_PROXIMITY_MAX) and regime == "TRENDING_UP":
             rsi_high = V4_RSI_HIGH_ZEC if sym == "ZEC" else V4_RSI_HIGH
             if V4_RSI_LOW <= rsi <= rsi_high and rsi > prev_rsi:
                 if is_position_open(sym, "LONG"):
