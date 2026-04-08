@@ -1,0 +1,485 @@
+//@version=6
+// =============================================================================
+//  ZENITH SUITE V17 — Full Strategy Engine (v2.1 Backtest-Validated)
+//
+//  Strategies:
+//    V1-LONG:  Trend-following RSI 45 + EMA200 (BB = confluence bonus, not gate)
+//    V3-REV:   Reversal below EMA200 with RSI divergence + BB squeeze
+//    V4-EMA:   EMA200 bounce (mean reversion, per-symbol proximity)
+//    V1-SHORT: Independent short in TRENDING_DOWN/VOLATILE (RSI 55+, EMA slope)
+//
+//  v2.1 Features:
+//    - RVOL filter (per-symbol: BTC=0.7, altcoins=1.0)
+//    - CHOPPY regime (ADX < 20 + BB 2-4%) — suppresses all signals
+//    - RSI bullish divergence + BB squeeze for V3
+//    - EMA200 slope confirmation for V1-SHORT
+//    - EMA50 as 4H trend proxy + confluence bonus
+//    - 4H EMA real multi-timeframe filter (from V13)
+//    - Williams %R for TAO (66.7% WR calibrated — from V13)
+//    - BB Width % filter for BTC (88.9% WR calibrated — from V13)
+//    - Setup zone visualization (pre-signal glow — from V14)
+//    - Regime transition cooldown (6 bars)
+//    - ATR-normalized EMA proximity for V4
+//    - Per-symbol V4 proximity (BTC=1.02, ETH=1.025, TAO/ZEC=1.03)
+//
+//  Validated: TAO/V1-SHORT (+473%), ETH/V1-SHORT (+100%), TAO/V4 (+284%)
+// =============================================================================
+indicator("Zenith V17 Engine v2.1", overlay=true, max_lines_count=50, max_labels_count=100, max_boxes_count=20)
+
+// =====================================================================
+// INPUTS
+// =====================================================================
+grp_ind = "Indicators"
+ema_len    = input.int(200,    "EMA 200 Period",     group=grp_ind)
+ema50_len  = input.int(50,     "EMA 50 Period",      group=grp_ind)
+bb_len     = input.int(20,     "BB Period",           group=grp_ind)
+bb_mult    = input.float(2.0,  "BB Multiplier",       group=grp_ind)
+rsi_len    = input.int(14,     "RSI Period",           group=grp_ind)
+atr_len    = input.int(14,     "ATR Period",           group=grp_ind)
+adx_len    = input.int(14,     "ADX Period",           group=grp_ind)
+rvol_len   = input.int(20,     "RVOL SMA Period",      group=grp_ind)
+
+grp_risk = "Risk Management"
+atr_sl_mult  = input.float(2.0, "SL: ATR Multiplier",   group=grp_risk)
+atr_tp1_mult = input.float(2.0, "TP1: R:R Ratio",       group=grp_risk)
+atr_tp2_mult = input.float(3.5, "TP2: R:R Ratio",       group=grp_risk)
+atr_tp3_mult = input.float(7.0, "TP3: R:R Ratio",       group=grp_risk)
+min_sl_pct   = input.float(0.7, "Min SL %",             group=grp_risk) / 100
+
+grp_strat = "Strategy Toggles"
+enable_v1     = input.bool(true, "Enable V1-LONG (Trend)",     group=grp_strat)
+enable_v3     = input.bool(true, "Enable V3-REV (Reversal)",   group=grp_strat)
+enable_v4     = input.bool(true, "Enable V4-EMA (Bounce)",     group=grp_strat)
+enable_short  = input.bool(true, "Enable V1-SHORT (Always On)",group=grp_strat)
+min_confluence = input.int(4,   "V1-LONG Min Confluence",      group=grp_strat, minval=1, maxval=7)
+short_min_conf = input.int(3,   "V1-SHORT Min Confluence",     group=grp_strat, minval=1, maxval=7)
+
+grp_rvol = "RVOL Filter"
+rvol_min_default = input.float(1.0, "RVOL Min (Altcoins)",    group=grp_rvol, step=0.1)
+rvol_min_btc     = input.float(0.7, "RVOL Min (BTC)",         group=grp_rvol, step=0.1)
+enable_rvol      = input.bool(true, "Enable RVOL Filter",     group=grp_rvol)
+
+grp_mtf = "Multi-Timeframe (V13)"
+use_4h_ema   = input.bool(true,  "Require 4H EMA Bull for LONG",  group=grp_mtf, tooltip="Real multi-TF: price must be above 4H EMA200 for LONG strategies")
+ema4h_len    = input.int(200,    "4H EMA Period",                  group=grp_mtf)
+
+grp_v13 = "V13 Calibrated Filters"
+enable_btc_bbw   = input.bool(true,  "BTC: BB Width >= 3% filter",   group=grp_v13, tooltip="88.9% WR backtest (N=9)")
+btc_bbw_thresh   = input.float(3.0,  "BTC: Min BB Width %",          group=grp_v13, step=0.5)
+enable_tao_willr = input.bool(true,  "TAO: Williams %R <= -85",      group=grp_v13, tooltip="66.7% WR backtest (N=6)")
+tao_willr_thresh = input.float(-85.0,"TAO: Max Williams %R",         group=grp_v13, step=5.0)
+
+grp_vis = "Visual"
+show_regime    = input.bool(true,  "Show Regime Background", group=grp_vis)
+show_levels    = input.bool(true,  "Show SL/TP Levels",     group=grp_vis)
+show_dashboard = input.bool(true,  "Show Dashboard",        group=grp_vis)
+show_setup     = input.bool(true,  "Show Setup Zones",      group=grp_vis)
+
+// =====================================================================
+// INDICATOR CALCULATIONS
+// =====================================================================
+ema200 = ta.ema(close, ema_len)
+ema50  = ta.ema(close, ema50_len)
+[bb_mid, bb_u, bb_l] = ta.bb(close, bb_len, bb_mult)
+rsi    = ta.rsi(close, rsi_len)
+atr    = ta.atr(atr_len)
+
+// RSI momentum
+rsi_rising  = rsi > rsi[1]
+rsi_falling = rsi < rsi[1]
+
+// BB Width (regime detection + BTC filter)
+bb_width = (bb_u - bb_l) / bb_mid
+bbw_pct  = bb_width * 100.0
+
+// BB Width SMA (for squeeze detection)
+bb_width_sma = ta.sma(bb_width, 20)
+bb_squeeze = bb_width < bb_width_sma
+
+// RVOL — Relative Volume (institutional participation filter)
+vol_sma = ta.sma(volume, rvol_len)
+rvol = vol_sma > 0 ? volume / vol_sma : 1.0
+
+// Williams %R (14-period) — from V13 for TAO calibration
+hh14  = ta.highest(high, 14)
+ll14  = ta.lowest(low, 14)
+willr = -100.0 * (hh14 - close) / (hh14 - ll14)
+
+// 4H EMA macro filter (real multi-timeframe from V13)
+ema4h = request.security(syminfo.tickerid, "240", ta.ema(close, ema4h_len), lookahead=barmerge.lookahead_off)
+bull_4h = close > ema4h
+
+// Per-symbol detection
+is_zec = syminfo.basecurrency == "ZEC"
+is_tao = syminfo.basecurrency == "TAO"
+is_btc = syminfo.basecurrency == "BTC"
+is_eth = syminfo.basecurrency == "ETH"
+
+rvol_threshold = is_btc ? rvol_min_btc : rvol_min_default
+rvol_ok = not enable_rvol or rvol >= rvol_threshold
+
+// V13 calibrated filters (per-symbol)
+btc_bbw_ok   = not (is_btc and enable_btc_bbw)   or bbw_pct >= btc_bbw_thresh
+tao_willr_ok = not (is_tao and enable_tao_willr)  or willr <= tao_willr_thresh
+v13_filter_pass = btc_bbw_ok and tao_willr_ok
+
+// ADX (regime detection) — Wilder smoothing via RMA
+up_move   = high - high[1]
+down_move = -(low - low[1])
+plus_dm   = na(up_move) ? na : (up_move > down_move and up_move > 0.0 ? up_move : 0.0)
+minus_dm  = na(down_move) ? na : (down_move > up_move and down_move > 0.0 ? down_move : 0.0)
+
+smoothed_tr = ta.rma(ta.tr(true), adx_len)
+plus_di     = 100.0 * ta.rma(plus_dm, adx_len) / smoothed_tr
+minus_di    = 100.0 * ta.rma(minus_dm, adx_len) / smoothed_tr
+dx          = math.abs(plus_di - minus_di) / (plus_di + minus_di) * 100.0
+adx         = ta.rma(dx, adx_len)
+
+// EMA200 Slope (5-bar) — declining confirms bearish for shorts
+ema200_prev5 = ema200[5]
+ema200_slope = ema200_prev5 > 0.0 ? (ema200 - ema200_prev5) / ema200_prev5 : 0.0
+ema_slope_declining = ema200_slope < -0.001
+
+// RSI Bullish Divergence: price lower-low + RSI higher-low (V3 filter)
+price_ll = low < low[1] and low[1] < low[2]
+rsi_hl   = rsi > rsi[1] and rsi[1] > rsi[2]
+rsi_divergence = price_ll and rsi_hl
+
+// ATR-normalized EMA distance (for V4 per-symbol adaptation)
+ema_dist_atr = atr > 0 ? (close - ema200) / atr : 0.0
+
+// =====================================================================
+// REGIME DETECTION (v2.1 — with CHOPPY)
+// =====================================================================
+adx_trending_thresh = 25.0
+adx_choppy_thresh   = 20.0
+bb_ranging_thresh   = 0.02
+bb_choppy_upper     = 0.04
+
+regime_trending_up   = adx > adx_trending_thresh and close > ema200
+regime_trending_down = adx > adx_trending_thresh and close < ema200
+regime_ranging       = adx <= adx_trending_thresh and bb_width < bb_ranging_thresh
+regime_choppy        = not regime_trending_up and not regime_trending_down and not regime_ranging and adx < adx_choppy_thresh and bb_width < bb_choppy_upper
+regime_default_up    = not regime_trending_up and not regime_trending_down and not regime_ranging and not regime_choppy and close > ema200
+regime_default_down  = not regime_trending_up and not regime_trending_down and not regime_ranging and not regime_choppy and close <= ema200
+
+is_trending_up   = regime_trending_up or regime_default_up
+is_trending_down = regime_trending_down or regime_default_down
+is_ranging       = regime_ranging
+is_choppy        = regime_choppy
+
+string regime_str = is_trending_up ? "TRENDING UP" : is_trending_down ? "TRENDING DOWN" : is_ranging ? "RANGING" : is_choppy ? "CHOPPY" : "VOLATILE"
+
+// ── Regime Transition Cooldown (6 bars) ──────────────────────────────
+var string prev_regime = na
+var int regime_cooldown = 0
+
+string cur_regime = regime_str
+if not na(prev_regime) and cur_regime != prev_regime
+    regime_cooldown := 6
+prev_regime := cur_regime
+
+if regime_cooldown > 0
+    regime_cooldown := regime_cooldown - 1
+
+bool in_cooldown = regime_cooldown > 0
+bool suppress_signals = is_ranging or is_choppy or in_cooldown
+
+// =====================================================================
+// PER-SYMBOL PROFILES (v2.1)
+// =====================================================================
+rsi_long_entry    = is_zec ? 48.0 : 45.0
+rsi_long_extreme  = is_zec ? 26.0 : is_tao ? 28.0 : 30.0
+rsi_short_entry   = 55.0
+v4_rsi_low        = 35.0
+v4_rsi_high       = is_zec ? 55.0 : 50.0
+v4_prox_min       = 1.001
+v4_prox_max       = is_btc ? 1.02 : is_eth ? 1.025 : 1.03
+
+// 4H macro trend (real multi-TF or EMA50 fallback)
+bull_1h    = close > ema200
+macro_bull = use_4h_ema ? (bull_1h and bull_4h) : bull_1h
+
+// =====================================================================
+// CONFLUENCE SCORE (v2.1 — with EMA50 + RVOL bonus)
+// =====================================================================
+calc_confluence(float p, float rsi_val, float bb_upper, float bb_lower, float ema, float ema_50, string side) =>
+    int score = 0
+    // 1. RSI (2 pts)
+    if side == "LONG"
+        score += rsi_val <= 30.0 ? 2 : rsi_val <= 40.0 ? 1 : 0
+    else
+        score += rsi_val >= 70.0 ? 2 : rsi_val >= 60.0 ? 1 : 0
+    // 2. EMA 200 Trend (1 pt)
+    if (side == "LONG" and p > ema) or (side == "SHORT" and p < ema)
+        score += 1
+    // 3. Bollinger proximity (1 pt)
+    if (side == "LONG" and p <= bb_lower * 1.01) or (side == "SHORT" and p >= bb_upper * 0.99)
+        score += 1
+    // 4. EMA50 trend alignment bonus (1 pt)
+    if (side == "LONG" and p > ema_50 and ema_50 > ema) or (side == "SHORT" and p < ema_50 and ema_50 < ema)
+        score += 1
+    // 5. RVOL institutional volume (1 pt)
+    if rvol >= 1.5
+        score += 1
+    math.max(0, math.min(7, score))
+
+conf_long  = calc_confluence(close, rsi, bb_u, bb_l, ema200, ema50, "LONG")
+conf_short = calc_confluence(close, rsi, bb_u, bb_l, ema200, ema50, "SHORT")
+
+// =====================================================================
+// SL / TP CALCULATIONS
+// =====================================================================
+sl_dist_long  = math.max(atr * atr_sl_mult, close * min_sl_pct)
+sl_dist_short = math.max(atr * atr_sl_mult, close * min_sl_pct)
+sl_dist_v4    = math.max(atr * 1.5, close * min_sl_pct)
+sl_dist_v3    = math.max(atr * atr_sl_mult, close * 0.010)
+
+long_sl  = close - sl_dist_long
+long_tp1 = close + sl_dist_long * atr_tp1_mult
+long_tp2 = close + sl_dist_long * atr_tp2_mult
+long_tp3 = close + sl_dist_long * atr_tp3_mult
+
+short_sl  = close + sl_dist_short
+short_tp1 = close - sl_dist_short * atr_tp1_mult
+short_tp2 = close - sl_dist_short * atr_tp2_mult
+
+v3_sl  = close - sl_dist_v3
+v3_tp1 = close + sl_dist_v3 * atr_tp1_mult
+v3_tp2 = close + sl_dist_v3 * atr_tp2_mult
+
+v4_sl  = close - sl_dist_v4
+v4_tp1 = close + sl_dist_v4 * 2.0
+v4_tp2 = close + sl_dist_v4 * 3.0
+
+// =====================================================================
+// STRATEGY SIGNALS (v2.1 + V13 calibrated filters)
+// =====================================================================
+
+// -- V1-LONG: Trend Following --
+// RSI <= 45, rising, above EMA200, TRENDING_UP/VOLATILE, RVOL, 4H macro, V13 filters
+// BB is confluence bonus (NOT hard gate)
+v1_base = enable_v1 and not suppress_signals and rvol_ok and v13_filter_pass and close > ema200 and macro_bull and (is_trending_up or (not is_trending_down and not is_ranging and not is_choppy)) and rsi <= rsi_long_entry and rsi_rising and conf_long >= min_confluence
+v1_cond = v1_base
+
+// -- V3-REV: Reversal (requires divergence + BB squeeze) --
+// Price < EMA200, extreme RSI, structural confirmation
+v3_cond = enable_v3 and not suppress_signals and rvol_ok and close < ema200 and (is_trending_down or not is_trending_up) and rsi <= rsi_long_extreme and rsi_divergence and bb_squeeze and conf_long >= 4
+
+// -- V4-EMA: EMA200 Bounce (per-symbol proximity + ATR-normalized) --
+ema_ratio = close / ema200
+v4_atr_ok = ema_dist_atr >= 0.1 and ema_dist_atr <= 3.0
+v4_cond = enable_v4 and not suppress_signals and rvol_ok and v13_filter_pass and is_trending_up and macro_bull and ema_ratio >= v4_prox_min and ema_ratio <= v4_prox_max and v4_atr_ok and rsi >= v4_rsi_low and rsi <= v4_rsi_high and rsi_rising and conf_long >= 3
+
+// -- V1-SHORT: Always evaluates (not gated by direction) --
+// RSI >= 55, falling, EMA slope declining, TRENDING_DOWN + VOLATILE, conf >= 3
+short_regime_ok = is_trending_down or (not is_trending_up and not is_ranging and not is_choppy)
+v1s_cond = enable_short and not suppress_signals and rvol_ok and close < ema200 and short_regime_ok and rsi >= rsi_short_entry and rsi_falling and ema_slope_declining and conf_short >= short_min_conf
+
+// Combined (prevent multiple on same bar)
+any_long  = v1_cond or v3_cond or v4_cond
+any_short = v1s_cond and not any_long
+
+// Setup detection (V14-style pre-signal)
+near_bb_l    = close <= bb_l * 1.015
+v1_setup     = not suppress_signals and close > ema200 and macro_bull and rsi <= rsi_long_entry and near_bb_l and not v1_cond
+short_setup  = not suppress_signals and close < ema200 and short_regime_ok and rsi >= rsi_short_entry and not v1s_cond
+
+// =====================================================================
+// PLOTS — EMA & BB
+// =====================================================================
+ema_color = close > ema200 ? color.new(color.teal, 20) : color.new(color.orange, 20)
+plot(ema200, "EMA 200", color=ema_color, linewidth=3)
+plot(ema50,  "EMA 50",  color=color.new(color.purple, 50), linewidth=1)
+
+bb_u_plot = plot(bb_u, "BB Upper", color=color.new(color.gray, 75))
+bb_l_plot = plot(bb_l, "BB Lower", color=color.new(color.gray, 75))
+fill(bb_u_plot, bb_l_plot, color=color.new(color.teal, 95))
+
+// Setup zone (V14-style): green glow near BB lower in bull regime
+zone_top_val = show_setup and macro_bull and not suppress_signals ? bb_l * 1.015 : na
+zone_p = plot(zone_top_val, "Zone Top", color=color.new(color.green, 85), style=plot.style_linebr)
+fill(zone_p, bb_l_plot, color.new(color.green, 95), title="Entry Zone")
+
+// =====================================================================
+// PLOTS — REGIME BACKGROUND
+// =====================================================================
+bgcolor(show_regime and is_ranging ? color.new(color.yellow, 93) : na, title="Ranging BG")
+bgcolor(show_regime and is_choppy  ? color.new(color.orange, 95) : na, title="Choppy BG")
+bgcolor(show_regime and is_trending_down ? color.new(color.red, 95) : na, title="Trend Down BG")
+bgcolor(show_regime and in_cooldown ? color.new(color.gray, 95) : na, title="Cooldown BG")
+
+// Setup glow (V14-style)
+bgcolor(show_setup and v1_setup    ? color.new(color.green, 93)  : na, title="V1 Setup Glow")
+bgcolor(show_setup and short_setup ? color.new(color.red, 95)    : na, title="Short Setup Glow")
+
+// =====================================================================
+// PLOTS — SIGNALS
+// =====================================================================
+plotshape(v1_cond, title="V1 LONG", style=shape.labelup, location=location.belowbar, color=color.new(color.lime, 0), text="V1", textcolor=color.black, size=size.normal)
+
+plotshape(v3_cond and not v1_cond, title="V3 REV", style=shape.labelup, location=location.belowbar, color=color.new(color.aqua, 0), text="V3\nDIV", textcolor=color.black, size=size.normal)
+
+plotshape(v4_cond and not v1_cond and not v3_cond, title="V4 EMA", style=shape.labelup, location=location.belowbar, color=color.new(color.teal, 0), text="V4", textcolor=color.white, size=size.normal)
+
+plotshape(any_short, title="V1 SHORT", style=shape.labeldown, location=location.abovebar, color=color.new(color.red, 0), text="SHORT", textcolor=color.white, size=size.normal)
+
+// Setup markers (small, subtle)
+plotshape(show_setup and v1_setup, title="V1 Setup", style=shape.triangleup, location=location.belowbar, color=color.new(color.orange, 30), size=size.tiny)
+plotshape(show_setup and short_setup, title="Short Setup", style=shape.triangledown, location=location.abovebar, color=color.new(color.orange, 30), size=size.tiny)
+
+// Divergence diamonds (V3 prerequisites visible)
+plotshape(rsi_divergence and close < ema200 and rsi <= rsi_long_extreme, title="RSI Divergence", style=shape.diamond, location=location.belowbar, color=color.new(color.fuchsia, 30), size=size.tiny)
+
+// =====================================================================
+// SL/TP LEVEL TRACKING
+// =====================================================================
+var float last_sl  = na
+var float last_tp1 = na
+var float last_tp2 = na
+var string last_side = na
+var string last_strat = na
+
+if v1_cond
+    last_sl    := long_sl
+    last_tp1   := long_tp1
+    last_tp2   := long_tp2
+    last_side  := "LONG"
+    last_strat := "V1"
+else if v3_cond
+    last_sl    := v3_sl
+    last_tp1   := v3_tp1
+    last_tp2   := v3_tp2
+    last_side  := "LONG"
+    last_strat := "V3"
+else if v4_cond
+    last_sl    := v4_sl
+    last_tp1   := v4_tp1
+    last_tp2   := v4_tp2
+    last_side  := "LONG"
+    last_strat := "V4"
+else if any_short
+    last_sl    := short_sl
+    last_tp1   := short_tp1
+    last_tp2   := short_tp2
+    last_side  := "SHORT"
+    last_strat := "V1S"
+
+plot(show_levels ? last_sl  : na, "SL",  color=color.new(color.red, 40),  linewidth=1, style=plot.style_linebr)
+plot(show_levels ? last_tp1 : na, "TP1", color=color.new(color.lime, 40), linewidth=1, style=plot.style_linebr)
+plot(show_levels ? last_tp2 : na, "TP2", color=color.new(color.aqua, 40), linewidth=1, style=plot.style_linebr)
+
+// =====================================================================
+// DASHBOARD TABLE (v2.1 — 16 rows with all indicators)
+// =====================================================================
+var table dash = table.new(position.top_right, 2, 16, bgcolor=color.new(color.black, 10), border_color=color.new(color.gray, 50), border_width=1)
+
+if barstate.islast and show_dashboard
+    // Header
+    table.cell(dash, 0, 0, "ZENITH V17",  text_color=color.white, bgcolor=color.new(color.teal, 30), text_size=size.small)
+    table.cell(dash, 1, 0, "ENGINE v2.1",  text_color=color.white, bgcolor=color.new(color.teal, 30), text_size=size.small)
+
+    // Regime
+    regime_color = is_trending_up ? color.lime : is_trending_down ? color.red : is_ranging ? color.yellow : is_choppy ? color.orange : color.gray
+    table.cell(dash, 0, 1, "Regime", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 1, regime_str + (in_cooldown ? " (CD)" : ""), text_color=regime_color, text_size=size.small)
+
+    // 4H Macro
+    macro_txt = macro_bull ? "BULL" : bull_1h ? "1H BULL only" : "BEAR"
+    macro_col = macro_bull ? color.lime : bull_1h ? color.yellow : color.red
+    table.cell(dash, 0, 2, "4H Macro", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 2, macro_txt, text_color=macro_col, text_size=size.small)
+
+    // ADX
+    table.cell(dash, 0, 3, "ADX", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 3, str.tostring(adx, "#.#"), text_color=adx > 25.0 ? color.lime : adx < 20.0 ? color.orange : color.silver, text_size=size.small)
+
+    // RSI
+    rsi_color = rsi <= 30.0 ? color.lime : rsi >= 70.0 ? color.red : rsi <= rsi_long_entry ? color.aqua : rsi >= rsi_short_entry ? color.orange : color.silver
+    rsi_arrow = rsi_rising ? " ▲" : " ▼"
+    table.cell(dash, 0, 4, "RSI", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 4, str.tostring(rsi, "#.#") + rsi_arrow, text_color=rsi_color, text_size=size.small)
+
+    // BB Width + Squeeze
+    squeeze_txt = bb_squeeze ? " SQZ" : ""
+    table.cell(dash, 0, 5, "BB Width", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 5, str.tostring(bbw_pct, "#.##") + "%" + squeeze_txt, text_color=bb_squeeze ? color.fuchsia : bb_width < 0.02 ? color.yellow : color.silver, text_size=size.small)
+
+    // RVOL
+    rvol_color = rvol >= 1.5 ? color.lime : rvol >= rvol_threshold ? color.silver : color.red
+    table.cell(dash, 0, 6, "RVOL", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 6, str.tostring(rvol, "#.##") + "x", text_color=rvol_color, text_size=size.small)
+
+    // EMA200 Slope
+    slope_pct = ema200_slope * 100.0
+    slope_color = ema_slope_declining ? color.red : slope_pct > 0.1 ? color.lime : color.silver
+    slope_arrow = ema_slope_declining ? " ↘" : slope_pct > 0.05 ? " ↗" : " →"
+    table.cell(dash, 0, 7, "EMA Slope", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 7, str.tostring(slope_pct, "#.###") + "%" + slope_arrow, text_color=slope_color, text_size=size.small)
+
+    // EMA Proximity
+    ema_prox = (close / ema200 - 1.0) * 100.0
+    table.cell(dash, 0, 8, "EMA Dist", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 8, str.tostring(ema_prox, "#.##") + "%", text_color=close > ema200 ? color.lime : color.red, text_size=size.small)
+
+    // RSI Divergence
+    div_txt = rsi_divergence ? "YES" : "no"
+    table.cell(dash, 0, 9, "RSI Div", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 9, div_txt, text_color=rsi_divergence ? color.fuchsia : color.gray, text_size=size.small)
+
+    // Williams %R (from V13)
+    willr_color = willr <= -85 ? color.lime : willr >= -20 ? color.red : color.silver
+    willr_active = is_tao and enable_tao_willr
+    table.cell(dash, 0, 10, "Will %R", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 10, str.tostring(willr, "#.#") + (willr_active ? (tao_willr_ok ? " OK" : " X") : ""), text_color=willr_active ? (tao_willr_ok ? color.lime : color.red) : willr_color, text_size=size.small)
+
+    // EMA50 Trend
+    ema50_txt = close > ema50 and ema50 > ema200 ? "BULL" : close < ema50 and ema50 < ema200 ? "BEAR" : "MIXED"
+    ema50_color = ema50_txt == "BULL" ? color.lime : ema50_txt == "BEAR" ? color.red : color.yellow
+    table.cell(dash, 0, 11, "EMA50", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 11, ema50_txt, text_color=ema50_color, text_size=size.small)
+
+    // Confluence
+    active_conf = any_short ? conf_short : conf_long
+    conf_color = active_conf >= 5 ? color.lime : active_conf >= 4 ? color.aqua : active_conf >= 3 ? color.yellow : color.red
+    table.cell(dash, 0, 12, "Confluence", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 12, str.tostring(active_conf) + "/7", text_color=conf_color, text_size=size.small)
+
+    // V13 Filter
+    v13_txt = is_btc and enable_btc_bbw ? ("BBW " + str.tostring(bbw_pct, "#.#") + "% " + (btc_bbw_ok ? "OK" : "X")) : is_tao and enable_tao_willr ? ("WR " + str.tostring(willr, "#") + " " + (tao_willr_ok ? "OK" : "X")) : "n/a"
+    v13_col = v13_filter_pass ? color.lime : color.red
+    table.cell(dash, 0, 13, "V13 Filter", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 13, v13_txt, text_color=v13_col, text_size=size.small)
+
+    // Signal Status
+    string signal_text = v1_cond ? "V1 LONG" : v3_cond ? "V3 REV (DIV)" : v4_cond ? "V4 EMA" : any_short ? "V1 SHORT" : v1_setup ? "SETUP (wait)" : short_setup ? "SHORT SETUP" : suppress_signals ? (is_choppy ? "CHOPPY (off)" : is_ranging ? "RANGING (off)" : "COOLDOWN") : "Waiting..."
+    signal_color = v1_cond or v3_cond or v4_cond ? color.lime : any_short ? color.red : v1_setup or short_setup ? color.orange : suppress_signals ? color.new(color.orange, 40) : color.gray
+    table.cell(dash, 0, 14, "Signal", text_color=color.silver, text_size=size.small)
+    table.cell(dash, 1, 14, signal_text, text_color=signal_color, text_size=size.small)
+
+    // Last SL/TP
+    if not na(last_sl)
+        table.cell(dash, 0, 15, "SL / TP1", text_color=color.silver, text_size=size.small)
+        table.cell(dash, 1, 15, str.tostring(last_sl, "#.##") + " / " + str.tostring(last_tp1, "#.##"), text_color=color.yellow, text_size=size.small)
+
+// =====================================================================
+// ALERTS — static messages for alertcondition (v6 compatible)
+// =====================================================================
+alertcondition(v1_cond,              "Zenith V1 LONG",  "V1 LONG signal on {{ticker}} at {{close}}")
+alertcondition(v3_cond,              "Zenith V3 REV",   "V3 REV divergence signal on {{ticker}} at {{close}}")
+alertcondition(v4_cond,              "Zenith V4 EMA",   "V4 EMA bounce signal on {{ticker}} at {{close}}")
+alertcondition(any_short,            "Zenith V1 SHORT", "V1 SHORT signal on {{ticker}} at {{close}}")
+alertcondition(any_long or any_short,"Zenith ANY Signal","ZENITH signal on {{ticker}} at {{close}}")
+alertcondition(is_choppy,            "Choppy Regime",    "CHOPPY regime on {{ticker}} — signals suppressed")
+alertcondition(v1_setup,             "V1 Setup",         "V1 LONG setup forming on {{ticker}} — waiting RSI hook")
+alertcondition(short_setup,          "Short Setup",      "SHORT setup forming on {{ticker}} — waiting confirmation")
+
+// ALERTS — dynamic messages via alert() with full v2.1 data
+if v1_cond
+    alert("V1 LONG | " + syminfo.ticker + " @ " + str.tostring(close, "#.##") + " | RSI: " + str.tostring(rsi, "#.#") + " | RVOL: " + str.tostring(rvol, "#.##") + " | Conf: " + str.tostring(conf_long) + "/7 | 4H: " + (bull_4h ? "BULL" : "BEAR"), alert.freq_once_per_bar)
+if v3_cond
+    alert("V3 REV DIV | " + syminfo.ticker + " @ " + str.tostring(close, "#.##") + " | RSI: " + str.tostring(rsi, "#.#") + " | Div+Sqz | Conf: " + str.tostring(conf_long) + "/7", alert.freq_once_per_bar)
+if v4_cond
+    alert("V4 EMA | " + syminfo.ticker + " @ " + str.tostring(close, "#.##") + " | RSI: " + str.tostring(rsi, "#.#") + " | EMA/ATR: " + str.tostring(ema_dist_atr, "#.##") + " | Conf: " + str.tostring(conf_long) + "/7", alert.freq_once_per_bar)
+if any_short
+    alert("V1 SHORT | " + syminfo.ticker + " @ " + str.tostring(close, "#.##") + " | RSI: " + str.tostring(rsi, "#.#") + " | Slope: " + str.tostring(ema200_slope * 100, "#.###") + "% | Conf: " + str.tostring(conf_short) + "/7", alert.freq_once_per_bar)

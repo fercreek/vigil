@@ -147,6 +147,18 @@ def send_telegram(msg: str, reply_to: str = None, keyboard: dict = None) -> str:
         return None
 
 
+def send_telegram_long(msg: str, reply_to: str = None) -> str:
+    """Envía mensajes largos partiéndolos en chunks de 4000 chars respetando el límite de Telegram."""
+    CHUNK = 4000
+    chunks = [msg[i:i+CHUNK] for i in range(0, len(msg), CHUNK)]
+    last_id = None
+    for i, chunk in enumerate(chunks):
+        # Solo el primer chunk lleva reply_to; el resto se encadena
+        rid = reply_to if i == 0 else last_id
+        last_id = send_telegram(chunk, reply_to=rid, keyboard={})
+    return last_id
+
+
 def alert(key: str, msg: str, version: str = "V1-TECH", cooldown: int = 300,
           reply_to: str = None, inline_keyboard: dict = None) -> str:
     """

@@ -1,11 +1,12 @@
 import threading
 import os
 from dotenv import load_dotenv
+
+# Cargamos .env ANTES de cualquier import que use variables de entorno
+load_dotenv(override=True)
+
 from app import app
 import scalp_alert_bot
-
-# Cargamos .env para ejecución local (Replit usa Secrets de sistema)
-load_dotenv(override=True)
 
 def run_flask():
     """Ejecuta el Dashboard Web en el puerto 8080 (requerido por Replit)."""

@@ -5,12 +5,14 @@ Extraído de scalp_alert_bot.py para mantener archivos < 600 líneas.
 """
 
 import indicators
+import episode_memory as _em
+# GLOBAL_CACHE importado lazy dentro de monitor_open_trades para evitar circularidad
 
 
 def monitor_open_trades(prices: dict):
     """Monitorea posiciones abiertas, ejecuta TP/SL automático, y trailing stops."""
     # Lazy imports para evitar circularidad
-    from scalp_alert_bot import send_telegram, alert, safe_html
+    from scalp_alert_bot import send_telegram, alert, safe_html, GLOBAL_CACHE
     import tracker
     import gemini_analyzer
     from risk_manager import circuit_breaker, trailing_stop_mgr
@@ -80,6 +82,8 @@ def monitor_open_trades(prices: dict):
         elif tipo == "LONG":
             if curr_p <= t["sl_price"]:
                 tracker.update_trade_status(t["id"], "LOST")
+                _ep_id = GLOBAL_CACHE.get("episode_ids", {}).pop(t["id"], None)
+                if _ep_id: _em.fill_outcome(_ep_id, "LOSS", -abs(pnl_pct))
                 lesson = gemini_analyzer.trigger_shadow_post_mortem(sym, curr_p, "LOST", rsi, "Post-Mortem SL (Long)")
                 if lesson:
                     send_telegram(f"🧠 <b>NEURAL LEARNING (V4.0)</b>\n<i>{lesson}</i>", reply_to=reply)
@@ -95,6 +99,8 @@ def monitor_open_trades(prices: dict):
                 circuit_breaker.record_outcome(is_win=False, pnl_pct=-abs(pnl_pct))
             elif t["tp2_price"] > 0 and curr_p >= t["tp2_price"]:
                 tracker.update_trade_status(t["id"], "FULL_WON")
+                _ep_id = GLOBAL_CACHE.get("episode_ids", {}).pop(t["id"], None)
+                if _ep_id: _em.fill_outcome(_ep_id, "WIN", abs(pnl_pct))
                 msg = (f"🟢 <b>TP2 ALCANZADO (STRIKE!)</b>\n\n"
                        f"🪙 {sym} LONG\n"
                        f"💰 PnL: <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
@@ -117,12 +123,14 @@ def monitor_open_trades(prices: dict):
     for upd in tsl_updates:
         tracker.update_sl(upd["trade_id"], upd["new_sl"])
         print(f"📐 [TrailingStop] {upd['reason']}")
-        alert(f"tsl_{upd['trade_id']}",
+        # Key incluye new_sl para evitar duplicados si hay múltiples procesos corriendo
+        tsl_key = f"tsl_{upd['trade_id']}_{upd['new_sl']:.2f}"
+        alert(tsl_key,
               f"📐 <b>TRAILING STOP ACTUALIZADO</b>\n"
               f"🪙 {upd['symbol']} {upd['side']}\n"
               f"🛑 SL: ${upd['old_sl']:,.2f} → <b>${upd['new_sl']:,.2f}</b>\n"
               f"📊 Precio: ${upd['current_price']:,.2f} | ATR: {upd['atr']:.2f}",
-              version="RISK", cooldown=120)
+              version="RISK", cooldown=300)
 
     # Cleanup trailing tracking para trades cerrados
     open_ids = {t["id"] for t in open_trades}

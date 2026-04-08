@@ -5,10 +5,14 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 from logger_core import logger, log_ai_decision
+from config import STOCK_WATCHLIST
 
 load_dotenv()
 
 REPORT_PATH = "latest_report.txt"
+
+# Mapa yf_ticker → display ticker para los símbolos con alias (futuros)
+_YF_ALIAS = {s["yf_ticker"]: s["ticker"] for s in STOCK_WATCHLIST if s["yf_ticker"] != s["ticker"]}
 
 def extract_stock_signals():
     """Lee el latest_report.txt y usa Gemini para extraer las alertas en formato JSON estructurado."""
@@ -71,36 +75,48 @@ def extract_stock_signals():
         log_ai_decision("STOCK_ANALYZER", prompt, "", {"status": "ERROR", "error": err_msg})
         return None, f"❌ Error extrayendo señales con IA: {err_msg}"
 
-def check_stock_status():
-    """Extrae las señales y revisa los precios en tiempo real con yfinance."""
-    signals, err = extract_stock_signals()
-    if err:
-        return err
+def _merge_signals(report_signals):
+    """Combina señales del reporte con la watchlist estática. El reporte tiene prioridad si hay solapamiento."""
+    report_tickers = {s["ticker"] for s in report_signals} if report_signals else set()
+    static = [s for s in STOCK_WATCHLIST if s["ticker"] not in report_tickers]
+    return (report_signals or []) + static
 
-    if not signals or not isinstance(signals, list):
-        return "⚠️ No se encontraron señales válidas de acciones en el reporte actual."
-
-    tickers = [s['ticker'] for s in signals if 'ticker' in s]
-    if not tickers:
-        return "⚠️ No se encontraron tickers válidos."
-    
-    # Descargar precios en tiempo real (o el último cierre)
+def _fetch_prices(signals):
+    """Descarga precios para una lista de señales. Usa yf_ticker si existe, ticker si no."""
+    yf_symbols = [s.get("yf_ticker", s["ticker"]) for s in signals if "ticker" in s]
+    yf_symbols = list(dict.fromkeys(yf_symbols))  # deduplicar
+    prices = {}
     try:
-        yf_tickers = yf.Tickers(" ".join(tickers))
-        current_prices = {}
-        for t in tickers:
-            info = yf_tickers.tickers[t].fast_info
-            current_prices[t] = info.last_price
+        yf_data = yf.Tickers(" ".join(yf_symbols))
+        for sym in yf_symbols:
+            display = _YF_ALIAS.get(sym, sym)
+            try:
+                prices[display] = yf_data.tickers[sym].fast_info.last_price
+            except Exception:
+                prices[display] = 0.0
     except Exception as e:
-        return f"❌ Error conectando a Yahoo Finance: {e}"
+        logger.warning(f"yfinance error: {e}")
+    return prices
 
-    # Generar reporte 
-    report = "📈 <b>RADAR DE ACCIONES PTS</b>\n<i>Según último reporte cargado</i>\n\n"
-    
+def check_stock_status():
+    """Extrae las señales del reporte + watchlist estática y revisa precios en tiempo real."""
+    report_signals, err = extract_stock_signals()
+    # Si hay error en el reporte, igual continuamos con la watchlist estática
+    signals = _merge_signals(report_signals)
+
+    if not signals:
+        return "⚠️ No hay señales en watchlist ni en el reporte."
+
+    current_prices = _fetch_prices(signals)
+    if not current_prices:
+        return "❌ Error conectando a Yahoo Finance."
+
+    report = "📈 <b>RADAR DE ACCIONES PTS</b>\n<i>Watchlist + reporte activo</i>\n\n"
+
     for s in signals:
         t = s.get('ticker')
         if not t: continue
-        
+
         p = current_prices.get(t, 0.0)
         direction = s.get('direction', 'HOLD')
         entry = s.get('entry')
@@ -150,26 +166,21 @@ def stock_watchdog():
     
     while True:
         try:
-            logger.info("👁️ Centinela: Analizando Reporte de Acciones...")
-            signals, err = extract_stock_signals()
-            if err or not signals:
-                time.sleep(1800)
+            logger.info("👁️ Centinela: Analizando Reporte de Acciones + Watchlist estática...")
+            report_signals, _ = extract_stock_signals()
+            signals = _merge_signals(report_signals)
+            if not signals:
+                time.sleep(900)
                 continue
-                
-            tickers = [s['ticker'] for s in signals if 'ticker' in s]
-            if not tickers: 
-                time.sleep(1800)
-                continue
-                
-            yf_tickers = yf.Tickers(" ".join(tickers))
-            
+
+            current_prices = _fetch_prices(signals)
+
             for s in signals:
-                t = s['ticker']
-                
-                try:
-                    info = yf_tickers.tickers[t].fast_info
-                    p = info.last_price
-                except:
+                t = s.get('ticker')
+                if not t:
+                    continue
+                p = current_prices.get(t, 0.0)
+                if not p:
                     continue
                 
                 direction = s.get('direction', 'HOLD')

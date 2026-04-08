@@ -1,0 +1,2725 @@
+{
+  "BTC": {
+    "V1": {
+      "total_trades": 17,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: BTC \u2550\u2550\u2550\nTrades: 17 (W:2 L:15 P:3)\nWin Rate: 11.8%\nProfit Factor: 0.49\nSharpe: -1.14\nSortino: -3.24\nMax DD: -11.82%\nSQN: -1.14 (Pobre)\nTotal Return: -7.98%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 15,
+          "win_rate": 13.3,
+          "profit_factor": 0.58,
+          "sharpe": -0.78,
+          "sortino": -2.2,
+          "max_drawdown": -9.48,
+          "sqn": -0.78,
+          "calmar": -13.8,
+          "avg_rr": 3.79,
+          "total_return_pct": -5.38,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 1044.48,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 1044.27,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1044.06,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1027.47,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1016.75,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 1016.55,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1000.8,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 991.81,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 1022.28,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 1004.58,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 996.35,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 988.19,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 973.55,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 959.14,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 945.46,
+              "time": "",
+              "trade_id": 14
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 2,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": -8.93,
+          "sortino": -8.93,
+          "max_drawdown": -2.58,
+          "sqn": -8.93,
+          "calmar": -183.99,
+          "avg_rr": 0.0,
+          "total_return_pct": -2.6,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 985.54,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 974.16,
+              "time": "",
+              "trade_id": 1
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": -100.0,
+          "profit_factor": -100.0,
+          "sharpe": -1044.9
+        }
+      }
+    },
+    "V3": {
+      "total_trades": 65,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: BTC \u2550\u2550\u2550\nTrades: 65 (W:15 L:49 P:7)\nWin Rate: 23.1%\nProfit Factor: 1.06\nSharpe: 0.17\nSortino: 0.57\nMax DD: -19.54%\nSQN: 0.17 (Pobre)\nTotal Return: +4.08%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 38,
+          "win_rate": 26.3,
+          "profit_factor": 1.33,
+          "sharpe": 0.65,
+          "sortino": 2.52,
+          "max_drawdown": -11.92,
+          "sqn": 0.65,
+          "calmar": 9.7,
+          "avg_rr": 3.73,
+          "total_return_pct": 12.04,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 1042.23,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 1070.13,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1057.71,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1043.81,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1029.13,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 1018.91,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1018.71,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 1004.89,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 993.59,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 1048.66,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 1076.73,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 1076.51,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 1062.54,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 1044.63,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 1035.03,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 1034.83,
+              "time": "",
+              "trade_id": 15
+            },
+            {
+              "balance": 1021.22,
+              "time": "",
+              "trade_id": 16
+            },
+            {
+              "balance": 1006.92,
+              "time": "",
+              "trade_id": 17
+            },
+            {
+              "balance": 994.94,
+              "time": "",
+              "trade_id": 18
+            },
+            {
+              "balance": 1039.62,
+              "time": "",
+              "trade_id": 19
+            },
+            {
+              "balance": 1030.07,
+              "time": "",
+              "trade_id": 20
+            },
+            {
+              "balance": 1020.6,
+              "time": "",
+              "trade_id": 21
+            },
+            {
+              "balance": 1010.97,
+              "time": "",
+              "trade_id": 22
+            },
+            {
+              "balance": 1055.58,
+              "time": "",
+              "trade_id": 23
+            },
+            {
+              "balance": 1039.68,
+              "time": "",
+              "trade_id": 24
+            },
+            {
+              "balance": 1002.82,
+              "time": "",
+              "trade_id": 25
+            },
+            {
+              "balance": 1064.43,
+              "time": "",
+              "trade_id": 26
+            },
+            {
+              "balance": 1051.25,
+              "time": "",
+              "trade_id": 27
+            },
+            {
+              "balance": 1038.88,
+              "time": "",
+              "trade_id": 28
+            },
+            {
+              "balance": 1038.67,
+              "time": "",
+              "trade_id": 29
+            },
+            {
+              "balance": 1016.39,
+              "time": "",
+              "trade_id": 30
+            },
+            {
+              "balance": 992.19,
+              "time": "",
+              "trade_id": 31
+            },
+            {
+              "balance": 970.54,
+              "time": "",
+              "trade_id": 32
+            },
+            {
+              "balance": 948.41,
+              "time": "",
+              "trade_id": 33
+            },
+            {
+              "balance": 1040.58,
+              "time": "",
+              "trade_id": 34
+            },
+            {
+              "balance": 1024.25,
+              "time": "",
+              "trade_id": 35
+            },
+            {
+              "balance": 1089.09,
+              "time": "",
+              "trade_id": 36
+            },
+            {
+              "balance": 1109.45,
+              "time": "",
+              "trade_id": 37
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 25,
+          "win_rate": 24.0,
+          "profit_factor": 0.85,
+          "sharpe": -0.33,
+          "sortino": -1.09,
+          "max_drawdown": -19.54,
+          "sqn": -0.33,
+          "calmar": -3.77,
+          "avg_rr": 2.69,
+          "total_return_pct": -5.05,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 1042.56,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 1031.99,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1020.88,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1006.83,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 997.58,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 1032.35,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1015.45,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 995.1,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 972.65,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 949.8,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 927.57,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 901.85,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 873.78,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 838.99,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 838.82,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 895.49,
+              "time": "",
+              "trade_id": 15
+            },
+            {
+              "balance": 952.7,
+              "time": "",
+              "trade_id": 16
+            },
+            {
+              "balance": 933.31,
+              "time": "",
+              "trade_id": 17
+            },
+            {
+              "balance": 968.36,
+              "time": "",
+              "trade_id": 18
+            },
+            {
+              "balance": 951.4,
+              "time": "",
+              "trade_id": 19
+            },
+            {
+              "balance": 935.49,
+              "time": "",
+              "trade_id": 20
+            },
+            {
+              "balance": 974.25,
+              "time": "",
+              "trade_id": 21
+            },
+            {
+              "balance": 960.31,
+              "time": "",
+              "trade_id": 22
+            },
+            {
+              "balance": 945.51,
+              "time": "",
+              "trade_id": 23
+            },
+            {
+              "balance": 940.35,
+              "time": "",
+              "trade_id": 24
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": -8.7,
+          "profit_factor": -36.1,
+          "sharpe": -150.8
+        }
+      }
+    },
+    "V4": {
+      "total_trades": 42,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: BTC \u2550\u2550\u2550\nTrades: 42 (W:11 L:31 P:5)\nWin Rate: 26.2%\nProfit Factor: 1.46\nSharpe: 0.92\nSortino: 4.52\nMax DD: -12.83%\nSQN: 0.92 (Pobre)\nTotal Return: +12.32%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 32,
+          "win_rate": 25.0,
+          "profit_factor": 1.3,
+          "sharpe": 0.57,
+          "sortino": 2.3,
+          "max_drawdown": -6.61,
+          "sqn": 0.57,
+          "calmar": 9.5,
+          "avg_rr": 3.9,
+          "total_return_pct": 5.5,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 999.8,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 1031.14,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1063.61,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1054.9,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1054.69,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 1099.22,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1085.79,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 1085.57,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 1076.68,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 1067.86,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 1059.11,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 1058.9,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 1083.54,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 1083.33,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 1074.45,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 1065.65,
+              "time": "",
+              "trade_id": 15
+            },
+            {
+              "balance": 1098.46,
+              "time": "",
+              "trade_id": 16
+            },
+            {
+              "balance": 1087.93,
+              "time": "",
+              "trade_id": 17
+            },
+            {
+              "balance": 1079.02,
+              "time": "",
+              "trade_id": 18
+            },
+            {
+              "balance": 1104.13,
+              "time": "",
+              "trade_id": 19
+            },
+            {
+              "balance": 1095.08,
+              "time": "",
+              "trade_id": 20
+            },
+            {
+              "balance": 1086.11,
+              "time": "",
+              "trade_id": 21
+            },
+            {
+              "balance": 1077.22,
+              "time": "",
+              "trade_id": 22
+            },
+            {
+              "balance": 1102.28,
+              "time": "",
+              "trade_id": 23
+            },
+            {
+              "balance": 1090.0,
+              "time": "",
+              "trade_id": 24
+            },
+            {
+              "balance": 1126.23,
+              "time": "",
+              "trade_id": 25
+            },
+            {
+              "balance": 1116.81,
+              "time": "",
+              "trade_id": 26
+            },
+            {
+              "balance": 1104.08,
+              "time": "",
+              "trade_id": 27
+            },
+            {
+              "balance": 1091.4,
+              "time": "",
+              "trade_id": 28
+            },
+            {
+              "balance": 1077.63,
+              "time": "",
+              "trade_id": 29
+            },
+            {
+              "balance": 1063.48,
+              "time": "",
+              "trade_id": 30
+            },
+            {
+              "balance": 1051.79,
+              "time": "",
+              "trade_id": 31
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 9,
+          "win_rate": 33.3,
+          "profit_factor": 2.1,
+          "sharpe": 0.84,
+          "sortino": 10.87,
+          "max_drawdown": -5.68,
+          "sqn": 0.84,
+          "calmar": 56.08,
+          "avg_rr": 4.21,
+          "total_return_pct": 7.85,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 989.02,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 977.99,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 967.24,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 958.57,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 943.23,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 992.47,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1036.52,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 1091.54,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 1077.3,
+              "time": "",
+              "trade_id": 8
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": 33.2,
+          "profit_factor": 61.5,
+          "sharpe": 47.4
+        }
+      }
+    },
+    "V1-SHORT": {
+      "total_trades": 0,
+      "formatted": "[BTC] Sin trades generados.",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 0,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 0.0,
+          "sortino": 0.0,
+          "max_drawdown": 0.0,
+          "sqn": 0.0,
+          "calmar": 0.0,
+          "avg_rr": 0.0,
+          "total_return_pct": 0.0,
+          "equity_curve": []
+        },
+        "out_of_sample": {
+          "total_trades": 0,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 0.0,
+          "sortino": 0.0,
+          "max_drawdown": 0.0,
+          "sqn": 0.0,
+          "calmar": 0.0,
+          "avg_rr": 0.0,
+          "total_return_pct": 0.0,
+          "equity_curve": []
+        },
+        "degradation_pct": {
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 0.0
+        }
+      }
+    }
+  },
+  "ETH": {
+    "V1": {
+      "total_trades": 15,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: ETH \u2550\u2550\u2550\nTrades: 15 (W:1 L:14 P:1)\nWin Rate: 6.7%\nProfit Factor: 0.17\nSharpe: -3.19\nSortino: -8.19\nMax DD: -25.92%\nSQN: -3.19 (Pobre)\nTotal Return: -26.96%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 13,
+          "win_rate": 7.7,
+          "profit_factor": 0.21,
+          "sharpe": -2.55,
+          "sortino": -6.61,
+          "max_drawdown": -21.54,
+          "sqn": -2.55,
+          "calmar": -27.76,
+          "avg_rr": 2.47,
+          "total_return_pct": -21.3,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 999.8,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 971.37,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1024.91,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 996.14,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 974.83,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 940.33,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 917.41,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 892.29,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 879.65,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 864.62,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 845.3,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 826.63,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 804.16,
+              "time": "",
+              "trade_id": 12
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 0.0,
+          "sortino": 0.0,
+          "max_drawdown": -2.86,
+          "sqn": 0.0,
+          "calmar": -364.96,
+          "avg_rr": 0.0,
+          "total_return_pct": -2.86,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 971.4,
+              "time": "",
+              "trade_id": 0
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": -100.0,
+          "profit_factor": -100.0,
+          "sharpe": 100.0
+        }
+      }
+    },
+    "V3": {
+      "total_trades": 61,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: ETH \u2550\u2550\u2550\nTrades: 61 (W:13 L:47 P:5)\nWin Rate: 23.0%\nProfit Factor: 1.1\nSharpe: 0.29\nSortino: 1.2\nMax DD: -33.00%\nSQN: 0.29 (Pobre)\nTotal Return: +11.37%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 34,
+          "win_rate": 29.4,
+          "profit_factor": 1.66,
+          "sharpe": 1.11,
+          "sortino": 5.76,
+          "max_drawdown": -20.68,
+          "sqn": 1.11,
+          "calmar": 19.15,
+          "avg_rr": 4.0,
+          "total_return_pct": 36.88,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 1055.96,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 1168.1,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1127.7,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1101.5,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1070.78,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 1198.28,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1266.87,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 1238.89,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 1204.35,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 1307.12,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 1273.02,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 1233.91,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 1233.67,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 1216.48,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 1200.33,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 1175.51,
+              "time": "",
+              "trade_id": 15
+            },
+            {
+              "balance": 1152.68,
+              "time": "",
+              "trade_id": 16
+            },
+            {
+              "balance": 1125.23,
+              "time": "",
+              "trade_id": 17
+            },
+            {
+              "balance": 1102.19,
+              "time": "",
+              "trade_id": 18
+            },
+            {
+              "balance": 1073.19,
+              "time": "",
+              "trade_id": 19
+            },
+            {
+              "balance": 1036.82,
+              "time": "",
+              "trade_id": 20
+            },
+            {
+              "balance": 1181.25,
+              "time": "",
+              "trade_id": 21
+            },
+            {
+              "balance": 1296.2,
+              "time": "",
+              "trade_id": 22
+            },
+            {
+              "balance": 1295.94,
+              "time": "",
+              "trade_id": 23
+            },
+            {
+              "balance": 1262.63,
+              "time": "",
+              "trade_id": 24
+            },
+            {
+              "balance": 1218.06,
+              "time": "",
+              "trade_id": 25
+            },
+            {
+              "balance": 1217.82,
+              "time": "",
+              "trade_id": 26
+            },
+            {
+              "balance": 1174.24,
+              "time": "",
+              "trade_id": 27
+            },
+            {
+              "balance": 1131.29,
+              "time": "",
+              "trade_id": 28
+            },
+            {
+              "balance": 1092.43,
+              "time": "",
+              "trade_id": 29
+            },
+            {
+              "balance": 1244.21,
+              "time": "",
+              "trade_id": 30
+            },
+            {
+              "balance": 1216.57,
+              "time": "",
+              "trade_id": 31
+            },
+            {
+              "balance": 1316.69,
+              "time": "",
+              "trade_id": 32
+            },
+            {
+              "balance": 1371.98,
+              "time": "",
+              "trade_id": 33
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 25,
+          "win_rate": 16.0,
+          "profit_factor": 0.47,
+          "sharpe": -1.45,
+          "sortino": -3.63,
+          "max_drawdown": -29.36,
+          "sqn": -1.45,
+          "calmar": -12.67,
+          "avg_rr": 2.46,
+          "total_return_pct": -25.47,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 999.8,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 983.56,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 968.68,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 951.95,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 933.15,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 912.5,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 901.86,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 949.41,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 933.15,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 913.88,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 890.76,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 868.02,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 843.24,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 804.61,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 762.21,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 720.33,
+              "time": "",
+              "trade_id": 15
+            },
+            {
+              "balance": 720.19,
+              "time": "",
+              "trade_id": 16
+            },
+            {
+              "balance": 706.39,
+              "time": "",
+              "trade_id": 17
+            },
+            {
+              "balance": 760.91,
+              "time": "",
+              "trade_id": 18
+            },
+            {
+              "balance": 741.18,
+              "time": "",
+              "trade_id": 19
+            },
+            {
+              "balance": 810.44,
+              "time": "",
+              "trade_id": 20
+            },
+            {
+              "balance": 789.19,
+              "time": "",
+              "trade_id": 21
+            },
+            {
+              "balance": 777.18,
+              "time": "",
+              "trade_id": 22
+            },
+            {
+              "balance": 762.39,
+              "time": "",
+              "trade_id": 23
+            },
+            {
+              "balance": 762.92,
+              "time": "",
+              "trade_id": 24
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": -45.6,
+          "profit_factor": -71.7,
+          "sharpe": -230.6
+        }
+      }
+    },
+    "V4": {
+      "total_trades": 30,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: ETH \u2550\u2550\u2550\nTrades: 30 (W:7 L:23 P:3)\nWin Rate: 23.3%\nProfit Factor: 0.98\nSharpe: -0.04\nSortino: -0.15\nMax DD: -14.75%\nSQN: -0.04 (Pobre)\nTotal Return: -0.56%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 24,
+          "win_rate": 20.8,
+          "profit_factor": 0.7,
+          "sharpe": -0.68,
+          "sortino": -2.14,
+          "max_drawdown": -14.48,
+          "sqn": -0.68,
+          "calmar": -8.08,
+          "avg_rr": 2.67,
+          "total_return_pct": -7.69,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 999.8,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 989.94,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 970.09,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 969.89,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 945.39,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 926.2,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 964.48,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 950.52,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 938.4,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 965.38,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 1002.89,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 1067.15,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 1050.81,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 1027.31,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 1005.6,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 994.76,
+              "time": "",
+              "trade_id": 15
+            },
+            {
+              "balance": 983.91,
+              "time": "",
+              "trade_id": 16
+            },
+            {
+              "balance": 972.47,
+              "time": "",
+              "trade_id": 17
+            },
+            {
+              "balance": 956.13,
+              "time": "",
+              "trade_id": 18
+            },
+            {
+              "balance": 940.11,
+              "time": "",
+              "trade_id": 19
+            },
+            {
+              "balance": 939.93,
+              "time": "",
+              "trade_id": 20
+            },
+            {
+              "balance": 928.49,
+              "time": "",
+              "trade_id": 21
+            },
+            {
+              "balance": 912.67,
+              "time": "",
+              "trade_id": 22
+            },
+            {
+              "balance": 920.18,
+              "time": "",
+              "trade_id": 23
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 5,
+          "win_rate": 40.0,
+          "profit_factor": 1.83,
+          "sharpe": 0.54,
+          "sortino": 5.19,
+          "max_drawdown": -3.54,
+          "sqn": 0.54,
+          "calmar": 93.41,
+          "avg_rr": 2.75,
+          "total_return_pct": 4.53,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 986.02,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 964.57,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1020.31,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1062.93,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1043.24,
+              "time": "",
+              "trade_id": 4
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": 92.3,
+          "profit_factor": 161.4,
+          "sharpe": 179.4
+        }
+      }
+    },
+    "V1-SHORT": {
+      "total_trades": 5,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: ETH \u2550\u2550\u2550\nTrades: 5 (W:1 L:4 P:0)\nWin Rate: 20.0%\nProfit Factor: 0.62\nSharpe: -0.43\nSortino: -1.5\nMax DD: -12.74%\nSQN: -0.43 (Pobre)\nTotal Return: -5.12%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 4,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": -4.38,
+          "sortino": -4.38,
+          "max_drawdown": -12.74,
+          "sqn": -4.38,
+          "calmar": -95.72,
+          "avg_rr": 0.0,
+          "total_return_pct": -13.36,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 949.16,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 916.46,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 903.96,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 872.58,
+              "time": "",
+              "trade_id": 3
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 1,
+          "win_rate": 100.0,
+          "profit_factor": Infinity,
+          "sharpe": 0.0,
+          "sortino": 0.0,
+          "max_drawdown": 0.0,
+          "sqn": 0.0,
+          "calmar": 0.0,
+          "avg_rr": 8.24,
+          "total_return_pct": 8.24,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 1082.41,
+              "time": "",
+              "trade_id": 0
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 100.0
+        }
+      }
+    }
+  },
+  "TAO": {
+    "V1": {
+      "total_trades": 18,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: TAO \u2550\u2550\u2550\nTrades: 18 (W:5 L:12 P:2)\nWin Rate: 27.8%\nProfit Factor: 1.13\nSharpe: 0.21\nSortino: 0.71\nMax DD: -25.68%\nSQN: 0.21 (Pobre)\nTotal Return: +5.82%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 13,
+          "win_rate": 30.8,
+          "profit_factor": 1.1,
+          "sharpe": 0.14,
+          "sortino": 0.49,
+          "max_drawdown": -19.75,
+          "sqn": 0.14,
+          "calmar": 4.91,
+          "avg_rr": 2.47,
+          "total_return_pct": 3.46,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 968.6,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 932.65,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 932.46,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1046.18,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1144.9,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 1101.75,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1067.99,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 1132.51,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 1255.49,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 1164.41,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 1117.2,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 1056.16,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 1007.59,
+              "time": "",
+              "trade_id": 12
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 5,
+          "win_rate": 20.0,
+          "profit_factor": 1.23,
+          "sharpe": 0.15,
+          "sortino": 0.58,
+          "max_drawdown": -7.39,
+          "sqn": 0.15,
+          "calmar": 23.38,
+          "avg_rr": 4.9,
+          "total_return_pct": 2.37,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 967.53,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 967.34,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 926.11,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1045.07,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1014.25,
+              "time": "",
+              "trade_id": 4
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": -35.1,
+          "profit_factor": 11.8,
+          "sharpe": 7.1
+        }
+      }
+    },
+    "V3": {
+      "total_trades": 51,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: TAO \u2550\u2550\u2550\nTrades: 51 (W:11 L:40 P:5)\nWin Rate: 21.6%\nProfit Factor: 1.35\nSharpe: 0.6\nSortino: 3.82\nMax DD: -43.39%\nSQN: 0.6 (Pobre)\nTotal Return: +44.05%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 29,
+          "win_rate": 24.1,
+          "profit_factor": 1.89,
+          "sharpe": 0.89,
+          "sortino": 6.96,
+          "max_drawdown": -27.91,
+          "sqn": 0.89,
+          "calmar": 27.26,
+          "avg_rr": 5.94,
+          "total_return_pct": 60.46,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 1149.45,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 1104.86,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1104.64,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1067.77,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1203.14,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 1170.96,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1311.62,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 1268.14,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 1208.12,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 1156.79,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 1117.12,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 1085.06,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 1050.68,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 1016.5,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 982.35,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 982.16,
+              "time": "",
+              "trade_id": 15
+            },
+            {
+              "balance": 948.69,
+              "time": "",
+              "trade_id": 16
+            },
+            {
+              "balance": 1011.76,
+              "time": "",
+              "trade_id": 17
+            },
+            {
+              "balance": 994.89,
+              "time": "",
+              "trade_id": 18
+            },
+            {
+              "balance": 974.78,
+              "time": "",
+              "trade_id": 19
+            },
+            {
+              "balance": 945.57,
+              "time": "",
+              "trade_id": 20
+            },
+            {
+              "balance": 1047.93,
+              "time": "",
+              "trade_id": 21
+            },
+            {
+              "balance": 1660.7,
+              "time": "",
+              "trade_id": 22
+            },
+            {
+              "balance": 1556.14,
+              "time": "",
+              "trade_id": 23
+            },
+            {
+              "balance": 1492.02,
+              "time": "",
+              "trade_id": 24
+            },
+            {
+              "balance": 1408.19,
+              "time": "",
+              "trade_id": 25
+            },
+            {
+              "balance": 1407.91,
+              "time": "",
+              "trade_id": 26
+            },
+            {
+              "balance": 1358.66,
+              "time": "",
+              "trade_id": 27
+            },
+            {
+              "balance": 1532.95,
+              "time": "",
+              "trade_id": 28
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 16,
+          "win_rate": 25.0,
+          "profit_factor": 1.05,
+          "sharpe": 0.07,
+          "sortino": 0.28,
+          "max_drawdown": -26.05,
+          "sqn": 0.07,
+          "calmar": 1.71,
+          "avg_rr": 3.14,
+          "total_return_pct": 1.95,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 976.69,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 939.29,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 915.21,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 896.62,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 970.21,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 944.87,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 916.17,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 881.16,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 832.2,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 788.94,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 739.48,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 821.18,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 789.86,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 861.38,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 861.21,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 988.03,
+              "time": "",
+              "trade_id": 15
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": 3.7,
+          "profit_factor": -44.4,
+          "sharpe": -92.1
+        }
+      }
+    },
+    "V4": {
+      "total_trades": 25,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: TAO \u2550\u2550\u2550\nTrades: 25 (W:3 L:21 P:3)\nWin Rate: 16.0%\nProfit Factor: 0.66\nSharpe: -0.75\nSortino: -2.45\nMax DD: -23.79%\nSQN: -0.75 (Pobre)\nTotal Return: -15.74%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 19,
+          "win_rate": 10.5,
+          "profit_factor": 0.52,
+          "sharpe": -1.03,
+          "sortino": -3.24,
+          "max_drawdown": -22.13,
+          "sqn": -1.03,
+          "calmar": -15.88,
+          "avg_rr": 4.46,
+          "total_return_pct": -18.3,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 967.61,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 967.42,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 944.07,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 923.91,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 900.93,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 884.66,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 863.08,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 952.06,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 924.86,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 924.68,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 903.15,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 881.31,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 866.43,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 851.21,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 837.26,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 823.77,
+              "time": "",
+              "trade_id": 15
+            },
+            {
+              "balance": 778.7,
+              "time": "",
+              "trade_id": 16
+            },
+            {
+              "balance": 855.4,
+              "time": "",
+              "trade_id": 17
+            },
+            {
+              "balance": 820.09,
+              "time": "",
+              "trade_id": 18
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 5,
+          "win_rate": 40.0,
+          "profit_factor": 1.76,
+          "sharpe": 0.37,
+          "sortino": 1.15,
+          "max_drawdown": -5.5,
+          "sqn": 0.37,
+          "calmar": 56.14,
+          "avg_rr": 2.64,
+          "total_return_pct": 4.23,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 999.8,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 967.94,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 945.04,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1035.81,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1037.85,
+              "time": "",
+              "trade_id": 4
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": 281.0,
+          "profit_factor": 238.5,
+          "sharpe": 135.9
+        }
+      }
+    },
+    "V1-SHORT": {
+      "total_trades": 2,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: TAO \u2550\u2550\u2550\nTrades: 2 (W:0 L:2 P:0)\nWin Rate: 0.0%\nProfit Factor: 0.0\nSharpe: -14.47\nSortino: -14.47\nMax DD: -7.42%\nSQN: -14.47 (Pobre)\nTotal Return: -7.56%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 2,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": -14.47,
+          "sortino": -14.47,
+          "max_drawdown": -7.42,
+          "sqn": -14.47,
+          "calmar": -186.01,
+          "avg_rr": 0.0,
+          "total_return_pct": -7.56,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 959.57,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 925.8,
+              "time": "",
+              "trade_id": 1
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 0,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 0.0,
+          "sortino": 0.0,
+          "max_drawdown": 0.0,
+          "sqn": 0.0,
+          "calmar": 0.0,
+          "avg_rr": 0.0,
+          "total_return_pct": 0.0,
+          "equity_curve": []
+        },
+        "degradation_pct": {
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 100.0
+        }
+      }
+    }
+  },
+  "ZEC": {
+    "V1": {
+      "total_trades": 19,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: ZEC \u2550\u2550\u2550\nTrades: 19 (W:6 L:13 P:4)\nWin Rate: 31.6%\nProfit Factor: 2.91\nSharpe: 1.42\nSortino: 6.65\nMax DD: -23.02%\nSQN: 1.42 (Pobre)\nTotal Return: +75.29%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 14,
+          "win_rate": 42.9,
+          "profit_factor": 4.97,
+          "sharpe": 1.85,
+          "sortino": 8.04,
+          "max_drawdown": -9.08,
+          "sqn": 1.85,
+          "calmar": 262.96,
+          "avg_rr": 6.63,
+          "total_return_pct": 91.58,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 999.8,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 1145.41,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1108.6,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1063.67,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1196.97,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 1155.67,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1118.64,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 1203.55,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 1391.16,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 1390.88,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 1871.09,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 1870.71,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 2428.92,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 2208.44,
+              "time": "",
+              "trade_id": 13
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 4,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": -8.65,
+          "sortino": -8.65,
+          "max_drawdown": -15.32,
+          "sqn": -8.65,
+          "calmar": -96.92,
+          "avg_rr": 0.0,
+          "total_return_pct": -16.27,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 967.93,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 934.93,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 893.56,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 846.81,
+              "time": "",
+              "trade_id": 3
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": -100.0,
+          "profit_factor": -100.0,
+          "sharpe": -567.6
+        }
+      }
+    },
+    "V3": {
+      "total_trades": 35,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: ZEC \u2550\u2550\u2550\nTrades: 35 (W:6 L:29 P:3)\nWin Rate: 17.1%\nProfit Factor: 0.59\nSharpe: -1.27\nSortino: -3.41\nMax DD: -50.70%\nSQN: -1.27 (Pobre)\nTotal Return: -48.14%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 16,
+          "win_rate": 18.8,
+          "profit_factor": 0.7,
+          "sharpe": -0.53,
+          "sortino": -1.22,
+          "max_drawdown": -22.16,
+          "sqn": -0.53,
+          "calmar": -14.82,
+          "avg_rr": 3.05,
+          "total_return_pct": -14.39,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 957.54,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 922.19,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1062.19,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1033.02,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1004.4,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 974.03,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 950.98,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 1017.93,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 989.41,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 959.91,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 959.72,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 959.53,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 1074.59,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 954.41,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 900.72,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 836.5,
+              "time": "",
+              "trade_id": 15
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 19,
+          "win_rate": 15.8,
+          "profit_factor": 0.51,
+          "sharpe": -1.24,
+          "sortino": -4.11,
+          "max_drawdown": -36.67,
+          "sqn": -1.24,
+          "calmar": -17.68,
+          "avg_rr": 2.71,
+          "total_return_pct": -33.75,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 999.8,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 945.17,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 870.23,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 830.4,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 923.32,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 883.0,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 851.57,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 799.83,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 753.87,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 701.95,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 673.56,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 656.93,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 633.28,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 721.61,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 699.08,
+              "time": "",
+              "trade_id": 14
+            },
+            {
+              "balance": 673.84,
+              "time": "",
+              "trade_id": 15
+            },
+            {
+              "balance": 644.77,
+              "time": "",
+              "trade_id": 16
+            },
+            {
+              "balance": 707.63,
+              "time": "",
+              "trade_id": 17
+            },
+            {
+              "balance": 687.46,
+              "time": "",
+              "trade_id": 18
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": -16.0,
+          "profit_factor": -27.1,
+          "sharpe": -134.0
+        }
+      }
+    },
+    "V4": {
+      "total_trades": 20,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: ZEC \u2550\u2550\u2550\nTrades: 20 (W:6 L:14 P:3)\nWin Rate: 30.0%\nProfit Factor: 2.29\nSharpe: 1.22\nSortino: 4.65\nMax DD: -13.74%\nSQN: 1.22 (Pobre)\nTotal Return: +51.58%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 15,
+          "win_rate": 33.3,
+          "profit_factor": 2.58,
+          "sharpe": 1.2,
+          "sortino": 4.12,
+          "max_drawdown": -13.74,
+          "sqn": 1.2,
+          "calmar": 83.33,
+          "avg_rr": 5.15,
+          "total_return_pct": 47.05,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 999.8,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 1108.71,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1084.61,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 1186.23,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 1155.17,
+              "time": "",
+              "trade_id": 4
+            },
+            {
+              "balance": 1131.87,
+              "time": "",
+              "trade_id": 5
+            },
+            {
+              "balance": 1110.29,
+              "time": "",
+              "trade_id": 6
+            },
+            {
+              "balance": 1110.07,
+              "time": "",
+              "trade_id": 7
+            },
+            {
+              "balance": 1109.85,
+              "time": "",
+              "trade_id": 8
+            },
+            {
+              "balance": 1211.7,
+              "time": "",
+              "trade_id": 9
+            },
+            {
+              "balance": 1516.09,
+              "time": "",
+              "trade_id": 10
+            },
+            {
+              "balance": 1409.8,
+              "time": "",
+              "trade_id": 11
+            },
+            {
+              "balance": 1307.81,
+              "time": "",
+              "trade_id": 12
+            },
+            {
+              "balance": 1600.09,
+              "time": "",
+              "trade_id": 13
+            },
+            {
+              "balance": 1490.68,
+              "time": "",
+              "trade_id": 14
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 5,
+          "win_rate": 20.0,
+          "profit_factor": 0.65,
+          "sharpe": -0.39,
+          "sortino": -2.98,
+          "max_drawdown": -7.55,
+          "sqn": -0.39,
+          "calmar": -34.21,
+          "avg_rr": 2.6,
+          "total_return_pct": -3.54,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 976.55,
+              "time": "",
+              "trade_id": 0
+            },
+            {
+              "balance": 1040.49,
+              "time": "",
+              "trade_id": 1
+            },
+            {
+              "balance": 1020.28,
+              "time": "",
+              "trade_id": 2
+            },
+            {
+              "balance": 993.89,
+              "time": "",
+              "trade_id": 3
+            },
+            {
+              "balance": 961.97,
+              "time": "",
+              "trade_id": 4
+            }
+          ]
+        },
+        "degradation_pct": {
+          "win_rate": -39.9,
+          "profit_factor": -74.8,
+          "sharpe": -132.5
+        }
+      }
+    },
+    "V1-SHORT": {
+      "total_trades": 1,
+      "formatted": "\u2550\u2550\u2550 BACKTEST: ZEC \u2550\u2550\u2550\nTrades: 1 (W:0 L:1 P:0)\nWin Rate: 0.0%\nProfit Factor: 0.0\nSharpe: 0.0\nSortino: 0.0\nMax DD: -2.17%\nSQN: 0.0 (Pobre)\nTotal Return: -2.17%",
+      "walk_forward": {
+        "in_sample": {
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 0.0,
+          "sortino": 0.0,
+          "max_drawdown": -2.17,
+          "sqn": 0.0,
+          "calmar": -364.55,
+          "avg_rr": 0.0,
+          "total_return_pct": -2.17,
+          "equity_curve": [
+            {
+              "balance": 1000.0,
+              "time": "start",
+              "trade_id": 0
+            },
+            {
+              "balance": 978.33,
+              "time": "",
+              "trade_id": 0
+            }
+          ]
+        },
+        "out_of_sample": {
+          "total_trades": 0,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 0.0,
+          "sortino": 0.0,
+          "max_drawdown": 0.0,
+          "sqn": 0.0,
+          "calmar": 0.0,
+          "avg_rr": 0.0,
+          "total_return_pct": 0.0,
+          "equity_curve": []
+        },
+        "degradation_pct": {
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "sharpe": 0.0
+        }
+      }
+    }
+  }
+}

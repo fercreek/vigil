@@ -61,7 +61,7 @@ TTL_PRICES = 20      # Precio: 20s (Fallback si falla la red)
 TTL_INDICATORS = 120 # Indicadores: 2 min (Reducción de carga)
 TTL_GLOBAL = 600     # Métricas Globales: 10 min
 TTL_MACRO = 900      # Macro (SPY/Oil): 15 min (Lento)
-TTL_SOCIAL = 600     # Inteligencia Social: 10 min
+TTL_SOCIAL = 1800    # Inteligencia Social: 30 min (sin Twitter API, reducir tokens)
 
 # ─── Multi-Symbol Event Detector ─────────────────────────────────────────────
 # Detecta cuando varios símbolos disparan señales simultáneamente → market scan
@@ -321,6 +321,8 @@ def _handle_user_question(text: str, prices: dict):
         "btc": "BTC/USDT", "bitcoin": "BTC/USDT",
         "tao": "TAO/USDT", "bittensor": "TAO/USDT",
         "zec": "ZEC/USDT", "zcash": "ZEC/USDT",
+        "hbar": "HBAR/USDT", "hedera": "HBAR/USDT",
+        "doge": "DOGE/USDT", "dogecoin": "DOGE/USDT",
         "eth": "ETH/USDT", "ethereum": "ETH/USDT",
     }
     detected_sym = None
@@ -416,7 +418,7 @@ def get_prices() -> dict:
     
     # 1. ¿Necesitamos actualizar precios? (Optimizado: 1 sola llamada)
     if now - GLOBAL_CACHE["last_update"]["prices"] > TTL_PRICES:
-        symbols = ['ETH/USDT', 'BTC/USDT', 'TAO/USDT', 'ZEC/USDT', 'SOL/USDT', 'PAXG/USDT']
+        symbols = ['ETH/USDT', 'BTC/USDT', 'TAO/USDT', 'ZEC/USDT', 'SOL/USDT', 'PAXG/USDT', 'HBAR/USDT', 'DOGE/USDT']
         try:
             # OPTIMIZACIÓN V3.2: fetch_tickers (Plural) es más eficiente que 4 llamadas separadas
             tickers = binance_ex.fetch_tickers(symbols)
@@ -427,6 +429,8 @@ def get_prices() -> dict:
             res["ZEC"] = tickers.get('ZEC/USDT', {}).get('last', res.get("ZEC"))
             res["SOL"] = tickers.get('SOL/USDT', {}).get('last', res.get("SOL"))
             res["GOLD"] = tickers.get('PAXG/USDT', {}).get('last', res.get("GOLD"))
+            res["HBAR"] = tickers.get('HBAR/USDT', {}).get('last', res.get("HBAR"))
+            res["DOGE"] = tickers.get('DOGE/USDT', {}).get('last', res.get("DOGE"))
             
             # Monitoreo de Carga (Opcional: X-MBX-USED-WEIGHT)
             weight = binance_ex.last_response_headers.get('X-MBX-USED-WEIGHT-1M', 'N/A')
@@ -445,7 +449,7 @@ def get_prices() -> dict:
 
             try:
                 # Fallback a CoinGecko
-                ids = "ethereum,bittensor,bitcoin,pax-gold,zcash"
+                ids = "ethereum,bittensor,bitcoin,pax-gold,zcash,hedera-hashgraph,dogecoin"
                 url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd"
                 cg_r = requests.get(url, timeout=10).json()
                 res["ETH"] = cg_r.get("ethereum", {}).get("usd", res.get("ETH", 0.0))
@@ -454,6 +458,8 @@ def get_prices() -> dict:
                 res["SOL"] = cg_r.get("solana", {}).get("usd", res.get("SOL", 0.0))
                 res["ZEC"] = cg_r.get("zcash", {}).get("usd", res.get("ZEC", 0.0))
                 res["GOLD"] = cg_r.get("pax-gold", {}).get("usd", res.get("GOLD", 0.0))
+                res["HBAR"] = cg_r.get("hedera-hashgraph", {}).get("usd", res.get("HBAR", 0.0))
+                res["DOGE"] = cg_r.get("dogecoin", {}).get("usd", res.get("DOGE", 0.0))
                 
                 GLOBAL_CACHE["prices"].update(res)
                 GLOBAL_CACHE["last_update"]["prices"] = now
@@ -525,7 +531,7 @@ def get_prices() -> dict:
     res["VIX"] = GLOBAL_CACHE["macro_metrics"].get("vix", 0.0)
 
     # 3. Datos Técnicos (TTL_INDICATORS para reducir carga)
-    for sym in ["TAO", "BTC", "ZEC", "SOL", "ETH"]:
+    for sym in ["TAO", "BTC", "ZEC", "SOL", "ETH", "HBAR", "DOGE"]:
         last_ind_update = GLOBAL_CACHE["last_update"]["indicators"].get(sym, 0)
         
         if now - last_ind_update > TTL_INDICATORS:
@@ -620,10 +626,42 @@ def trigger_salmos_prophecy(prices):
     """Salmos analiza el mercado buscando la confluencia perfecta (Wave 3/5 + RSI)."""
     try:
         print("🔔 Salmos: Buscando profecía de tendencia...")
-        # Buscamos el mejor setup para Salmos
         setup = gemini_analyzer.get_top_setup(prices)
-        if "LONG" in setup or "🟢" in setup:
-             send_telegram(f"🔔 <b>SETUP DETECTADO</b>\n\n{safe_html(setup)}")
+
+        # Detectar dirección SOLO desde la línea VEREDICTO para evitar falsos positivos
+        veredicto_line = ""
+        for line in setup.splitlines():
+            if "VEREDICTO" in line.upper():
+                veredicto_line = line.upper()
+                break
+
+        is_long  = "LONG"  in veredicto_line
+        is_short = "SHORT" in veredicto_line
+
+        if not (is_long or is_short):
+            print(f"🔕 Salmos: Sin setup accionable — omitiendo alerta.")
+            return
+
+        ts = datetime.now().strftime("%H:%M")
+        btc_p   = prices.get("BTC", 0)
+        btc_rsi = prices.get("BTC_RSI", 0)
+        usdt_d  = prices.get("USDT_D", 0)
+
+        direction = "🟢 LONG" if is_long else "🔴 SHORT"
+        header = (
+            f"🔔 <b>PROFÉCIA DE SALMOS [{ts}]</b>\n"
+            f"<code>BTC ${btc_p:,.0f} | RSI {btc_rsi:.0f} | USDT.D {usdt_d:.2f}%</code>\n"
+            f"━━━━━━━━━━━━━\n"
+            f"⚡ <b>SEÑAL: {direction}</b>\n"
+            f"━━━━━━━━━━━━━\n\n"
+        )
+        full_msg = f"{header}{safe_html(setup)}"
+
+        # Pasar por SignalCoordinator antes de enviar
+        import signal_coordinator as _sc
+        direction_str = "LONG" if is_long else "SHORT"
+        _sc.submit("SALMOS", "BTC", direction_str, 0.7, full_msg)
+        _sc.resolve_and_send("BTC", send_telegram)
     except Exception as e:
         print(f"❌ Error en profecía de Salmos: {e}")
 
@@ -667,19 +705,32 @@ def main():
                     header = (f"🤖 <b>PANORAMA [{ts_now}]</b>\n"
                               f"<code>BTC ${btc_p:,.0f} RSI:{btc_rsi:.0f} | TAO ${tao_p:,.2f} RSI:{tao_rsi:.0f} | USDT.D {usdt_d:.2f}%</code>\n"
                               f"━━━━━━━━━━━━━\n")
-                    panel = panoramas.get('salmos', panoramas.get('conservador', 'Sin datos'))
+                    salmos_p  = panoramas.get('salmos', '')
+                    scalper_p = panoramas.get('scalper', '')
+                    if salmos_p and scalper_p:
+                        panel = f"{salmos_p}\n\n━━━━━━━━━━━━━\n\n{scalper_p}"
+                    elif salmos_p:
+                        panel = salmos_p
+                    else:
+                        panel = panoramas.get('conservador', 'Sin datos')
                     send_telegram(f"{header}{safe_html(panel)}")
                 
-                # --- SALMOS PROPHECY (Cada 30 Minutos) ---
-                if now - last_salmos_time > 1800:
+                # --- SALMOS PROPHECY (Cada 30 Minutos — suprimida en horario muerto 01-07h) ---
+                _hora = datetime.now().hour
+                if now - last_salmos_time > 1800 and not (1 <= _hora < 7):
                     last_salmos_time = now
                     trigger_salmos_prophecy(prices)
                 
-                # --- SENTINEL REPORT (ZEC + TAO — Cada 1 Hora) ---
+                # --- SENTINEL REPORT (ZEC + TAO — Cada 1 Hora, solo si NO hay posición abierta) ---
                 if now - last_zec_sentinel_time > 3600:
                     last_zec_sentinel_time = now
                     macro = GLOBAL_CACHE["macro_metrics"]
+                    import tracker as _tracker
+                    _open_syms = {t["symbol"] for t in _tracker.get_open_trades()}
                     for _sym in ["ZEC", "TAO"]:
+                        if _sym in _open_syms:
+                            print(f"⏭️ Sentinel {_sym}: Posición abierta — reporte omitido.")
+                            continue
                         print(f"🥷 Sentinel {_sym}: Generando reporte del Cuadrante Zenith...")
                         _p = prices.get(_sym, 0.0)
                         _rsi = prices.get(f"{_sym}_RSI", 50.0)
@@ -705,7 +756,9 @@ def main():
                             gold_price=prices.get("GOLD", 0.0),
                         )
                         _emoji = "🥷" if _sym == "ZEC" else "🏛️"
-                        send_telegram(f"{_emoji} <b>SENTINEL REPORT: {_sym}</b>\n\n{safe_html(sentinel_report)}")
+                        import alert_manager as _am
+                        _sentinel_msg = f"{_emoji} <b>SENTINEL REPORT: {_sym}</b>\n\n{safe_html(sentinel_report)}"
+                        _am.send_telegram_long(_sentinel_msg)
                 
                 # --- ALTCOIN SENTINEL (Cada 4 Horas) ---
                 if now - last_sentinel_time > 14400: # 4 horas

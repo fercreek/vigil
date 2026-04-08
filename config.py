@@ -9,6 +9,20 @@ Importar en cualquier módulo con: from config import RSI_LONG_ENTRY, SYMBOLS, .
 SYMBOLS = ["ZEC", "TAO"]
 MACRO_WATCH = ["BTC", "ETH"]  # Solo para contexto macro, no se opera
 
+# ── Watchlist estática de acciones (siempre monitoreada, independiente del reporte)
+# yf_ticker: símbolo que entiende Yahoo Finance (CL=F = crude front month, GC=F = gold front month)
+STOCK_WATCHLIST = [
+    {"ticker": "TSLA",  "yf_ticker": "TSLA",  "direction": "SHORT", "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "MACRO PHY bajista activo. Vigilar niveles de soporte/resistencia clave."},
+    {"ticker": "PLTR",  "yf_ticker": "PLTR",  "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Sector AI/defensa. Monitorear ruptura de resistencias con volumen."},
+    {"ticker": "SIL",   "yf_ticker": "SIL",   "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Silver Miners ETF. DXY retrocede → setup alcista en mineras de plata."},
+    {"ticker": "GCM6",  "yf_ticker": "GC=F",  "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Oro Jun-2026. PHY alcista activo. DXY débil = setup largo."},
+    {"ticker": "CLK6",  "yf_ticker": "CL=F",  "direction": "SHORT", "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Crudo May-2026. Monitorear soporte $60 y reacción a noticias OPEP+."},
+    # Recomendaciones adicionales
+    {"ticker": "GDX",   "yf_ticker": "GDX",   "direction": "LONG",  "entry": 92.78, "stop_loss": 82.16, "take_profit_1": 102.0, "break_even": 97.0, "context": "Gold Miners ETF. Setup PTS: DXY retrocede + oro rebota PHY. Operación rápida. BE en 97."},
+    {"ticker": "MSTR",  "yf_ticker": "MSTR",  "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Proxy BTC. Alta correlación con Bitcoin. Seguir señales cripto del bot."},
+    {"ticker": "UVXY",  "yf_ticker": "UVXY",  "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Volatilidad 1.5x. SPY con MACRO PHY bajista → VIX puede escalar. Cobertura."},
+]
+
 # ── Thresholds RSI ────────────────────────────────────────────────────────────
 RSI_LONG_ENTRY       = 45.0   # Entrada Long estándar (was 42 — too restrictive)
 RSI_LONG_ZEC_ENTRY   = 48.0   # ZEC tiene mayor volatilidad — entrada más conservadora
@@ -80,8 +94,14 @@ REGIME_COOLDOWN_BARS = 6       # Bars to wait after regime transition
 RVOL_MIN_ENTRY       = 1.0     # Relative Volume minimum for entries
 RVOL_MIN_BTC         = 0.7    # BTC has stable volume — less aggressive filter
 
+# ── Estrategia V5: Momentum Breakout (RSI Midline Cross) ─────────────────────
+V5_MOMENTUM_RSI_CROSS  = 50.0   # RSI cruza arriba de este nivel = señal de momentum
+V5_MOMENTUM_MIN_CONF   = 3      # Confluencia mínima (más lenient que V1's 4)
+V5_MOMENTUM_COOLDOWN   = 1200   # 20 min cooldown (evita señales repetidas en tendencia)
+V5_MOMENTUM_RVOL_MIN   = 1.2    # Volume ratio mínimo para confirmar momentum
+
 # ── Versiones de estrategia ───────────────────────────────────────────────────
-VERSIONS = ["V1-TECH", "V2-AI", "V4-EMA"]
+VERSIONS = ["V1-TECH", "V2-AI", "V4-EMA", "V5-MOMENTUM"]
 
 # ── Phase 2: Market Intelligence ─────────────────────────────────────────────
 FUNDING_EXTREME_LONG  = 0.0005   # 0.05% — ccxt devuelve decimal (longs crowded)

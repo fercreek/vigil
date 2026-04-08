@@ -1,0 +1,11 @@
+{
+  "date": "2026-04-07",
+  "state": "CAUTIOUS",
+  "consecutive_losses": 2,
+  "session_pnl_pct": 127.407,
+  "session_peak_pct": 127.407,
+  "halted_at": 1775599988.110691,
+  "trades_today": 23,
+  "wins_today": 17,
+  "losses_today": 6
+}

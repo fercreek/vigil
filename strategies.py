@@ -8,6 +8,7 @@ _check_usdtd_breakout()
 """
 
 import time
+import episode_memory as _em
 from config import (
     V4_EMA_PROXIMITY_MAX, V4_EMA_PROXIMITY_MIN, V4_RSI_LOW,
     V4_RSI_HIGH, V4_RSI_HIGH_ZEC, V4_MIN_CONFLUENCE,
@@ -203,11 +204,11 @@ def check_strategies(prices: dict):
 
     # ── Phase 2: Market Intelligence — Funding rates (batch, 1 call) ───
     try:
-        funding_data = market_intel.get_funding_rates(["ZEC", "TAO", "ETH"])
+        funding_data = market_intel.get_funding_rates(["ZEC", "TAO", "ETH", "HBAR", "DOGE"])
     except Exception:
         funding_data = {}
 
-    for sym in ["ZEC", "TAO", "ETH"]:
+    for sym in ["ZEC", "TAO", "ETH", "HBAR", "DOGE"]:
         p = prices.get(sym, 0.0)
         rsi = prices.get(f"{sym}_RSI", 50.0)
 
@@ -217,8 +218,8 @@ def check_strategies(prices: dict):
         bb_u = prices.get(f"{sym}_BB_U", p * 1.01)
         bb_l = prices.get(f"{sym}_BB_L", p * 0.99)
         ema_200 = prices.get(f"{sym}_EMA_200", p)
-        atr = prices[f"{sym}_ATR"]
-        vol_sma = prices[f"{sym}_VOL_SMA"]
+        atr = prices.get(f"{sym}_ATR", 0.0)
+        vol_sma = prices.get(f"{sym}_VOL_SMA", 0.0)
         macro_raw = prices.get(f"{sym}_MACRO")
         if isinstance(macro_raw, dict):
             macro_dict = macro_raw
@@ -271,11 +272,12 @@ def check_strategies(prices: dict):
             trade_type = "RAPIDA"
             print(f"👁️ [PHY ALERT] {sym} detectó {phy_bias} — forzando modo RAPIDA")
 
-        # --- SOCIAL INTELLIGENCE (con TTL de 600s) ---
+        # --- SOCIAL INTELLIGENCE (TTL controlado por TTL_SOCIAL en scalp_alert_bot) ---
         now_ts = time.time()
         cached_social = GLOBAL_CACHE["social_intel"].get(sym, {"score": 0.0, "last_update": 0})
+        from scalp_alert_bot import TTL_SOCIAL
 
-        if now_ts - cached_social["last_update"] > 600:
+        if now_ts - cached_social["last_update"] > TTL_SOCIAL:
             try:
                 import social_analyzer
                 _, score_num = social_analyzer.get_social_intel(sym, p)
@@ -442,6 +444,11 @@ def check_strategies(prices: dict):
                 conf_score = round(conf_score + social_adj, 2)
 
                 if conf_score < 4:
+                    # Log episodio filtrado (para near-miss análisis)
+                    _bb_pos = "LOWER" if p <= bb_l * 1.01 else "UPPER" if p >= bb_u * 0.99 else "MID"
+                    _ema_trend = "ABOVE" if p > ema_200 else "BELOW"
+                    _atr_pct = round((atr / p * 100) if p else 0, 3)
+                    _em.log_episode(sym, "V1-TECH", "FILTERED", rsi, usdt_d, _bb_pos, _ema_trend, int(conf_score), _atr_pct)
                     print(f"⏩ [V12-Audit] Señal {sym} ignorada (Score {conf_score} < 4)")
                     continue
 
@@ -474,7 +481,14 @@ def check_strategies(prices: dict):
                 if mid:
                     open_position(sym, "LONG")
                     _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v1_long", "LONG", rsi_threshold=entry_rsi)
-                    tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v1_long", trigger_conditions=_tc)
+                    _trade_db_id = tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v1_long", trigger_conditions=_tc)
+                    # Log episodio vinculando con el ID real del trade en BD
+                    _bb_pos = "LOWER" if p <= bb_l * 1.01 else "UPPER" if p >= bb_u * 0.99 else "MID"
+                    _ema_trend = "ABOVE" if p > ema_200 else "BELOW"
+                    _atr_pct = round((atr / p * 100) if p else 0, 3)
+                    _ep_id = _em.log_episode(sym, "V1-TECH", "LONG", rsi, usdt_d, _bb_pos, _ema_trend, int(conf_score), _atr_pct)
+                    # Guardar ep_id en caché para fill_outcome al cerrar
+                    GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
                     gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
                     register_signal_event(sym.replace("/USDT", ""), prices)
 
@@ -642,6 +656,78 @@ def check_strategies(prices: dict):
                     _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, 5 if is_consensus else 4, "v2_ai_consensus", side, rsi_threshold=40.0)
                     tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, 5 if is_consensus else 4, ai_analysis=full_analysis, macro_bias=macro_status, alert_type="v2_ai_consensus", trigger_conditions=_tc)
                     gemini_analyzer.log_alert_to_context(sym, side, p, rsi, tp1, sl, "V2-AI")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # ESTRATEGIA V5: MOMENTUM BREAKOUT (RSI Midline Cross)
+        # Dispara cuando el RSI cruza arriba de 50 desde abajo → cambio de momentum.
+        # Más activo que V1 (no requiere RSI < 45): opera en mercados normales.
+        # Confluencia mínima: 3 (vs 4 de V1). Cooldown: 20 min.
+        # ═══════════════════════════════════════════════════════════════════
+        from config import V5_MOMENTUM_MIN_CONF, V5_MOMENTUM_COOLDOWN
+        if (phase == "LONG" and p > ema_200 and
+                regime != "RANGING" and
+                prev_rsi < 50.0 <= rsi):
+            if is_position_open(sym, "LONG"):
+                print(f"⏸️ [Position Guard] {sym} LONG (V5-MOMENTUM) ya abierto")
+            else:
+                side = "LONG"
+                funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
+                conf_score = calculate_confluence_score(
+                    p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott,
+                    spy=prices.get("SPY"), oil=prices.get("OIL"),
+                    ob_detected=ob_detected, funding_signal=funding_signal)
+                conf_score = round(conf_score + social_adj, 2)
+
+                if conf_score < V5_MOMENTUM_MIN_CONF:
+                    print(f"⏩ [V5-MOMENTUM] {sym} ignorada (Score {conf_score} < {V5_MOMENTUM_MIN_CONF})")
+                else:
+                    register_signal_event(sym.replace("/USDT", ""), prices)
+                    badge = get_confluence_badge(conf_score)
+                    trade_label = "⚡ RAPIDA" if trade_type == "RAPIDA" else "📈 SWING"
+
+                    # Volume confirmation (informativo, no bloquea)
+                    current_vol = prices.get(f"{sym}_VOL", 0.0)
+                    rvol = (current_vol / vol_sma) if (vol_sma and vol_sma > 0) else 1.0
+                    vol_confirm = f"🔥 VOLUMEN CONFIRMADO ({rvol:.1f}x)" if rvol >= 1.2 else f"↔️ Vol normal ({rvol:.1f}x)"
+
+                    sl_dist = max(atr * 2.0, p * 0.007)
+                    sl  = round(p - sl_dist, 2)
+                    tp1 = round(p + (sl_dist * 2.0), 2)
+                    tp2 = round(p + (sl_dist * 3.5), 2)
+
+                    msg = (f"{badge}\n\n"
+                           f"⚡ <b>SEÑAL V5: MOMENTUM BREAKOUT</b> ⚡\n"
+                           f"<i>RSI cruzó el nivel 50 → momentum girando alcista</i>\n\n"
+                           f"📈 RSI: {prev_rsi:.1f} → <b>{rsi:.1f}</b> (cruce de 50)\n"
+                           f"📊 {vol_confirm}\n"
+                           f"🌍 {macro_ctx}\n"
+                           f"🌊 {elliott_ctx}\n\n"
+                           f"📊 <b>ESTADO TÉCNICO:</b>\n"
+                           f"• RSI: {rsi:.1f} | BB: {bb_ctx}\n"
+                           f"• EMA 200: ${ema_200:,.2f} | Régimen: {regime}\n"
+                           f"• USDT.D: {usdt_d:.2f}% | VIX: {vix:.1f}\n"
+                           f"⭐ <b>Confiabilidad: {format_confidence(conf_score)}</b>\n\n"
+                           f"🪙 <b>{sym}</b> @ ${p:,.2f}\n"
+                           f"🎯 TP1: <b>${tp1:,.2f}</b> (2:1)\n"
+                           f"🎯 TP2: <b>${tp2:,.2f}</b> (3.5:1)\n"
+                           f"🛑 SL: <b>${sl:,.2f}</b>\n"
+                           f"⚡ Tipo: {trade_label}")
+
+                    mid = alert(f"{sym}_v5_momentum", msg, version="V1-TECH",
+                                cooldown=V5_MOMENTUM_COOLDOWN,
+                                inline_keyboard=get_alert_inline_keyboard(sym, "LONG"))
+                    if mid:
+                        open_position(sym, "LONG")
+                        _tc = build_trigger_conditions(
+                            sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d,
+                            vix, dxy, macro_dict, macro_status, atr, elliott,
+                            ob_detected, social_adj, trade_type, phy_bias, conf_score,
+                            "v5_momentum", "LONG", rsi_threshold=50.0)
+                        tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH",
+                                          rsi, bb_ctx, atr, elliott, conf_score,
+                                          alert_type="v5_momentum", trigger_conditions=_tc)
+                        gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
+                        register_signal_event(sym.replace("/USDT", ""), prices)
 
         # USDT.D Breakout (extracted to usdtd_alerts.py)
         import usdtd_alerts

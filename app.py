@@ -414,6 +414,59 @@ def get_shadow_intel():
     except Exception as e:
         return jsonify([])
 
+@app.route('/webhook/tradingview', methods=['POST'])
+def tradingview_webhook():
+    """
+    Recibe alertas del Pine Script de TradingView como señal adicional.
+
+    Payload JSON esperado:
+    {
+        "symbol": "ZEC",        # o BTC, TAO, HBAR, DOGE
+        "direction": "LONG",    # LONG | SHORT | ESPERAR
+        "rsi": 27.3,
+        "price": 270.52,
+        "strategy": "Zenith V17",
+        "confidence": 0.9       # opcional, default 0.8
+    }
+    """
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        symbol    = str(data.get("symbol", "")).upper().strip()
+        direction = str(data.get("direction", "")).upper().strip()
+        rsi       = float(data.get("rsi", 50))
+        price     = float(data.get("price", 0))
+        strategy  = str(data.get("strategy", "TradingView"))
+        confidence = float(data.get("confidence", 0.8))
+
+        if not symbol or direction not in ("LONG", "SHORT", "ESPERAR"):
+            return jsonify({"ok": False, "error": "symbol o direction inválido"}), 400
+
+        import signal_coordinator as _sc
+        import alert_manager as _am
+        import scalp_alert_bot as _bot
+
+        ts = datetime.now().strftime("%H:%M")
+        emoji = "🟢" if direction == "LONG" else "🔴" if direction == "SHORT" else "⏳"
+        msg = (
+            f"📡 <b>TRADINGVIEW WEBHOOK [{ts}]</b>\n"
+            f"<code>{symbol} @ ${price:,.2f} | RSI {rsi:.1f}</code>\n"
+            f"━━━━━━━━━━━━━\n"
+            f"{emoji} <b>SEÑAL: {direction}</b> — {strategy}\n"
+            f"━━━━━━━━━━━━━\n"
+            f"<i>Señal recibida del Pine Script. Evaluando confluencia...</i>"
+        )
+
+        _sc.submit("TRADINGVIEW", symbol, direction, confidence, msg)
+        sent = _sc.resolve_and_send(symbol, _am.send_telegram)
+
+        print(f"📡 [TradingView Webhook] {symbol} {direction} @ ${price} | sent={sent}")
+        return jsonify({"ok": True, "symbol": symbol, "direction": direction, "sent": bool(sent)})
+
+    except Exception as e:
+        print(f"❌ [TradingView Webhook] Error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 if __name__ == '__main__':
     print("🚀 Dashboard de Scalping UI iniciado en http://localhost:5001")
     app.run(debug=True, port=5001)

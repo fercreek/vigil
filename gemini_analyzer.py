@@ -878,26 +878,36 @@ def get_market_sentiment(prices: dict) -> dict:
 def get_top_setup(prices_dict: dict) -> str:
     """Escanea las monedas foco (BTC, TAO, ZEC) y usa la IA para coronar al mejor setup."""
     ts = datetime.now().strftime("%H:%M")
-    
+
     usdt_d = prices_dict.get("USDT_D", 8.08)
     context_data = ""
-    for sym in ["BTC", "TAO", "ZEC"]:
+    for sym in ["BTC", "TAO", "ZEC", "HBAR", "DOGE"]:
         price = prices_dict.get(sym, 0.0)
         rsi = prices_dict.get(f"{sym}_RSI", 50.0)
-        context_data += f"• {sym}: ${price:,.2f} | RSI: {rsi:.1f}\n"
+        atr = prices_dict.get(f"{sym}_ATR", 0.0)
+        bb_u = prices_dict.get(f"{sym}_BB_U", 0.0)
+        bb_l = prices_dict.get(f"{sym}_BB_L", 0.0)
+        context_data += f"• {sym}: ${price:,.2f} | RSI: {rsi:.1f} | ATR: {atr:.2f} | BB_L: ${bb_l:,.2f} | BB_U: ${bb_u:,.2f}\n"
 
     prompt = (
         f"Eres un Scalper agresivo y enfocado (Bias: LONG_FOCUS). "
-        f"Tu misión es evaluar estas 4 monedas y elegir ÚNICAMENTE LA MEJOR para operar AHORA.\n"
+        f"Tu misión es evaluar estas monedas y elegir ÚNICAMENTE LA MEJOR para operar AHORA.\n"
         f"Si ninguna sirve, di que debes esperar.\n\n"
         f"USDT.D actual: {usdt_d}%\n"
         f"Data ({ts}):\n"
         f"{context_data}\n\n"
         f"Instrucciones:\n"
-        f"1. Descarta rápidamente 3 monedas (sin explicaciones largas).\n"
-        f"2. Da un Veredicto Directo de 1 moneda elegida (LONG o SHORT).\n"
-        f"3. Explica tu racional en 3 viñetas explosivas y analíticas.\n"
-        f"Mantén la respuesta por debajo de las 120 palabras. Sé asertivo, usa viñetas para la justificación."
+        f"1. Descarta rápidamente las peores opciones (sin explicaciones largas).\n"
+        f"2. Escribe exactamente: 'VEREDICTO: LONG [MONEDA]', 'VEREDICTO: SHORT [MONEDA]', o 'VEREDICTO: ESPERAR' — sin variaciones.\n"
+        f"3. Si el veredicto es ESPERAR, explica brevemente por qué y NO incluyas bloque de trade.\n"
+        f"4. Si el veredicto es LONG o SHORT, explica el racional en 3 viñetas y finaliza con este bloque:\n"
+        f"ENTRY: $X\n"
+        f"SL: $X  (-X%)\n"
+        f"TP1: $X  (+X%)\n"
+        f"TP2: $X  (+X%)\n"
+        f"TAMAÑO: [Mini / Normal] — [justificación 5 palabras]\n\n"
+        f"Usa el ATR para calcular SL (1.5x ATR bajo entry para LONG). TP1 = 1:1.5 R, TP2 = 1:2.5 R.\n"
+        f"Mantén la respuesta por debajo de 150 palabras. Sé asertivo."
     )
     
     print(f"🧠 DEBUG: Escaneando TOP Setup para {ts}...")
@@ -1012,7 +1022,7 @@ USA SOLO <b>, <i> y <code>. No uses markdown. No añadas texto fuera del formato
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.6,
-                max_output_tokens=1000,
+                max_output_tokens=1800,
                 system_instruction="Eres el moderador del Cuadrante Zenith. Genera un reporte institucional con las 4 voces manteniendo sus personalidades."
             ),
         )
