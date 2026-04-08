@@ -244,6 +244,14 @@ def check_user_queries(prices: dict):
                     else:
                         send_telegram("❌ Símbolo no reconocido.")
 
+                elif "winrate" in t or text.startswith("/winrate"):
+                    import episode_memory as _em
+                    days = 30
+                    parts = text.split()
+                    if len(parts) > 1 and parts[-1].isdigit():
+                        days = int(parts[-1])
+                    send_telegram(_em.format_winrate_telegram(days), keyboard=get_main_menu())
+
                 elif "budget" in t or text.startswith("/budget"):
                     import ai_budget
                     send_telegram(

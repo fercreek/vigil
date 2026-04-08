@@ -373,7 +373,9 @@ def check_strategies(prices: dict):
                             if mid:
                                 open_position(sym, "SHORT")
                                 _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type_short, phy_bias, conf_score, "v1_short", "SHORT", rsi_threshold=short_rsi)
-                                tracker.log_trade(sym, "SHORT", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v1_short", trigger_conditions=_tc)
+                                _trade_db_id = tracker.log_trade(sym, "SHORT", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v1_short", trigger_conditions=_tc)
+                                _ep_id = _em.log_alert_episode(sym, "V1-SHORT", "SHORT", p, sl, tp1, rsi=rsi, confluence=int(conf_score), source="CRYPTO")
+                                GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
                                 gemini_analyzer.log_alert_to_context(sym, "SHORT", p, rsi, tp1, sl, "V1-TECH")
                                 register_signal_event(sym.replace("/USDT", ""), prices)
 
@@ -414,7 +416,9 @@ def check_strategies(prices: dict):
                 if mid:
                     open_position(sym, "LONG")
                     _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v3_reversal", "LONG", rsi_threshold=reversal_rsi)
-                    tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v3_reversal", trigger_conditions=_tc)
+                    _trade_db_id = tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v3_reversal", trigger_conditions=_tc)
+                    _ep_id = _em.log_alert_episode(sym, "V3-REV", "LONG", p, sl, tp1, rsi=rsi, confluence=int(conf_score), source="CRYPTO")
+                    GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
                     gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
                     register_signal_event(sym.replace("/USDT", ""), prices)
 
@@ -540,7 +544,9 @@ def check_strategies(prices: dict):
                     if mid:
                         open_position(sym, phase)
                         _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v2_ai_long", phase, rsi_threshold=entry_rsi)
-                        tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, conf_score, ai_analysis=full_analysis, macro_bias=macro_status, alert_type="v2_ai_long", trigger_conditions=_tc)
+                        _trade_db_id = tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, conf_score, ai_analysis=full_analysis, macro_bias=macro_status, alert_type="v2_ai_long", trigger_conditions=_tc)
+                        _ep_id = _em.log_alert_episode(sym, "V2-AI", phase, p, sl, tp1, rsi=rsi, confluence=int(conf_score), source="CRYPTO")
+                        GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
                         register_signal_event(sym.replace("/USDT", ""), prices)
 
         # ═══════════════════════════════════════════════════════════════════
@@ -597,7 +603,9 @@ def check_strategies(prices: dict):
                 if mid:
                     open_position(sym, "LONG")
                     _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v4_ema_bounce", "LONG", rsi_threshold=rsi_high)
-                    tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v4_ema_bounce", trigger_conditions=_tc)
+                    _trade_db_id = tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v4_ema_bounce", trigger_conditions=_tc)
+                    _ep_id = _em.log_alert_episode(sym, "V4-EMA", "LONG", p, sl, tp1, rsi=rsi, confluence=int(conf_score), source="CRYPTO")
+                    GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
                     gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
                     register_signal_event(sym.replace("/USDT", ""), prices)
 

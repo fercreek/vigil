@@ -715,6 +715,10 @@ def main():
                         panel = panoramas.get('conservador', 'Sin datos')
                     send_telegram(f"{header}{safe_html(panel)}")
                 
+                # --- AUTO-FILL OUTCOMES (cada ciclo — resuelve señales pendientes) ---
+                import episode_memory as _ep_mem
+                _ep_mem.check_pending_outcomes(prices)
+
                 # --- SALMOS PROPHECY (Cada 30 Minutos — suprimida en horario muerto 01-07h) ---
                 _hora = datetime.now().hour
                 if now - last_salmos_time > 1800 and not (1 <= _hora < 7):

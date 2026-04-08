@@ -6,6 +6,7 @@ from google.genai import types
 from dotenv import load_dotenv
 from logger_core import logger, log_ai_decision
 from config import STOCK_WATCHLIST
+import episode_memory as _em
 
 load_dotenv()
 
@@ -195,24 +196,31 @@ def stock_watchdog():
                     if dist <= 0.005:  # 0.5%
                         _send_alert(f"🚨 <b>ALERTA DE ACCIÓN INMINENTE: {t}</b>\nPrecio actual: ${p:.2f}\nLínea de Entrada ({direction}): ${entry:.2f}\n⚠️ ¡Prepárate, el precio está a menos de 0.5% del objetivo!")
                         _alert_cache.setdefault(t, []).append("ENTRY_ALERT")
+                        # Log episode cuando la entrada está inminente
+                        _em.log_alert_episode(t, "STOCK", direction, entry, sl, tp,
+                                              source="STOCK")
 
                 # Check 2: BREAK EVEN
                 if be and entry and "BE_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p <= be) or (direction == "LONG" and p >= be):
                         _send_alert(f"🛡️ <b>MOMENTO BREAK EVEN: {t}</b>\n¡Felicidades! El precio alcanzó tu nivel objetivo de [${be:.2f}].\nMueve tu Stop Loss a ${entry:.2f} para riesgo cero.")
                         _alert_cache.setdefault(t, []).append("BE_ALERT")
-                        
+
                 # Check 3: TAKE PROFIT
                 if tp and "TP_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p <= tp) or (direction == "LONG" and p >= tp):
+                        pnl_pct = round(abs(tp - entry) / entry * 100, 2) if entry else 0
                         _send_alert(f"🎯 <b>TAKE PROFIT HIT: {t}</b>\nEl precio de mercado alcanzó el Target [$ {tp:.2f}].\nCierra tu posición completa o parcial.")
                         _alert_cache.setdefault(t, []).append("TP_ALERT")
+                        _em.fill_outcome_by_symbol(t, "STOCK", "WIN", pnl_pct)
 
                 # Check 4: STOP LOSS
                 if sl and "SL_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p >= sl) or (direction == "LONG" and p <= sl):
+                        pnl_pct = round(-abs(sl - entry) / entry * 100, 2) if entry else 0
                         _send_alert(f"🛑 <b>STOP LOSS HIT: {t}</b>\nEl precio alcanzó el riesgo límite [$ {sl:.2f}].\nCierra posición para proteger capital.")
                         _alert_cache.setdefault(t, []).append("SL_ALERT")
+                        _em.fill_outcome_by_symbol(t, "STOCK", "LOSS", pnl_pct)
                         
         except Exception as e:
             logger.error(f"Error en Centinela Acciones (Watchdog loop): {e}")
