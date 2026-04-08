@@ -11,16 +11,42 @@ MACRO_WATCH = ["BTC", "ETH"]  # Solo para contexto macro, no se opera
 
 # ── Watchlist estática de acciones (siempre monitoreada, independiente del reporte)
 # yf_ticker: símbolo que entiende Yahoo Finance (CL=F = crude front month, GC=F = gold front month)
+# Niveles marcados con ⚠️ = estimados con ATR pre-mercado (08-Apr-2026).
+# Confirmar y ajustar al precio real de apertura antes de operar.
 STOCK_WATCHLIST = [
-    {"ticker": "TSLA",  "yf_ticker": "TSLA",  "direction": "SHORT", "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "MACRO PHY bajista activo. Vigilar niveles de soporte/resistencia clave."},
-    {"ticker": "PLTR",  "yf_ticker": "PLTR",  "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Sector AI/defensa. Monitorear ruptura de resistencias con volumen."},
-    {"ticker": "SIL",   "yf_ticker": "SIL",   "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Silver Miners ETF. DXY retrocede → setup alcista en mineras de plata."},
-    {"ticker": "GCM6",  "yf_ticker": "GC=F",  "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Oro Jun-2026. PHY alcista activo. DXY débil = setup largo."},
-    {"ticker": "CLK6",  "yf_ticker": "CL=F",  "direction": "SHORT", "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Crudo May-2026. Monitorear soporte $60 y reacción a noticias OPEP+."},
-    # Recomendaciones adicionales
-    {"ticker": "GDX",   "yf_ticker": "GDX",   "direction": "LONG",  "entry": 92.78, "stop_loss": 82.16, "take_profit_1": 102.0, "break_even": 97.0, "context": "Gold Miners ETF. Setup PTS: DXY retrocede + oro rebota PHY. Operación rápida. BE en 97."},
-    {"ticker": "MSTR",  "yf_ticker": "MSTR",  "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Proxy BTC. Alta correlación con Bitcoin. Seguir señales cripto del bot."},
-    {"ticker": "UVXY",  "yf_ticker": "UVXY",  "direction": "LONG",  "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None, "context": "Volatilidad 1.5x. SPY con MACRO PHY bajista → VIX puede escalar. Cobertura."},
+    # ── Tu lista personal ─────────────────────────────────────────────────────
+    {"ticker": "TSLA",  "yf_ticker": "TSLA",  "direction": "SHORT",
+     "entry": 346.65, "stop_loss": 377.02, "take_profit_1": 285.91, "break_even": 316.28,
+     "context": "⚠️ Niveles pre-mercado. MACRO PHY bajista activo. Confirmar apertura antes de entrar."},
+
+    {"ticker": "PLTR",  "yf_ticker": "PLTR",  "direction": "LONG",
+     "entry": 150.07, "stop_loss": 135.79, "take_profit_1": 178.62, "break_even": 164.35,
+     "context": "⚠️ Niveles pre-mercado. Sector AI/defensa. Confirmar ruptura con volumen en apertura."},
+
+    {"ticker": "SIL",   "yf_ticker": "SIL",   "direction": "LONG",
+     "entry": 92.84,  "stop_loss": 82.55,  "take_profit_1": 113.43, "break_even": 103.13,
+     "context": "⚠️ Niveles pre-mercado. Silver Miners ETF. DXY débil → setup alcista mineras plata."},
+
+    {"ticker": "GCM6",  "yf_ticker": "GC=F",  "direction": "LONG",
+     "entry": 4838.80, "stop_loss": 4476.47, "take_profit_1": 5563.46, "break_even": 5201.13,
+     "context": "⚠️ Niveles pre-mercado. Oro Jun-2026. PHY alcista activo. DXY débil = setup largo."},
+
+    {"ticker": "CLK6",  "yf_ticker": "CL=F",  "direction": "SHORT",
+     "entry": 95.95,  "stop_loss": 115.04, "take_profit_1": 57.78,  "break_even": 76.86,
+     "context": "⚠️ Niveles pre-mercado. Crudo May-2026. Monitorear soporte $60 y noticias OPEP+."},
+
+    # ── Recomendaciones del bot ────────────────────────────────────────────────
+    {"ticker": "GDX",   "yf_ticker": "GDX",   "direction": "LONG",
+     "entry": 92.78,  "stop_loss": 82.16,  "take_profit_1": 102.0,  "break_even": 97.0,
+     "context": "Setup PTS confirmado: DXY retrocede + oro rebota PHY. Operación rápida. BE en 97."},
+
+    {"ticker": "MSTR",  "yf_ticker": "MSTR",  "direction": "LONG",
+     "entry": 123.72, "stop_loss": 109.22, "take_profit_1": 152.73, "break_even": 138.22,
+     "context": "⚠️ Niveles pre-mercado. Proxy BTC. Alta correlación con Bitcoin."},
+
+    {"ticker": "UVXY",  "yf_ticker": "UVXY",  "direction": "LONG",
+     "entry": 51.17,  "stop_loss": 39.93,  "take_profit_1": 73.65,  "break_even": 62.41,
+     "context": "⚠️ Niveles pre-mercado. VIX cobertura. SPY con MACRO PHY bajista activo."},
 ]
 
 # ── Thresholds RSI ────────────────────────────────────────────────────────────
