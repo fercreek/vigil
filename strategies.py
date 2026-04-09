@@ -8,6 +8,7 @@ _check_usdtd_breakout()
 """
 
 import time
+from datetime import datetime
 import episode_memory as _em
 from config import (
     V4_EMA_PROXIMITY_MAX, V4_EMA_PROXIMITY_MIN, V4_RSI_LOW,
@@ -15,7 +16,17 @@ from config import (
     V4_ATR_SL_MULT, V4_COOLDOWN, V4_EMA_PROX_MAP,
     RSI_SHORT_ENTRY, SHORT_MIN_CONFLUENCE, SHORT_REGIMES,
     SHORT_EMA_SLOPE_MIN, RVOL_MIN_ENTRY,
+    FOMC_NEXT_MEETING,
 )
+
+
+def _is_fomc_proximity() -> bool:
+    """True if within 24h of next FOMC meeting — suppress low-confidence signals."""
+    try:
+        meeting = datetime.strptime(FOMC_NEXT_MEETING, "%Y-%m-%d")
+        return abs((datetime.now() - meeting).total_seconds()) < 86400
+    except Exception:
+        return False
 
 
 # ─── Confluence Score ───────────────────────────────────────────────────────
@@ -202,6 +213,11 @@ def check_strategies(prices: dict):
     phase = get_phase()
     usdt_d = prices.get("USDT_D", 8.0)
 
+    # ── FOMC Proximity Filter ──────────────────────────────────────────
+    _fomc_suppressed = _is_fomc_proximity()
+    if _fomc_suppressed:
+        print("[FOMC PROXIMITY] Reunión FOMC en <24h — solo V2-AI con confluencia >= 5")
+
     # ── Phase 2: Market Intelligence — Funding rates (batch, 1 call) ───
     try:
         funding_data = market_intel.get_funding_rates(["ZEC", "TAO", "ETH", "HBAR", "DOGE"])
@@ -309,7 +325,7 @@ def check_strategies(prices: dict):
         # Filtros: RSI >= 55, EMA200 declining, regime TRENDING_DOWN/VOLATILE
         # Risk SHORT: RAPIDA forzado (max 0.75% via risk_manager)
         # ═══════════════════════════════════════════════════════════════════
-        if p < ema_200 and regime in SHORT_REGIMES:
+        if p < ema_200 and regime in SHORT_REGIMES and not _fomc_suppressed:
             short_rsi = RSI_SHORT_ENTRY  # 55.0 (was 62)
             if rsi >= short_rsi and rsi < prev_rsi:  # RSI falling = confirma presión bajista
                 if is_position_open(sym, "SHORT"):
@@ -382,7 +398,7 @@ def check_strategies(prices: dict):
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V3: REVERSAL / INTRADIA (AGRESIVA)
         # ═══════════════════════════════════════════════════════════════════
-        if phase == "LONG" and p < ema_200 and regime in ("VOLATILE", "TRENDING_DOWN"):
+        if phase == "LONG" and p < ema_200 and regime in ("VOLATILE", "TRENDING_DOWN") and not _fomc_suppressed:
             reversal_rsi = 28.0 if sym == "TAO" else 26.0
             if rsi <= reversal_rsi:
                 register_signal_event(sym.replace("/USDT", ""), prices)
@@ -552,7 +568,7 @@ def check_strategies(prices: dict):
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V4: EMA 200 BOUNCE (MEAN REVERSION)
         # ═══════════════════════════════════════════════════════════════════
-        elif phase == "LONG" and p > ema_200 * V4_EMA_PROXIMITY_MIN and p <= ema_200 * V4_EMA_PROX_MAP.get(sym, V4_EMA_PROXIMITY_MAX) and regime == "TRENDING_UP":
+        elif phase == "LONG" and not _fomc_suppressed and p > ema_200 * V4_EMA_PROXIMITY_MIN and p <= ema_200 * V4_EMA_PROX_MAP.get(sym, V4_EMA_PROXIMITY_MAX) and regime == "TRENDING_UP":
             rsi_high = V4_RSI_HIGH_ZEC if sym == "ZEC" else V4_RSI_HIGH
             if V4_RSI_LOW <= rsi <= rsi_high and rsi > prev_rsi:
                 if is_position_open(sym, "LONG"):
@@ -672,7 +688,7 @@ def check_strategies(prices: dict):
         # Confluencia mínima: 3 (vs 4 de V1). Cooldown: 20 min.
         # ═══════════════════════════════════════════════════════════════════
         from config import V5_MOMENTUM_MIN_CONF, V5_MOMENTUM_COOLDOWN
-        if (phase == "LONG" and p > ema_200 and
+        if (phase == "LONG" and p > ema_200 and not _fomc_suppressed and
                 regime != "RANGING" and
                 prev_rsi < 50.0 <= rsi):
             if is_position_open(sym, "LONG"):

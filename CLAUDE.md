@@ -129,16 +129,76 @@ Contexto: Rebote de corto plazo. DXY retrocede, oro rebota desde PHY.
           NO es operación de largo plazo. Posición pequeña siempre.
 ```
 
-### 8. Macro Context (Marzo 2026)
+### 8. Macro Context (Abril 2026 — Post FOMC Mar 17-18)
 
-Contexto de mercado al momento del análisis — útil para calibrar bias:
+Contexto actualizado con datos del FOMC Minutes de marzo 2026:
 
-- SPY, DJI, NASDAQ, RSP, IWM: todos con MACRO PHY bajista activo en mensual.
-- Catalizador: aranceles Trump (tema Irán como disparador de ruptura multi-mensual).
-- "Taco Trump": declaraciones de fin de mes para intentar rebotar el mercado → manipulación de vela mensual.
-- Canal bajista activo en SP500. Resistencia corto plazo: 6457 → 6572 si perfora.
-- Niveles de suelo macro SP500: 5650 y **5280** (confluencia 0.78 fib + cierre de gaps + tendencia LP).
-- No distinguir aún si es corrección o bear market — operativamente igual en fase inicial.
+**Política Monetaria:**
+- Tasa actual: **3.50%-3.75%** (mantenida, voto 11-1). Miran disintió queriendo recorte.
+- No hay recortes esperados hasta diciembre 2026. **30% probabilidad de SUBIDA de tasas**.
+- Balance sheet: QT terminado, ahora Reserve Management Purchases (RMPs).
+- Próxima reunión FOMC: **April 28-29, 2026** (bot suprime señales 24h antes).
+
+**Inflación:**
+- Core PCE: **3.0-3.1%** (objetivo 2% — lejos).
+- Petróleo +50% por conflicto Middle East → boost inflacionario near-term.
+- Tariffs siguen empujando precios de bienes core al alza.
+- Housing services desacelerando (presión bajista parcial).
+
+**Empleo:**
+- Unemployment: **4.4%**, estable pero vulnerable a shocks.
+- Firmas retrasando contrataciones por incertidumbre + anticipación de AI.
+- Riesgos a la baja elevados — labor market vulnerable en entorno de low hiring.
+
+**Geopolítica:**
+- Conflicto Middle East = principal driver de incertidumbre global.
+- USD fortalecido como safe-haven (US = net energy exporter).
+- ECB, BoC, SNB ahora esperados a SUBIR tasas.
+- Private credit funds con redemptions (exposure a AI disruption en software).
+
+**Equities:**
+- SPY, DJI, NASDAQ, RSP, IWM: MACRO PHY bajista activo en mensual (sin cambios).
+- Equities -5% en el periodo. Software sector golpeado por AI disruption concerns.
+- Canal bajista activo en SP500. Suelo macro: 5650 y **5280** (0.78 fib + gaps).
+
+**Riesgo Stagflation:**
+- Inflación persistente + empleo debilitándose = riesgo stagflation implícito.
+- Bot usa `RATE_BIAS = "HAWKISH_HOLD"` y `OIL_INFLATION_THRESHOLD = 85.0`.
+
+### 8b. PTS Live Analysis (Abril 2026)
+
+Insights del live stream de Pro Trading Skills (mentores del sistema):
+
+**SP500 — Régimen Bear Market Rally:**
+- Rebote actual (6300→6780) es short-covering, NO compra institucional.
+- Patrón histórico: 2022 y 2008 — bounce vertical → colapso posterior.
+- Resistencia: 6800 (rechazo actual), 6950 (invalidación mensual del bear case).
+- Soporte/Targets: 6675 (trigger short), 6323 (swing low), 6000 (macro floor).
+
+**Oil — Zona de Peligro Inflacionario:**
+- Oil > $90 = inflación sticky, sin recortes de tasas posibles.
+- Oil < $76 = riesgo inflacionario disminuye.
+- CPI esperado Apr 10: consenso 3.4% vs previo 2.4% — salto masivo.
+- Si CPI rompe 4.0% → trigger de SUBIDA de tasas (catalizador extremo bearish).
+
+**Gold — Consolidación:**
+- Soporte: $4,100 (aguantó). Resistencia: $5,000-5,200.
+- Gold correlacionando con SP500 (inusual) → señal de liquidación risk-off.
+- Fase lateral tipo 2021, no esperan nuevos máximos near-term.
+
+**Bitcoin — Lateral:**
+- Breakout trigger: romper $74,000 con convicción + DXY debilitándose.
+- MACD semanal en territorio negativo = señal no confiable (falso positivo en 2022).
+- Sin setup accionable, paciencia requerida.
+
+**GDX Update:**
+- En target (~100-102). Mover SL a breakeven o tomar parciales.
+- Gold debilitándose = hold defensivo, no nueva entrada.
+
+**Reglas PTS Reforzadas:**
+- Nunca entrar short en el tope del bounce — esperar confirmación de rechazo.
+- Timeframe mensual invalida señales diarias/4H.
+- Bounces en bear market son re-entradas short, no reversiones.
 
 ### 9. Psicología de Trading (Trading Psychology Rules)
 

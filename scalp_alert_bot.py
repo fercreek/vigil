@@ -515,13 +515,17 @@ def get_prices() -> dict:
             # DXY + VIX (indicadores clave para clasificar trades como RAPIDA/SWING)
             dxy_p, vix_p = indicators.get_dxy_vix()
 
+            from config import OIL_INFLATION_THRESHOLD
+            _oil_pressure = float(oil_p) > OIL_INFLATION_THRESHOLD
             GLOBAL_CACHE["macro_metrics"] = {
                 "spy": float(spy_p), "oil": float(oil_p),
                 "nvda": float(nvda_p), "pltr": float(pltr_p),
-                "dxy": dxy_p, "vix": vix_p
+                "dxy": dxy_p, "vix": vix_p,
+                "oil_inflation_pressure": _oil_pressure,
             }
             GLOBAL_CACHE["last_update"]["macro_metrics"] = now
-            print(f"🌍 [Macro Update] SPY: ${spy_p:.2f} | DXY: {dxy_p:.2f} | VIX: {vix_p:.1f}")
+            _oil_tag = " | ⛽ OIL INFLATION PRESSURE" if _oil_pressure else ""
+            print(f"🌍 [Macro Update] SPY: ${spy_p:.2f} | DXY: {dxy_p:.2f} | VIX: {vix_p:.1f}{_oil_tag}")
         except Exception as e:
             print(f"⚠️ Error Macro (Yahoo): {e}")
 

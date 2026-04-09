@@ -82,6 +82,14 @@ def _call_claude_decision(system: str, prompt: str,
         logger.error(f"[Claude Error] {e}")
         return None
 
+# ── FOMC Macro Context (actualizado tras cada reunión) ─────────────────────
+FOMC_CONTEXT = (
+    "FOMC (Mar-2026): Tasas 3.50-3.75%, sin recortes hasta dic-2026. "
+    "30% prob subida. Core PCE 3.0-3.1%. Oil +50% (Middle East). "
+    "USD safe-haven. Riesgos: inflación al alza, empleo a la baja. "
+    "BIAS: higher-for-longer = presión bajista en activos de riesgo."
+)
+
 # ── Archivos de memoria diaria ──────────────────────────────────────────────
 MEMORY_DIR = "memory"
 os.makedirs(MEMORY_DIR, exist_ok=True)
@@ -214,7 +222,8 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
               f"- Macro Sentinel: VIX {vix:.2f} | DXY {dxy:.2f}\n"
               f"- S&P 500: ${spy:,.2f} | Petróleo: ${oil:,.2f}\n"
               f"- Tech Sentinel: NVDA ${nvda:,.2f} | PLTR ${pltr:,.2f}\n"
-              f"- Estructura PHY (1D): {phy_bias}\n\n"
+              f"- Estructura PHY (1D): {phy_bias}\n"
+              f"- {FOMC_CONTEXT}\n\n"
               f"{risk_ctx}"
               f"{memory_ctx}\n"
               f"Instrucciones:\n"
@@ -387,6 +396,7 @@ def get_ai_decision(symbol: str, price: float, side: str, rsi: float,
               f"- Bollinger: Upper ${ (bb_u or 0.0):,.2f}, Lower ${ (bb_l or 0.0):,.2f}\n"
               f"- Macro Sentinel: VIX {vix:.2f} | DXY {dxy:.2f}\n"
               f"- Estructura PHY (1D): {phy_bias}\n"
+              f"- {FOMC_CONTEXT}\n"
               f"{fib_ctx}\n"
               f"📌 **RESUMEN EJECUTIVO**:\n"
               f"• {side} de alta probabilidad ({trade_type}).\n"
@@ -936,7 +946,8 @@ def get_macro_shield(prices_dict: dict, stock_report_context: str = "") -> str:
         f"Eres un Estratega Institucional Macro.\n\n"
         f"Evaluación del Riesgo Global:\n"
         f"USDT.D: {usdt_d}% (Niveles tensión: >8.04% es miedo/corrección, <8.0% tranquilidad/euforia)\n"
-        f"BTC Dominancia: {btc_d}%\n\n"
+        f"BTC Dominancia: {btc_d}%\n"
+        f"{FOMC_CONTEXT}\n\n"
         f"Contexto de Stocks (Reciente):\n{stock_report_context[:600]}\n\n"
         f"Dime en 3 puntos claros:\n"
         f"- Sentimiento de riesgo hoy (On/Off)\n"

@@ -72,9 +72,14 @@ USDT_D_THRESHOLD    = 8.05   # Por encima: condición bajista para cripto
 
 # ── Volatilidad / Riesgo ──────────────────────────────────────────────────────
 ZEC_MAX_VOL_PCT     = 3.5    # % ATR/Precio máximo para ZEC (guarda anti-manipulación)
-VIX_RAPIDA_THRESHOLD = 25.0  # VIX > 25 → trade RAPIDA
+VIX_RAPIDA_THRESHOLD = 22.0  # VIX > 22 → trade RAPIDA (was 25 — FOMC Mar-26: Middle East elevó base VIX)
 VIX_EXTREME_THRESHOLD = 35.0 # VIX > 35 → no operar / mínima posición
-DXY_CRIPTO_PRESSURE = 105.0  # DXY > 105 → presión bajista en cripto
+DXY_CRIPTO_PRESSURE = 103.0  # DXY > 103 → presión bajista en cripto (was 105 — FOMC: USD safe-haven activo)
+OIL_INFLATION_THRESHOLD = 85.0  # Oil > $85 = presión inflacionaria → hawkish Fed (FOMC Mar-26)
+
+# ── FOMC Calendar ────────────────────────────────────────────────────────────
+FOMC_NEXT_MEETING = "2026-04-28"   # Próxima reunión FOMC — suprimir señales 24h antes
+RATE_BIAS = "HAWKISH_HOLD"         # FOMC Mar-26: tasas 3.50-3.75%, 30% prob de subida, sin recortes hasta dic
 
 # ── Cache TTL (segundos) ──────────────────────────────────────────────────────
 TTL_PRICES     = 20    # Precios live
