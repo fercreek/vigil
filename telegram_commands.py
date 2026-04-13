@@ -495,6 +495,10 @@ def check_user_queries(prices: dict):
                         msg += f"  {icon} {name}: {age:.0f}s ago\n"
                     send_telegram(msg, keyboard=get_main_menu())
 
+                elif text.startswith("/commodities") or text.startswith("/gold") or text.startswith("/oil"):
+                    import commodities_bot as _cb
+                    send_telegram(_cb.get_status_html(), keyboard=get_main_menu())
+
                 else:
                     _handle_user_question(text, prices)
 
