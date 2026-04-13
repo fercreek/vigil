@@ -129,6 +129,24 @@ def check_user_queries(prices: dict):
                     else:
                         send_telegram("⚠️ Uso: /add_chart SYMBOL TIMEFRAME en la descripción de la foto.")
                     continue
+
+                if "photo" in msg_obj and ("/bitlobo" in text or not text):
+                    # /bitlobo SYMBOL TIMEFRAME  — o foto sin caption (BitLobo analiza igual)
+                    import bitlobo_agent
+                    parts = text.split()
+                    sym = parts[1].upper() if len(parts) >= 2 else "CHART"
+                    tf  = parts[2].upper() if len(parts) >= 3 else "4H"
+                    send_telegram(f"🐺 <b>BitLobo analizando {sym} {tf}...</b>")
+                    # Descargar imagen
+                    tmp_path = f"chart_ideas/assets/image_{sym.lower()}_{tf.lower()}_tmp.png"
+                    if _download_telegram_file(msg_obj["photo"][-1]["file_id"], tmp_path):
+                        with open(tmp_path, "rb") as f:
+                            img_bytes = f.read()
+                        result = bitlobo_agent.save_and_analyze(img_bytes, sym, tf)
+                        send_telegram(safe_html(result))
+                    else:
+                        send_telegram("🐺 BitLobo: No pude descargar la imagen.")
+                    continue
                 
                 if not text and "photo" not in msg_obj:
                     continue
@@ -159,6 +177,31 @@ def check_user_queries(prices: dict):
                     send_telegram("⏳ Obteniendo radar de acciones con Yahoo Finance...")
                     import stock_analyzer
                     send_telegram(stock_analyzer.check_stock_status())
+
+                elif text.startswith("/bitlobo"):
+                    # /bitlobo SYMBOL [TIMEFRAME] — opinión de BitLobo sin imagen
+                    import bitlobo_agent
+                    from config import STOCK_WATCHLIST
+                    parts = text.split()
+                    if len(parts) >= 2:
+                        sym = parts[1].upper()
+                        tf  = parts[2].upper() if len(parts) >= 3 else "4H"
+                        # Buscar en watchlist para datos de niveles
+                        wl = {s["ticker"]: s for s in STOCK_WATCHLIST}
+                        sig = wl.get(sym, {})
+                        send_telegram(f"🐺 <b>BitLobo evaluando {sym} ({tf})...</b>")
+                        opinion = bitlobo_agent.get_opinion(
+                            symbol=sym,
+                            direction=sig.get("direction", "LONG"),
+                            price=0.0,
+                            entry=sig.get("entry"),
+                            sl=sig.get("stop_loss"),
+                            tp1=sig.get("take_profit_1"),
+                            context_note=sig.get("context", ""),
+                        )
+                        send_telegram(safe_html(f"🐺 <b>BitLobo — {sym}</b>\n\n{opinion}"))
+                    else:
+                        send_telegram("🐺 Uso: /bitlobo SYMBOL [TIMEFRAME]\nEj: /bitlobo CRCL 4H\nO manda una foto con caption /bitlobo CRCL 4H")
 
                 elif "intel" in t or "social" in t or text.startswith("/intel"):
                     sym = "ZEC" if "ZEC" in text.upper() else "TAO" if "TAO" in text.upper() else "BTC"

@@ -6,12 +6,14 @@ Extrae funciones de sending/formatting de alertas de scalp_alert_bot.py.
 import requests
 import time
 import os
+import threading
 from datetime import datetime
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 fired: dict[str, dict] = {}  # {key: {"ts": float, "count": int}}
+_fired_lock = threading.Lock()  # Anti race-condition en multi-thread
 
 
 def safe_html(text: str) -> str:
@@ -176,34 +178,37 @@ def alert(key: str, msg: str, version: str = "V1-TECH", cooldown: int = 300,
         str: ID del mensaje, o None si cooldown no cumplido
     """
     now = time.time()
-    entry = fired.get(key, {"ts": 0, "count": 0})
-    if entry["ts"] + cooldown < now:
+    # Lock solo para el check/update del dict — nunca durante HTTP
+    with _fired_lock:
+        entry = fired.get(key, {"ts": 0, "count": 0})
+        if entry["ts"] + cooldown >= now:
+            return None  # cooldown activo
         new_count = entry["count"] + 1
         fired[key] = {"ts": now, "count": new_count}
-        ts = datetime.now().strftime("%H:%M")
-        header = "🛡️ <b>[V1-TECH]</b>" if version == "V1-TECH" else "🤖 <b>[V2-AI-GEMINI]</b>"
-        full = f"{header} — <code>{ts}</code>\n{msg}"
-        print(f"[{version}] {key} alert sent (hit #{new_count}).")
+    # HTTP fuera del lock para no bloquear otros threads
+    ts = datetime.now().strftime("%H:%M")
+    header = "🛡️ <b>[V1-TECH]</b>" if version == "V1-TECH" else "🤖 <b>[V2-AI-GEMINI]</b>"
+    full = f"{header} — <code>{ts}</code>\n{msg}"
+    print(f"[{version}] {key} alert sent (hit #{new_count}).")
 
-        if inline_keyboard:
-            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-            payload = {
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": full,
-                "parse_mode": "HTML",
-                "reply_markup": inline_keyboard,
-            }
-            if reply_to:
-                payload["reply_to_message_id"] = reply_to
-            try:
-                r = requests.post(url, json=payload, timeout=10)
-                res = r.json()
-                return str(res["result"]["message_id"]) if res.get("ok") else None
-            except Exception as e:
-                print(f"❌ Error enviando alerta con inline keyboard: {e}")
-                return None
-        return send_telegram(full, reply_to)
-    return None
+    if inline_keyboard:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": full,
+            "parse_mode": "HTML",
+            "reply_markup": inline_keyboard,
+        }
+        if reply_to:
+            payload["reply_to_message_id"] = reply_to
+        try:
+            r = requests.post(url, json=payload, timeout=10)
+            res = r.json()
+            return str(res["result"]["message_id"]) if res.get("ok") else None
+        except Exception as e:
+            print(f"❌ Error enviando alerta con inline keyboard: {e}")
+            return None
+    return send_telegram(full, reply_to)
 
 
 def get_alert_hit_count(key: str) -> int:

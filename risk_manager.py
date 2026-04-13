@@ -30,6 +30,7 @@ VOL_LOW_THRESHOLD = 1.5    # ATR/price % — por debajo = aumentar riesgo
 # Trailing Stop
 TSL_ATR_MULTIPLIER = 2.5    # Trail con ATR * 2.5
 TSL_ACTIVATION_RR = 1.0     # Activar trailing tras 1:1 R:R alcanzado
+TSL_MIN_STEP_ATR = 0.25     # Mínimo movimiento para generar update: 25% de ATR (anti-spam)
 
 # Persistencia del estado
 _STATE_FILE = "risk_state.json"
@@ -383,10 +384,12 @@ class TrailingStopManager:
             # Calcular nuevo SL
             trail_distance = atr * TSL_ATR_MULTIPLIER
 
+            min_step = atr * TSL_MIN_STEP_ATR  # ej: ATR=4.71 → min_step=1.18
+
             if tipo == "LONG":
                 proposed_sl = round(curr_price - trail_distance, 2)
-                # Solo mover si es MEJOR (más alto) que el SL actual
-                if proposed_sl > current_sl:
+                # Solo mover si mejora el SL Y el movimiento supera el umbral mínimo
+                if proposed_sl > current_sl and (proposed_sl - current_sl) >= min_step:
                     updates.append({
                         "trade_id": trade_id,
                         "symbol": sym,
@@ -400,8 +403,8 @@ class TrailingStopManager:
                     })
             else:  # SHORT
                 proposed_sl = round(curr_price + trail_distance, 2)
-                # Solo mover si es MEJOR (más bajo) que el SL actual
-                if proposed_sl < current_sl:
+                # Solo mover si mejora el SL Y el movimiento supera el umbral mínimo
+                if proposed_sl < current_sl and (current_sl - proposed_sl) >= min_step:
                     updates.append({
                         "trade_id": trade_id,
                         "symbol": sym,

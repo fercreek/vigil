@@ -31,9 +31,22 @@ STOCK_WATCHLIST = [
      "entry": 4838.80, "stop_loss": 4476.47, "take_profit_1": 5563.46, "break_even": 5201.13,
      "context": "⚠️ Niveles pre-mercado. Oro Jun-2026. PHY alcista activo. DXY débil = setup largo."},
 
-    {"ticker": "CLK6",  "yf_ticker": "CL=F",  "direction": "SHORT",
+    {"ticker": "CLK6",  "yf_ticker": "CLM26.NYM",  "direction": "SHORT",
      "entry": 95.95,  "stop_loss": 115.04, "take_profit_1": 57.78,  "break_even": 76.86,
-     "context": "⚠️ Niveles pre-mercado. Crudo May-2026. Monitorear soporte $60 y noticias OPEP+."},
+     "context": "⚠️ Niveles pre-mercado. Crudo Jun-2026. Monitorear soporte $60 y noticias OPEP+."},
+
+    # ── Ideas del live BitLobo 9-Abr-2026 ────────────────────────────────────
+    {"ticker": "CRCL",  "yf_ticker": "CRCL",  "direction": "LONG",
+     "entry": 83.53, "stop_loss": 60.75, "take_profit_1": 145.67, "take_profit_2": 174.51, "break_even": 105.0,
+     "context": "BitLobo live 9-Abr-2026. Circle Internet Group 4H. Zona verde entrada: 60.75-83.53. Zona roja targets: 145.67-174.51. Entrar en pullback a zona verde."},
+
+    {"ticker": "NKE",   "yf_ticker": "NKE",   "direction": "LONG",
+     "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
+     "context": "BitLobo live 9-Abr-2026. Nike. TF: Semanal. PENDIENTE niveles — confirmar setup antes de entrar."},
+
+    {"ticker": "WEN",   "yf_ticker": "WEN",   "direction": "LONG",
+     "entry": 7.06,  "stop_loss": 4.30,  "take_profit_1": None, "break_even": None,
+     "context": "BitLobo live 9-Abr-2026. Wendy's NASDAQ semanal. Zona acumulación: 4.30-7.06. Largo plazo. Target pendiente. Precio actual ~7.09 tocando techo de zona verde."},
 
     # ── Recomendaciones del bot ────────────────────────────────────────────────
     {"ticker": "GDX",   "yf_ticker": "GDX",   "direction": "LONG",

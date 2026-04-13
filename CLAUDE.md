@@ -200,6 +200,68 @@ Insights del live stream de Pro Trading Skills (mentores del sistema):
 - Timeframe mensual invalida señales diarias/4H.
 - Bounces en bear market son re-entradas short, no reversiones.
 
+### 8c. PTS Update — "Dos Operaciones a Trabajar" (9 Abril 2026)
+
+Reporte de Daniel Marin publicado el 9 de abril de 2026 a las 11:22.
+
+**SP500 — ZR confirmada, esperando rechazo o ruptura:**
+
+| Nivel | Valor | Rol |
+|-------|-------|-----|
+| Resistencia superior ZR | 6,858.73 | Techo de la zona de resistencia |
+| Resistencia inferior ZR | 6,741.79 | Base de la zona de resistencia (precio actual ~6,772) |
+| Soporte 1 | 6,679.30 | Primera banda de soporte inferior |
+| Soporte 2 | 6,608.37 | Segunda banda de soporte |
+| Swing low reciente | 6,175.30 | Suelo tras la caída de marzo/abril |
+
+- **Escenario bearish (más probable):** SP500 rechaza la ZR → operaciones SHORT en SPY. Nueva ola bajista inicia.
+- **Escenario bullish (menos probable):** Rompe la ZR → longs en META, HOOD, ASTS, RKLB (sólo acciones explosivas que hayan corregido).
+- Plazo de resolución: **2-6 días** de rango antes de ruptura o rechazo.
+- Bot debe **suprimir señales agresivas** mientras SP500 está dentro de la ZR (6,741–6,858).
+
+**Operación 1 — XOM (ExxonMobil) — DEFENSIVA SWING:**
+
+```
+Dirección:  LONG
+Entrada:    162.49
+Stop:       149.60
+BE:         mover SL a entrada cuando precio alcance 176
+Targets:    185 / 205 / 227
+Riesgo:     -1% GR
+Acciones:   1 por cada $1,000 en cuenta
+Options:    BUY CALL 18 Sep 2026 Strike 165
+            Riesgo aprox: -$580 por contrato
+Tipo:       Defensiva (sector energía, correlación inversa al mercado tech)
+```
+
+**Operación 2 — MOO (VanEck Agribusiness ETF) — DEFENSIVA SWING:**
+
+```
+Dirección:  LONG
+Entrada:    87.64
+Stop:       83.39
+BE:         mover SL a entrada cuando precio alcance 90
+Targets:    95 / 98 / 109
+Riesgo:     -1% GR
+Acciones:   3 por cada $1,000 en cuenta
+Options:    BUY CALL 21 Ago 2026 Strike 88
+            Riesgo aprox: -$200 por contrato
+Tipo:       Defensiva (sector agrícola, descorrelacionado de tech/equities)
+```
+
+**GDX — Cerrar parciales:**
+- Target alcanzado ~96 (muy cerca). Gold debilitándose.
+- Acción: tomar ganancias en 96, mover SL a BE, no nueva entrada.
+
+**En monitoreo para operaciones bajistas:** SPY, IWM, TSLA, XLK.
+
+**Implicación para el bot:**
+- `DEFENSIVE_SECTORS = ["XOM", "MOO", "GDX"]` — no filtrar con bias bajista de equities.
+- SP500 en ZR = zona de indecisión → reducir tamaño de posición en cripto si hay correlación con equities.
+- Vigilar ruptura de 6,858 (bullish) o rechazo desde 6,741 (bearish trigger).
+
+---
+
 ### 9. Psicología de Trading (Trading Psychology Rules)
 
 - No sentirse mal por tomar ganancias si el precio continúa a favor.
@@ -207,6 +269,73 @@ Insights del live stream de Pro Trading Skills (mentores del sistema):
 - La decisión de BE vs parciales es personal — ambas son válidas si hay plan.
 - Siempre habrá re-entradas. El mercado da segundas oportunidades.
 - Jamás entrar "fuerte" o "apalancado" en operaciones rápidas de baja confianza.
+
+---
+
+## Fuentes de Intel de Mercado
+
+### PTS (Pro Trading Skills) — Contexto Macro/Institucional
+
+Fuente: mentores de Pro Trading Skills. Análisis publicados en `protradingskills.com/analysis/`.
+
+- **Metodología**: PHY patterns (Head & Shoulders macro), jerarquía de timeframes, FOMC, correlaciones DXY/Gold/Oil
+- **Operaciones**: tienen entry, SL, BE y target definidos. Tipo SWING o RAPIDA.
+- **Código**: `FOMC_CONTEXT` en `gemini_analyzer.py`, secciones 8–8c en este CLAUDE.md
+- **Señales activas**: XOM, MOO, GDX, SPY (ver sección 8c)
+- **Agente IA**: Cuadrilla Zenith (Genesis, Exodo, Salmos, Apocalipsis) en `get_ai_consensus()`
+
+### BitLobo (@BitloboTrading) — Análisis por Zonas Técnicas
+
+Fuente: YouTube @BitloboTrading. Lives periódicos con análisis de acciones NYSE/NASDAQ y crypto.
+
+- **Metodología**: zonas de color. 🟢 ZONA VERDE = soporte/acumulación/entrada. 🔴 ZONA ROJA = resistencia/target.
+  - Entry: cuando el precio toca o entra a la zona verde
+  - Stop Loss: por debajo del piso de la zona verde
+  - Target: zona roja (precio de salida)
+  - Si el precio está entre zonas: no hay setup claro, esperar
+- **Código**: `bitlobo_agent.py` — analiza imágenes de gráficas via Gemini Vision, mantiene memoria diaria
+- **Señales activas**: CRCL (4H), NKE (semanal), WEN (semanal, largo plazo)
+- **Feed de gráficas**: enviar foto por Telegram con caption `/bitlobo SYMBOL TF` → BitLobo analiza y responde
+- **Consulta sin imagen**: `/bitlobo SYMBOL` → opinión basada en niveles del watchlist
+- **Consenso**: BitLobo aparece como línea 🐺 al final de cada debate Zenith
+
+### 8d. BitLobo Update — "Ideas del Live" (9 Abril 2026)
+
+Señales presentadas por BitLobo en su live stream del 9 de abril de 2026.
+
+**CRCL (Circle Internet Group) — 4H:**
+```
+Dirección:      LONG
+Zona verde:     60.75 – 83.53  (entrada / soporte)
+Zona roja:      145.67 – 174.51 (targets)
+Precio actual:  ~88.26 (encima de zona verde, vigilar pullback)
+Stop Loss:      por debajo de 60.75
+Break Even:     ~105
+Tipo:           Fintech/crypto-adjacent. Especulativo.
+```
+
+**NKE (Nike) — Semanal:**
+```
+Dirección:  LONG
+Niveles:    PENDIENTE — confirmar en próximo live
+Tipo:       Swing semanal largo plazo
+```
+
+**WEN (Wendy's Company) — Semanal (Largo Plazo):**
+```
+Dirección:      LONG
+Zona verde:     4.30 – 7.06  (acumulación / entrada)
+Precio actual:  ~7.09 (tocando el techo de la zona verde)
+Stop Loss:      por debajo de 4.30
+Target:         PENDIENTE — no definido en el live, largo plazo
+Tipo:           Acumulación defensiva de largo plazo. Sector restaurantes.
+Nota:           Precio YA en la zona. Candidato a entrada gradual.
+```
+
+**Implicación para el bot:**
+- Señales BitLobo = no filtrar con bias macro bajista (son defensivas/largo plazo)
+- Bot puede vigilar CRCL en `stock_watchdog()` — alerta si precio entra zona 60.75–83.53
+- WEN: monitorear semanalmente, no intradía
 
 ---
 

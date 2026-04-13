@@ -123,8 +123,9 @@ def monitor_open_trades(prices: dict):
     for upd in tsl_updates:
         tracker.update_sl(upd["trade_id"], upd["new_sl"])
         print(f"📐 [TrailingStop] {upd['reason']}")
-        # Key incluye new_sl para evitar duplicados si hay múltiples procesos corriendo
-        tsl_key = f"tsl_{upd['trade_id']}_{upd['new_sl']:.2f}"
+        # Key por trade_id — el cooldown=300s evita spam; new_sl no va en la key
+        # porque oscilaciones de precio generan keys distintas y bypassean el cooldown
+        tsl_key = f"tsl_{upd['trade_id']}"
         alert(tsl_key,
               f"📐 <b>TRAILING STOP ACTUALIZADO</b>\n"
               f"🪙 {upd['symbol']} {upd['side']}\n"

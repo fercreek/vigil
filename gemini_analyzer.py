@@ -248,7 +248,15 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
                 system_instruction="Eres el moderador de la CUADRILLA ZENITH. Genera las respuestas de Genesis, Exodo, Salmos y Apocalipsis manteniendo sus personalidades institucionales."
             )
         )
-        return response.text.strip()
+        result = response.text.strip()
+        # BitLobo añade su perspectiva de zonas técnicas
+        try:
+            import bitlobo_agent as _bl
+            bl_line = _bl.get_consensus_line(symbol, side, price)
+            result = result + f"\n{bl_line}"
+        except Exception:
+            pass
+        return result
     except Exception as e:
         print(f"[Consensus Error] {e}")
         return "🏛️ <i>Debate temporalmente suspendido por congestión de mercado.</i>"
