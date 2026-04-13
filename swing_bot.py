@@ -39,7 +39,7 @@ MIN_SL_PCT = 0.01  # SL mínimo 1% del precio
 ALERT_COOLDOWN = 3600 * 4
 _last_alert: dict = {}
 
-binance = ccxt.binance()
+binance = ccxt.binance({'timeout': 15000})
 
 
 def send_telegram(msg: str):
@@ -206,6 +206,8 @@ def run_zenith_swing():
 
     while True:
         try:
+            import thread_health
+            thread_health.heartbeat("swing")
             now = datetime.now().strftime("%H:%M")
             print(f"\n{'─'*40}\n🕐 Ciclo Swing [{now}]")
 
@@ -218,11 +220,9 @@ def run_zenith_swing():
             print("⏳ Próximo ciclo en 4H...")
             time.sleep(3600 * 4)
 
-        except KeyboardInterrupt:
-            print("\n🛑 Swing Bot detenido manualmente.")
-            break
         except Exception as e:
-            print(f"❌ Error crítico en ciclo principal: {e}")
+            import logging
+            logging.getLogger("ScalpBot").error("❌ Swing Bot Error: %s", e, exc_info=True)
             time.sleep(300)
 
 

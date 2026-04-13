@@ -11,7 +11,7 @@ except ImportError:
     print("[indicators] yfinance no disponible — DXY/VIX deshabilitados")
 
 # Binance para BTC, SOL y TAO
-binance = ccxt.binance()
+binance = ccxt.binance({'timeout': 15000})
 
 # --- CACHE LOCAL PARA INDICADORES ---
 INDICATOR_CACHE = {
@@ -43,8 +43,8 @@ def get_rsi(symbol, timeframe='1h'):
         return calculate_rsi(df['close'])
     except Exception as e:
         print(f"[RSI ERROR] {symbol}/{timeframe}: {e}")
-        # Retorna None para que el caller use el valor cacheado, nunca un 50 inventado
-        return None
+        # Retorna 50.0 (neutral) para evitar TypeError en comparaciones downstream
+        return 50.0
 
 def get_global_metrics():
     """Obtiene la dominancia de USDT y BTC con Caché interna para proteger el límite de API."""
@@ -284,7 +284,7 @@ def get_indicators(symbol, timeframe='1h'):
         df = get_df(symbol, timeframe=timeframe, limit=300)
         if df.empty:
             print(f"[INDICATORS ERROR] DataFrame vacío para {symbol}/{timeframe}")
-            return None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "S/D", 0.0
+            return 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "S/D", 0.0
 
         rsi = calculate_rsi(df['close'])
         bb_result = calculate_bollinger_bands(df['close'])
@@ -301,7 +301,7 @@ def get_indicators(symbol, timeframe='1h'):
         return rsi, (bb_upper or 0.0), (bb_mid or 0.0), (bb_lower or 0.0), (ema_200 or 0.0), (atr or 0.0), (vol_sma or 0.0), (elliott or "Analizando..."), (poc or 0.0)
     except Exception as e:
         print(f"[INDICATORS ERROR] {symbol}/{timeframe}: {e}")
-        return None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "S/D", 0.0
+        return 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "S/D", 0.0
 
 def get_dxy_vix():
     """

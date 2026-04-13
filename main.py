@@ -1,73 +1,79 @@
 import threading
+import time
 import os
 from dotenv import load_dotenv
 
 # Cargamos .env ANTES de cualquier import que use variables de entorno
 load_dotenv(override=True)
 
+from logger_core import logger
 from app import app
 import scalp_alert_bot
+import swing_bot
+import stock_analyzer
+import thread_health
+
+
+# --- Thread restart helpers ---
+
+_thread_registry = {}  # name -> (thread_obj, target_fn)
+
+
+def _start_thread(name: str, target_fn):
+    """Arranca un hilo daemon con auto-restart y lo registra."""
+    def _wrapper():
+        restarts = 0
+        while restarts < thread_health.MAX_RESTARTS:
+            try:
+                logger.info("🚀 Hilo '%s' iniciado (intento %d)", name, restarts + 1)
+                target_fn()
+                # Si target_fn retorna normalmente, es inesperado — reiniciar
+                logger.warning("⚠️ Hilo '%s' retornó inesperadamente — reiniciando", name)
+            except Exception as e:
+                logger.error("❌ Hilo '%s' crasheó: %s", name, e, exc_info=True)
+                thread_health.notify(name, "CRASH", str(e))
+            restarts += 1
+            backoff = min(30, 5 * restarts)
+            logger.info("⏳ Hilo '%s' reiniciando en %ds...", name, backoff)
+            time.sleep(backoff)
+        logger.critical("💀 Hilo '%s' agotó reintentos (%d)", name, thread_health.MAX_RESTARTS)
+        thread_health.notify(name, "DEAD", f"Agotó {thread_health.MAX_RESTARTS} reintentos")
+
+    t = threading.Thread(target=_wrapper, daemon=True, name=name)
+    t.start()
+    _thread_registry[name] = (t, target_fn)
+
+    # Registrar callback en watchdog para reinicio por heartbeat timeout
+    def _restart_callback():
+        logger.warning("🛡️ Watchdog reiniciando hilo '%s'", name)
+        _start_thread(name, target_fn)
+    thread_health.register(name, _restart_callback)
+
+    return t
+
 
 def run_flask():
     """Ejecuta el Dashboard Web en el puerto 8080 (requerido por Replit)."""
-    # Replit usa el puerto 8080 por defecto para mostrar la web
     port = int(os.environ.get("PORT", 8080))
     print(f"🌐 Dashboard Web iniciado en puerto {port}")
     app.run(host='0.0.0.0', port=port)
-def run_bot():
-    """Ejecuta el bucle principal del Scalp Alert Bot."""
-    print("🤖 Scalp Alert Bot iniciado en segundo plano")
-    try:
-        scalp_alert_bot.main()
-    except Exception as e:
-        print(f"❌ Error crítico en el Bot: {e}")
 
-import swing_bot
-
-def run_swing_bot():
-    """Ejecuta el bucle principal del Zenith Swing Bot (H4)."""
-    print("🏛️ Zenith Swing Bot iniciado en segundo plano")
-    try:
-        swing_bot.run_zenith_swing()
-    except Exception as e:
-        print(f"❌ Error crítico en Zenith Swing Bot: {e}")
-
-import stock_analyzer
-
-def run_stock_watchdog():
-    """Ejecuta el bucle del Centinela de Acciones."""
-    print("👁️ Stock Watchdog iniciado en segundo plano")
-    try:
-        stock_analyzer.stock_watchdog()
-    except Exception as e:
-        print(f"❌ Error crítico en Stock Watchdog: {e}")
 
 if __name__ == "__main__":
-    print("🚀 --- INICIANDO SISTEMA HÍBRIDO (V2.0 DUAL ENGINE) ---")
-    
+    print("🚀 --- INICIANDO SISTEMA HÍBRIDO (V2.0 DUAL ENGINE + WATCHDOG) ---")
+
     # 1. Registro de Comandos (Telegram UI)
     import alert_manager
     alert_manager.set_bot_commands()
 
-    # 2. Hilo para el Scalp Alert Bot (15m)
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.daemon = True
-    bot_thread.start()
-    
-    # 2. Hilo para el Zenith Swing Bot (H4)
-    swing_thread = threading.Thread(target=run_swing_bot)
-    swing_thread.daemon = True
-    swing_thread.start()
-    # 3. Hilo para Telegram Listener (Agente Interactivo)
-    telegram_thread = threading.Thread(target=scalp_alert_bot.run_telegram_worker)
-    telegram_thread.daemon = True
-    telegram_thread.start()
+    # 2. Arrancar watchdog PRIMERO
+    thread_health.start_watchdog()
 
-    # 4. Hilo para Centinela de Acciones (Watchdog)
-    stock_thread = threading.Thread(target=run_stock_watchdog)
-    stock_thread.daemon = True
-    stock_thread.start()
-    
-    # 5. Hilo principal para Flask (Keep-Alive)
+    # 3. Hilos principales con auto-restart
+    _start_thread("scalp_bot", scalp_alert_bot.main)
+    _start_thread("swing", swing_bot.run_zenith_swing)
+    _start_thread("telegram", scalp_alert_bot.run_telegram_worker)
+    _start_thread("stock", stock_analyzer.stock_watchdog)
+
+    # 4. Hilo principal para Flask (Keep-Alive)
     run_flask()
-# Hot Reload Test

@@ -167,6 +167,8 @@ def stock_watchdog():
     
     while True:
         try:
+            import thread_health
+            thread_health.heartbeat("stock")
             logger.info("👁️ Centinela: Analizando Reporte de Acciones + Watchlist estática...")
             report_signals, _ = extract_stock_signals()
             signals = _merge_signals(report_signals)
@@ -190,27 +192,66 @@ def stock_watchdog():
                 tp = s.get('take_profit_1')
                 sl = s.get('stop_loss')
                 
+                # Check 0: ZONA VERDE (BitLobo-style) — precio entra al rango [SL, entry]
+                ctx_note = s.get("context", "")
+                is_bitlobo = "BitLobo" in ctx_note
+                if is_bitlobo and entry and sl and direction == "LONG":
+                    in_zone = sl <= p <= entry
+                    if in_zone and "ZONE_ALERT" not in _alert_cache.get(t, []):
+                        _send_alert(
+                            f"🐺 <b>ZONA VERDE ACTIVADA: {t}</b>\n"
+                            f"Precio actual: <b>${p:.2f}</b> — dentro de zona acumulación\n"
+                            f"🟢 Zona: ${sl:.2f} – ${entry:.2f}\n"
+                            f"🛑 Stop Loss: ${sl:.2f}\n"
+                            f"📌 <i>{ctx_note[:100]}</i>"
+                        )
+                        _alert_cache.setdefault(t, []).append("ZONE_ALERT")
+                        _em.log_alert_episode(t, "STOCK", direction, entry, sl, tp, source="BITLOBO")
+
                 # Check 1: NEAR ENTRY
                 if entry and "ENTRY_ALERT" not in _alert_cache.get(t, []):
                     dist = abs(p - entry) / entry
                     if dist <= 0.005:  # 0.5%
-                        _send_alert(f"🚨 <b>ALERTA DE ACCIÓN INMINENTE: {t}</b>\nPrecio actual: ${p:.2f}\nLínea de Entrada ({direction}): ${entry:.2f}\n⚠️ ¡Prepárate, el precio está a menos de 0.5% del objetivo!")
+                        sl_line = f"🛑 Stop Loss: <b>${sl:.2f}</b>\n" if sl else ""
+                        tp_line = f"🎯 Target: <b>${tp:.2f}</b>\n" if tp else ""
+                        be_line = f"🔒 Break Even: ${be:.2f}\n" if be else ""
+                        _send_alert(
+                            f"🚨 <b>ALERTA DE ENTRADA INMINENTE: {t}</b>\n"
+                            f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
+                            f"🎯 Entrada obj: <b>${entry:.2f}</b> (dist. {dist*100:.2f}%)\n"
+                            f"{sl_line}{tp_line}{be_line}"
+                            f"<i>{s.get('context', '')[:80]}</i>"
+                        )
                         _alert_cache.setdefault(t, []).append("ENTRY_ALERT")
-                        # Log episode cuando la entrada está inminente
                         _em.log_alert_episode(t, "STOCK", direction, entry, sl, tp,
                                               source="STOCK")
 
                 # Check 2: BREAK EVEN
                 if be and entry and "BE_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p <= be) or (direction == "LONG" and p >= be):
-                        _send_alert(f"🛡️ <b>MOMENTO BREAK EVEN: {t}</b>\n¡Felicidades! El precio alcanzó tu nivel objetivo de [${be:.2f}].\nMueve tu Stop Loss a ${entry:.2f} para riesgo cero.")
+                        tp_line = f"🎯 Próximo target: ${tp:.2f}\n" if tp else ""
+                        _send_alert(
+                            f"🛡️ <b>BREAK EVEN ALCANZADO: {t}</b>\n"
+                            f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
+                            f"✅ BE nivel: <b>${be:.2f}</b> superado\n"
+                            f"Acción: Mover SL a entrada <b>${entry:.2f}</b> (riesgo = 0)\n"
+                            f"{tp_line}"
+                        )
                         _alert_cache.setdefault(t, []).append("BE_ALERT")
 
                 # Check 3: TAKE PROFIT
                 if tp and "TP_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p <= tp) or (direction == "LONG" and p >= tp):
                         pnl_pct = round(abs(tp - entry) / entry * 100, 2) if entry else 0
-                        _send_alert(f"🎯 <b>TAKE PROFIT HIT: {t}</b>\nEl precio de mercado alcanzó el Target [$ {tp:.2f}].\nCierra tu posición completa o parcial.")
+                        entry_line = f"📥 Entrada: ${entry:.2f}\n" if entry else ""
+                        _send_alert(
+                            f"🎯 <b>TAKE PROFIT HIT: {t}</b>\n"
+                            f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
+                            f"{entry_line}"
+                            f"✅ Target alcanzado: <b>${tp:.2f}</b>\n"
+                            f"💰 PnL potencial: <b>+{pnl_pct:.2f}%</b>\n"
+                            f"Cierra posición completa o parcial."
+                        )
                         _alert_cache.setdefault(t, []).append("TP_ALERT")
                         _em.fill_outcome_by_symbol(t, "STOCK", "WIN", pnl_pct)
 
@@ -218,7 +259,15 @@ def stock_watchdog():
                 if sl and "SL_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p >= sl) or (direction == "LONG" and p <= sl):
                         pnl_pct = round(-abs(sl - entry) / entry * 100, 2) if entry else 0
-                        _send_alert(f"🛑 <b>STOP LOSS HIT: {t}</b>\nEl precio alcanzó el riesgo límite [$ {sl:.2f}].\nCierra posición para proteger capital.")
+                        entry_line = f"📥 Entrada: ${entry:.2f}\n" if entry else ""
+                        _send_alert(
+                            f"🛑 <b>STOP LOSS HIT: {t}</b>\n"
+                            f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
+                            f"{entry_line}"
+                            f"❌ SL tocado: <b>${sl:.2f}</b>\n"
+                            f"💸 PnL: <b>{pnl_pct:.2f}%</b>\n"
+                            f"Cierra posición para proteger capital."
+                        )
                         _alert_cache.setdefault(t, []).append("SL_ALERT")
                         _em.fill_outcome_by_symbol(t, "STOCK", "LOSS", pnl_pct)
                         

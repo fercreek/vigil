@@ -55,7 +55,7 @@ def run_backtest():
     print(f"💰 Presupuesto Inicial: ${INITIAL_BALANCE:,.2f}")
     print("=" * 50)
     
-    binance = ccxt.binance()
+    binance = ccxt.binance({'timeout': 15000})
     gateio = ccxt.gateio()
     
     print("Descargando historial...")

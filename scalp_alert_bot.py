@@ -140,7 +140,7 @@ LEVELS = {
 
 # ─── CONECTORES DE INTERCAMBIO (REUTILIZABLES) ──────────────────────────
 # Inicializamos una vez para evitar latencia de conexión
-binance_ex = ccxt.binance()
+binance_ex = ccxt.binance({'timeout': 15000})
 
 def get_phase() -> str:
     if not os.path.exists(PHASE_FILE): return "SHORT"
@@ -493,19 +493,23 @@ def get_prices() -> dict:
     if now - GLOBAL_CACHE["last_update"]["macro_metrics"] > TTL_MACRO:
         try:
             import math
+            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
             # S&P 500, Petróleo, Nvidia y Palantir — descargar individualmente para evitar MultiIndex
             macro_symbols = {"SPY": "spy", "CL=F": "oil", "NVDA": "nvda", "PLTR": "pltr"}
             macro_vals = {}
+            _yf_pool = ThreadPoolExecutor(max_workers=1)
             for yf_sym, key in macro_symbols.items():
                 try:
-                    _df = yf.download(yf_sym, period="1d", interval="1m", progress=False)
+                    _future = _yf_pool.submit(yf.download, yf_sym, period="1d", interval="1m", progress=False)
+                    _df = _future.result(timeout=20)
                     if _df is not None and not _df.empty and 'Close' in _df.columns:
                         val = float(_df['Close'].iloc[-1])
                         macro_vals[key] = val if not math.isnan(val) else GLOBAL_CACHE["macro_metrics"].get(key, 0.0)
                     else:
                         macro_vals[key] = GLOBAL_CACHE["macro_metrics"].get(key, 0.0)
-                except Exception:
+                except (FuturesTimeout, Exception):
                     macro_vals[key] = GLOBAL_CACHE["macro_metrics"].get(key, 0.0)
+            _yf_pool.shutdown(wait=False)
 
             spy_p = macro_vals["spy"]
             oil_p = macro_vals["oil"]
@@ -563,7 +567,7 @@ def get_prices() -> dict:
 
         # Inyectar desde caché (sea nueva o vieja)
         ind = GLOBAL_CACHE["indicators"].get(sym, {})
-        res[f"{sym}_RSI"] = ind.get("rsi", 50.0)
+        res[f"{sym}_RSI"] = ind.get("rsi") or 50.0
         res[f"{sym}_BB_U"] = ind.get("bb_u")
         res[f"{sym}_BB_L"] = ind.get("bb_l")
         res[f"{sym}_EMA_200"] = ind.get("ema_200", 0.0)
@@ -683,6 +687,8 @@ def main():
     
     while True:
         try:
+            import thread_health
+            thread_health.heartbeat("scalp_bot")
             prices = get_prices()
             if prices:
                 prices = sanitize_dict(prices)
@@ -782,7 +788,8 @@ def main():
                         send_telegram(msg)
                     
         except Exception as e:
-            print(f"❌ Main Loop Error: {e}")
+            from logger_core import logger as _logger
+            _logger.error("❌ Main Loop Error: %s", e, exc_info=True)
             time.sleep(10) # Backoff de seguridad en fallos de red persistentes
         time.sleep(CHECK_INTERVAL)
 
@@ -791,6 +798,8 @@ def run_telegram_worker():
     print("📡 Telegram Worker: Iniciando escucha activa (5s interval)...")
     while True:
         try:
+            import thread_health
+            thread_health.heartbeat("telegram")
             # get_prices usa caché interna, así que es rápido si los datos son frescos
             prices = get_prices()
             if prices:
@@ -799,7 +808,8 @@ def run_telegram_worker():
         except Exception as e:
             # Evitar spam en logs si es error de red temporal
             if "Connection" not in str(e):
-                print(f"❌ Telegram Worker Error: {e}")
+                from logger_core import logger as _logger
+                _logger.error("❌ Telegram Worker Error: %s", e, exc_info=True)
         time.sleep(5) # Respuesta mucho más ágil
 
 if __name__ == "__main__":
