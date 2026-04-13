@@ -264,9 +264,10 @@ def check_user_queries(prices: dict):
                     else:
                         send_telegram("❌ Símbolo no reconocido. Usa BTC/SOL/TAO/ZEC.")
 
-                elif "CERRAR " in text or "CLOSE " in text:
+                elif "CERRAR " in text or "CLOSE " in text or text.startswith("/close "):
+                    from config import SYMBOLS as _all_syms
                     clean = text.replace("/", "").upper()
-                    sym   = next((s for s in ["SOL", "BTC", "TAO", "ZEC"] if s in clean), None)
+                    sym   = next((s for s in _all_syms if s in clean), None)
                     if sym:
                         last = tracker.get_last_open_trade(sym)
                         if last:
@@ -454,6 +455,45 @@ def check_user_queries(prices: dict):
                         send_telegram(f"❌ {raw} registrado como incorrecto.", keyboard=get_main_menu())
                     else:
                         send_telegram("❌ Agente no válido. Usa: Genesis, Exodo, Shadow, Salmos, Apocalipsis")
+
+                elif text.startswith("/positions") or "positions" in t or "posiciones" in t:
+                    open_trades = tracker.get_open_trades()
+                    if not open_trades:
+                        send_telegram("Sin posiciones abiertas.", keyboard=get_main_menu())
+                    else:
+                        msg = f"<b>POSICIONES ABIERTAS ({len(open_trades)})</b>\n\n"
+                        for trade in open_trades:
+                            ep = trade.get("entry_price") or 0
+                            cur_p = prices.get(trade["symbol"], 0)
+                            pnl_str = ""
+                            if cur_p and ep:
+                                pnl = ((cur_p - ep) / ep) * 100
+                                if trade["type"] == "SHORT":
+                                    pnl = -pnl
+                                pnl_str = f"  PnL: <b>{pnl:+.1f}%</b>"
+                            msg += (
+                                f"<b>{trade['symbol']} {trade['type']}</b> ({trade.get('version','?')})\n"
+                                f"  Entrada: <code>${ep:,.2f}</code>{pnl_str}\n"
+                                f"  TP1: ${(trade.get('tp1_price') or 0):,.2f} | SL: ${(trade.get('sl_price') or 0):,.2f}\n\n"
+                            )
+                        send_telegram(msg, keyboard=get_main_menu())
+
+                elif text.startswith("/health") or "health" in t:
+                    import thread_health
+                    import risk_manager as _rm
+                    status = thread_health.get_status()
+                    alive = sum(1 for s in status.values() if s.get("alive"))
+                    total = len(status)
+                    can_t, cb_reason, cb_mult = _rm.circuit_breaker.can_trade()
+                    cb_icon = "NORMAL" if can_t else f"BLOQUEADO (x{cb_mult})"
+                    msg = f"<b>BOT HEALTH</b>\n\n"
+                    msg += f"Threads: <b>{alive}/{total}</b> vivos\n"
+                    msg += f"Circuit Breaker: <b>{cb_icon}</b>\n\n"
+                    for name, st in status.items():
+                        icon = "OK" if st.get("alive") else "DEAD"
+                        age = st.get("age_seconds", 0)
+                        msg += f"  {icon} {name}: {age:.0f}s ago\n"
+                    send_telegram(msg, keyboard=get_main_menu())
 
                 else:
                     _handle_user_question(text, prices)

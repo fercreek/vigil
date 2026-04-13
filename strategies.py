@@ -193,6 +193,7 @@ def check_strategies(prices: dict):
         alert, get_alert_inline_keyboard, get_main_menu,
     )
     import indicators
+    import risk_manager
     from risk_manager import circuit_breaker
     import market_intel
     import indicators_swing
@@ -537,8 +538,15 @@ def check_strategies(prices: dict):
                         if not GLOBAL_CACHE["executor"]:
                             GLOBAL_CACHE["executor"] = trading_executor.ZenithExecutor()
 
-                        res_exec = GLOBAL_CACHE["executor"].execute_bracket_order(sym, side, p, tp1, tp2, sl, tp3=tp3)
-                        exec_report = f"💸 <b>BINANCE V6:</b> {res_exec.get('status')} (ID: {res_exec.get('id')})"
+                        # Circuit breaker → dynamic risk sizing
+                        dyn_risk = risk_manager.calculate_dynamic_risk(
+                            atr, p, vix, trade_type, cb_multiplier
+                        )
+                        res_exec = GLOBAL_CACHE["executor"].execute_bracket_order(
+                            sym, side, p, tp1, tp2, sl, tp3=tp3,
+                            dynamic_risk_pct=dyn_risk
+                        )
+                        exec_report = f"💸 <b>BINANCE V6:</b> {res_exec.get('status')} (ID: {res_exec.get('id')}) | Risk: {dyn_risk*100:.2f}%"
 
                     msg = (f"{badge}\n\n"
                            f"🚀 <b>ZENITH V6: THE VOLUME PROPHET</b>\n"

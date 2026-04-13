@@ -67,15 +67,15 @@ class ZenithExecutor:
             return 0.0
 
     def execute_bracket_order(self, symbol, side, entry, tp1, tp2, sl, tp3=None,
-                              dynamic_leverage=None):
+                              dynamic_leverage=None, dynamic_risk_pct=None):
         """Ejecuta una orden Bracket (Entrada + 3 TPs + SL) en Binance."""
         print(f"💸 [Zenith Executor] Iniciando ciclo de ejecución V6 (3 TPs) para {symbol} ({side})...")
-        
+
         balance = self.get_balance()
         if balance < self.min_balance:
             return {"status": "FAILED", "reason": f"Saldo insuficiente (${balance:.2f} < $10)"}
 
-        amount = self.calculate_amount(symbol, entry, sl, balance)
+        amount = self.calculate_amount(symbol, entry, sl, balance, dynamic_risk_pct=dynamic_risk_pct)
         if amount <= 0:
             return {"status": "FAILED", "reason": "Error en cálculo de tamaño (Size=0)"}
 

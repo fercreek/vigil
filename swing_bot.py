@@ -39,6 +39,13 @@ MIN_SL_PCT = 0.01  # SL mínimo 1% del precio
 ALERT_COOLDOWN = 3600 * 4
 _last_alert: dict = {}
 
+# Anti-whipsaw: no flipear dirección (LONG→SHORT) en menos de 24h
+DIRECTION_FLIP_COOLDOWN = 3600 * 24
+_last_direction: dict = {}  # {symbol: ("LONG"|"SHORT", timestamp)}
+
+# Minimum ATR filter: señal solo si ATR > 0.5% del precio
+MIN_ATR_PCT = 0.005
+
 binance = ccxt.binance({'timeout': 15000})
 
 
@@ -68,6 +75,22 @@ def _in_cooldown(symbol: str) -> bool:
 
 def _set_cooldown(symbol: str):
     _last_alert[symbol] = time.time()
+
+
+def _can_flip_direction(symbol: str, new_side: str) -> bool:
+    """Return False if trying to flip direction within 24h cooldown."""
+    prev = _last_direction.get(symbol)
+    if prev is None:
+        return True
+    old_side, ts = prev
+    if old_side == new_side:
+        return True  # Same direction → always OK
+    elapsed = time.time() - ts
+    return elapsed >= DIRECTION_FLIP_COOLDOWN
+
+
+def _set_direction(symbol: str, side: str):
+    _last_direction[symbol] = (side, time.time())
 
 
 def build_alert(symbol: str, side: str, price: float, atr: float,
@@ -162,6 +185,12 @@ def analyze_symbol(symbol: str):
 
     # 2. ATR 4H
     atr = calc_atr(df)
+    price_now = float(df["close"].iloc[-1])
+
+    # 2b. ATR minimum filter — skip if volatility too low (noisy cloud)
+    if atr < price_now * MIN_ATR_PCT:
+        print(f"    ⏸️  ATR too low ({atr:.2f} < {price_now * MIN_ATR_PCT:.2f}) — omitiendo")
+        return
 
     # 3. Ichimoku + bias técnico
     technical   = indicators_swing.analyze_swing_signals(df)
@@ -195,6 +224,11 @@ def analyze_symbol(symbol: str):
 
     side = "LONG" if ai_bias == "BULL" else "SHORT"
 
+    # 6b. Direction flip guard — no LONG→SHORT within 24h
+    if not _can_flip_direction(symbol, side):
+        print(f"    ⏸️  Direction flip blocked ({side}) — 24h cooldown activo")
+        return
+
     # 7. Construir alerta
     msg, sl, tp1, tp2, tp3 = build_alert(
         symbol, side, price, atr,
@@ -204,6 +238,7 @@ def analyze_symbol(symbol: str):
     # 8. Enviar
     send_telegram(msg)
     _set_cooldown(symbol)
+    _set_direction(symbol, side)
     tracker.log_trade(sym, side, price, tp1, tp2, sl, None,
                       version="SWING", rsi=50.0, bb="Ichimoku",
                       atr=atr, score=4, alert_type="swing_institutional")

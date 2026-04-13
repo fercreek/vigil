@@ -58,14 +58,22 @@ def analyze_swing_signals(df):
     df = calculate_ichimoku(df)
     last = df.iloc[-1]
     prev = df.iloc[-2]
-    
-    # 1. Kumo Breakout (Salida de la nube)
+
+    # 1. Kumo Breakout con hysteresis (evita whipsaw en nubes delgadas)
     kumo_max = max(last['senkou_span_a'], last['senkou_span_b'])
     kumo_min = min(last['senkou_span_a'], last['senkou_span_b'])
-    
+
+    # ATR-based buffer: require price to clear cloud by 25% of ATR
+    hl  = df["high"] - df["low"]
+    hc  = (df["high"] - df["close"].shift()).abs()
+    lc  = (df["low"]  - df["close"].shift()).abs()
+    tr  = pd.concat([hl, hc, lc], axis=1).max(axis=1)
+    _atr = float(tr.ewm(alpha=1/14, adjust=False).mean().iloc[-1])
+    hysteresis = _atr * 0.25
+
     bias = "NEUTRAL"
-    if last['close'] > kumo_max: bias = "BULL"
-    elif last['close'] < kumo_min: bias = "BEAR"
+    if last['close'] > kumo_max + hysteresis: bias = "BULL"
+    elif last['close'] < kumo_min - hysteresis: bias = "BEAR"
     
     # 2. Tenkan/Kijun Cross
     tk_cross = "NONE"
