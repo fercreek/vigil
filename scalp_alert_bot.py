@@ -156,7 +156,11 @@ def update_dynamic_levels():
     symbols = {
         "BTC": (binance_ex, "BTC/USDT"),
         "TAO": (binance_ex, "TAO/USDT"),
-        "ZEC": (binance_ex, "ZEC/USDT")
+        "ZEC": (binance_ex, "ZEC/USDT"),
+        "ETH": (binance_ex, "ETH/USDT"),
+        "SOL": (binance_ex, "SOL/USDT"),
+        "HBAR": (binance_ex, "HBAR/USDT"),
+        "DOGE": (binance_ex, "DOGE/USDT"),
     }
     
     for key, (exchange, sym) in symbols.items():
@@ -169,31 +173,16 @@ def update_dynamic_levels():
             r1 = (2 * p) - l
             s1 = (2 * p) - h
             
-            if key == "SOL":
-                LEVELS["SOL"]["short_entry_high"] = round(r1, 2)
-                LEVELS["SOL"]["target1"] = round(p, 2)
-                LEVELS["SOL"]["long_zone"] = round(s1, 2)
-                LEVELS["SOL"]["sl_short"] = round(r1 * 1.01, 2)
-            elif key == "TAO":
-                LEVELS["TAO"]["resistance"] = round(r1, 1)
-                LEVELS["TAO"]["target1"] = round(p, 1)
-                LEVELS["TAO"]["long_zone"] = round(s1, 1)
-                LEVELS["TAO"]["long_sl"] = round(s1 * 0.98, 1)
-            elif key == "ZEC":
-                if "ZEC" not in LEVELS: LEVELS["ZEC"] = {}
-                LEVELS["ZEC"]["resistance"] = round(r1, 2)
-                LEVELS["ZEC"]["target1"] = round(p, 2)
-                LEVELS["ZEC"]["long_zone"] = round(s1, 2)
-                LEVELS["ZEC"]["long_sl"] = round(s1 * 0.98, 2)
-            elif key == "BTC":
-                LEVELS["BTC"]["resistance"] = round(r1, 0)
-                LEVELS["BTC"]["support2"] = round(s1, 0)
-            elif key == "ETH":
-                if "ETH" not in LEVELS: LEVELS["ETH"] = {}
-                LEVELS["ETH"]["long_zone"] = round(s1, 2)
-                LEVELS["ETH"]["resistance"] = round(r1, 2)
-                LEVELS["ETH"]["target1"] = round(p, 2)
-                LEVELS["ETH"]["long_sl"] = round(s1 * 0.98, 2)
+            # Pivot points genéricos para todos los símbolos
+            if key not in LEVELS:
+                LEVELS[key] = {}
+            _dec = 0 if key == "BTC" else (4 if key in ("HBAR", "DOGE") else 2)
+            LEVELS[key]["resistance"] = round(r1, _dec)
+            LEVELS[key]["target1"] = round(p, _dec)
+            LEVELS[key]["long_zone"] = round(s1, _dec)
+            LEVELS[key]["long_sl"] = round(s1 * 0.98, _dec)
+            LEVELS[key]["short_entry_high"] = round(r1, _dec)
+            LEVELS[key]["sl_short"] = round(r1 * 1.01, _dec)
             
             print(f"✅ {key} R1: ${(r1 or 0.0):,.2f} | S1: ${(s1 or 0.0):,.2f}")
         except Exception as e:

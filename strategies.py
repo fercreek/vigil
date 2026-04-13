@@ -220,11 +220,12 @@ def check_strategies(prices: dict):
 
     # ── Phase 2: Market Intelligence — Funding rates (batch, 1 call) ───
     try:
-        funding_data = market_intel.get_funding_rates(["ZEC", "TAO", "ETH", "HBAR", "DOGE"])
+        funding_data = market_intel.get_funding_rates(_SYMBOLS)
     except Exception:
         funding_data = {}
 
-    for sym in ["ZEC", "TAO", "ETH", "HBAR", "DOGE"]:
+    from config import SYMBOLS as _SYMBOLS
+    for sym in _SYMBOLS:
         p = prices.get(sym, 0.0)
         rsi = prices.get(f"{sym}_RSI", 50.0)
 

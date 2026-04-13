@@ -6,8 +6,8 @@ Importar en cualquier módulo con: from config import RSI_LONG_ENTRY, SYMBOLS, .
 """
 
 # ── Símbolos operados ─────────────────────────────────────────────────────────
-SYMBOLS = ["ZEC", "TAO"]
-MACRO_WATCH = ["BTC", "ETH"]  # Solo para contexto macro, no se opera
+SYMBOLS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "HBAR", "DOGE"]
+MACRO_WATCH = []  # Todos los símbolos ahora son operables
 
 # ── Watchlist estática de acciones (siempre monitoreada, independiente del reporte)
 # yf_ticker: símbolo que entiende Yahoo Finance (CL=F = crude front month, GC=F = gold front month)

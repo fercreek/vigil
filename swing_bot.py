@@ -25,7 +25,7 @@ load_dotenv()
 
 TELEGRAM_TOKEN  = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-SYMBOLS   = ["ZEC/USDT", "TAO/USDT"]
+SYMBOLS   = ["ZEC/USDT", "TAO/USDT", "BTC/USDT", "ETH/USDT", "SOL/USDT"]
 TIMEFRAME = "4h"
 
 # ATR multipliers (validados en backtest)
@@ -135,10 +135,24 @@ def build_alert(symbol: str, side: str, price: float, atr: float,
     return msg, round(sl, 4), round(tp1, 4), round(tp2, 4), round(tp3, 4)
 
 
+def _has_open_swing(symbol_short: str) -> bool:
+    """Check if there's already an open SWING trade for this symbol."""
+    open_trades = tracker.get_open_trades()
+    for t in open_trades:
+        if t["symbol"] == symbol_short and t.get("version") == "SWING":
+            return True
+    return False
+
+
 def analyze_symbol(symbol: str):
     """Analiza un símbolo y envía alerta si hay setup válido."""
     sym = symbol.replace("/USDT", "")
     print(f"  🔍 Analizando {symbol} (Swing 4H)...")
+
+    # 0. Position guard — no abrir duplicados
+    if _has_open_swing(sym):
+        print(f"    ⏸️  Ya hay swing abierto para {sym} — omitiendo")
+        return
 
     # 1. Datos OHLCV
     ohlcv = binance.fetch_ohlcv(symbol, timeframe=TIMEFRAME, limit=300)
