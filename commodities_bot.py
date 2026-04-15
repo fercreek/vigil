@@ -335,7 +335,10 @@ def run_commodities_bot():
                 except Exception as e:
                     logger.error("Commodities %s error: %s", key, e, exc_info=True)
 
-            time.sleep(CHECK_INTERVAL)
+            _sleep_steps = max(1, CHECK_INTERVAL // 60)
+            for _ in range(_sleep_steps):
+                time.sleep(60)
+                thread_health.heartbeat("commodities")
 
         except Exception as e:
             logger.error("Commodities loop error: %s", e, exc_info=True)

@@ -671,6 +671,7 @@ def main():
     last_salmos_time = 0
     last_sentinel_time = 0
     last_zec_sentinel_time = 0
+    last_coordinator_cleanup = 0.0
     keyboard = get_main_menu()
     send_telegram("🤖 <b>Scalp Bot Multi-Estrategia Online</b>\n🛡️ V1-TECH: Activa\n🤖 V2-AI: Activa\n📡 Expert Advisor: Escuchando", keyboard=keyboard)
     
@@ -683,6 +684,11 @@ def main():
                 prices = sanitize_dict(prices)
                 check_strategies(prices)
                 check_market_pulse(prices)
+                now = time.time()
+                if now - last_coordinator_cleanup > 900:
+                    last_coordinator_cleanup = now
+                    import signal_coordinator as _sc
+                    _sc.cleanup_stale()
                 # monitor_open_trades ya maneja el seguimiento de posiciones
                 monitor_open_trades(prices)
                 

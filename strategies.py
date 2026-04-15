@@ -219,13 +219,13 @@ def check_strategies(prices: dict):
     if _fomc_suppressed:
         print("[FOMC PROXIMITY] Reunión FOMC en <24h — solo V2-AI con confluencia >= 5")
 
+    from config import SYMBOLS as _SYMBOLS
+
     # ── Phase 2: Market Intelligence — Funding rates (batch, 1 call) ───
     try:
         funding_data = market_intel.get_funding_rates(_SYMBOLS)
     except Exception:
         funding_data = {}
-
-    from config import SYMBOLS as _SYMBOLS
     for sym in _SYMBOLS:
         p = prices.get(sym, 0.0)
         rsi = prices.get(f"{sym}_RSI", 50.0)

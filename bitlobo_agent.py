@@ -187,7 +187,7 @@ def get_opinion(symbol: str, direction: str, price: float,
         context = _load_memory()
 
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=BITLOBO_SYSTEM,
@@ -254,7 +254,7 @@ def get_consensus_line(symbol: str, direction: str, price: float,
     )
     try:
         resp = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=BITLOBO_SYSTEM,

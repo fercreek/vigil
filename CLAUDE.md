@@ -339,6 +339,144 @@ Nota:           Precio YA en la zona. Candidato a entrada gradual.
 
 ---
 
+### 8e. PTS Update — "Una operación rápida y una swing" (13 Abril 2026)
+
+**Contexto SP500:**
+- SP500 testeando parte alta de ZR en 0.78. VIX testeando mínimo del viernes.
+- Escenario bajista (más probable): rechazo ZR → nueva oleada bajista
+- Escenario alcista (menos probable): ruptura ZR → máximos 7,000 (MACRO PHY)
+- **Si SP500 rompe ZR al alza → enviar operaciones alcistas en acciones explosivas**
+- Operaciones bajistas anteriores cerradas en ganancia (SPY, petroleras, MAGS, XLC, XLF)
+
+**Operación 1 — RKLB (Rocket Lab) — RÁPIDA:**
+```
+Dirección:  LONG
+Entrada:    74.90
+Stop:       63.35
+BE:         83 (mover SL a entrada)
+Targets:    91 / 100
+Riesgo:     -1.1% GR
+Acciones:   1 por $1,000
+Options:    BUY CALL 17-Jul-2026 Strike 80 | Riesgo: -$560 | Pot: $900-$1,500
+Tipo:       Operación rápida en sector aeroespacial/launch
+```
+
+**Operación 2 — TSLA — BAJISTA SWING-POSICIONAL:**
+```
+Dirección:  SHORT
+Entrada:    335.65
+Stop:       359.87
+BE:         320 (mover SL a entrada)
+Targets:    302 / 276 / 217
+Riesgo:     -2.4% GR
+Acciones:   1 por $2,000
+Options:    BUY PUT 21-Ago-2026 Strike 330 | Riesgo: -$880 | Pot: $1,400-$8,100
+Tipo:       La más débil de las 7 Magníficas. Activar SÓLO cuando alcance entrada.
+```
+
+---
+
+### 8f. PTS Update — "Dos operaciones a corto plazo" (14 Abril 2026)
+
+**Contexto SP500:**
+- SP500 rompió la ZR al alza → avanzando hacia 7,000 y MACRO PHY.
+- Mercado celebra promesas de Trump, ignora macroeconomía.
+- Oil >$90 por semanas → Fed no puede bajar tasas. Rebote ≈ short-covering, no institucional.
+- **GDX en ganancias ~100: mover stop a 96.** Gold debilitándose, no nueva entrada.
+- SPY bajista y TSLA SHORT: en espera, no tocar hasta activación.
+- Próximo posible: IREN, MSFT para rebotes rápidos si SP500 sigue arriba.
+
+**Operación 1 — XBI (Biotech ETF) — DEFENSIVA SWING:**
+```
+Dirección:  LONG
+Entrada:    133 – 136 (ENTRADA ACTIVA DESDE YA)
+Stop:       119.09
+BE:         143
+Targets:    150 / 174
+Riesgo:     -1.4% GR
+Acciones:   1 por $1,000
+Options:    BUY CALL 18-Sep-2026 Strike 135 | Riesgo: -$600 | Pot: $1,100-$3,000
+Tipo:       Defensiva. No cayó con SP500. Alto potencial de crecimiento.
+```
+
+**Operación 2 — HOOD (Robinhood) — RÁPIDA:**
+```
+Dirección:  LONG
+Entrada:    85.97
+Stop:       65.35
+BE:         97.84
+Targets:    120 / 134
+Riesgo:     -2% GR
+Acciones:   1 por $1,000
+Options:    BUY CALL 21-Ago-2026 Strike 90 | Riesgo: -$795 | Pot: $2,400-$3,200
+Tipo:       HOOD cae desde Octubre, puede despertar. Potencial interesante.
+```
+
+---
+
+### 8g. PTS Update — "Tres operaciones en sectores interesantes" (15 Abril 2026)
+
+**Contexto SP500:**
+- SP500 intenta romper MACRO PHY. Escenario más equilibrado (no hay probabilidades superiores bajistas).
+- **Niveles de vigilancia:** SP500 pierde 6,832 → prepararse para short. SP500 pierde 6,728 → entrar SHORT (SPY ~673).
+- Bot suprime señales agresivas mientras SP500 no pierda 6,832.
+- Sectores cuánticos y nuclear despertando: si consolidan 2-3 días → enviar operaciones alcistas.
+
+**Bitcoin:** Sigue en rango pre-caída SP500 y post-rebote. Breakout trigger: superar $74,000 con convicción + DXY débil. Si rompe: operación BTC + ETH + SOL.
+
+**Operación 1 — COIN (Coinbase) — SWING ALCISTA:**
+```
+Dirección:  LONG
+Entrada:    200.93
+Stop:       160.32
+BE:         254
+Targets:    286 / 328 / 382
+Riesgo:     -2% GR
+Acciones:   1 por $2,000
+Options:    BUY CALL 18-Sep-2026 Strike 220 | Riesgo: -$1,650 | Pot: $5,800-$14,000
+Tipo:       Mejor proxy crypto. El activo con más ganancia en 2025.
+```
+
+**Operación 2 — MP (MP Materials) — SWING ALCISTA:**
+```
+Dirección:  LONG
+Entrada:    63.28
+Stop:       48.11
+BE:         73
+Targets:    79 / 89
+Riesgo:     -1.5% GR
+Acciones:   1 por $1,000
+Options:    BUY CALL 18-Sep-2026 Strike 70 | Riesgo: -$590 | Pot: $950-$1,600
+Tipo:       Rare earth materials. Enorme rango de consolidación.
+```
+
+**Operación 3 — SOFI (SoFi Technologies) — SWING ALCISTA:**
+```
+Dirección:  LONG
+Entrada:    19.29
+Stop:       15.60
+BE:         21
+Targets:    25 / 28
+Riesgo:     -1.2% GR
+Acciones:   3 por $1,000
+Options:    BUY CALL 18-Sep-2026 Strike 22 | Riesgo: -$150 | Pot: $350-$550
+Tipo:       Posible formación de suelo tras fuertes caídas. Sector fintech.
+```
+
+**Signals activas en bot (watchlist actualizada 15-Abr-2026):**
+```
+RKLB   LONG  74.90   | XBI  LONG 133.0  | HOOD  LONG  85.97
+COIN   LONG 200.93   | MP   LONG  63.28  | SOFI  LONG  19.29
+TSLA  SHORT 335.65   | GDX  LONG  92.78 (stop 96)
+SPY   SHORT watch    | IREN  pendiente  | MSFT  pendiente
+Cuánticos: pendiente 2-3 días consolidación
+Nuclear:   pendiente próximo reporte
+```
+
+**Regla bot:** `DEFENSIVE_SECTORS = ["XOM", "MOO", "GDX", "XBI", "COIN", "RKLB", "HOOD", "MP", "SOFI"]` — no filtrar con bias bajista de equities. Monitorear SP500 en 6,832 y 6,728 para activar short SPY.
+
+---
+
 ## Cómo Aplicar Estos Insights al Algoritmo
 
 ### Filtros a Implementar

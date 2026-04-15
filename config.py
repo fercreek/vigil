@@ -16,8 +16,8 @@ MACRO_WATCH = []  # Todos los símbolos ahora son operables
 STOCK_WATCHLIST = [
     # ── Tu lista personal ─────────────────────────────────────────────────────
     {"ticker": "TSLA",  "yf_ticker": "TSLA",  "direction": "SHORT",
-     "entry": 346.65, "stop_loss": 377.02, "take_profit_1": 285.91, "break_even": 316.28,
-     "context": "⚠️ Niveles pre-mercado. MACRO PHY bajista activo. Confirmar apertura antes de entrar."},
+     "entry": 335.65, "stop_loss": 359.87, "take_profit_1": 302.0, "take_profit_2": 276.0, "take_profit_3": 217.0, "break_even": 320.0,
+     "context": "PTS 13-Abr-2026. TSLA SWING-POSICIONAL BAJISTA. La más débil de las 7 Magníficas. Activar sólo cuando alcance entrada. GR -2.4%. 1 acción/$2k."},
 
     {"ticker": "PLTR",  "yf_ticker": "PLTR",  "direction": "LONG",
      "entry": 150.07, "stop_loss": 135.79, "take_profit_1": 178.62, "break_even": 164.35,
@@ -35,6 +35,44 @@ STOCK_WATCHLIST = [
      "entry": 95.95,  "stop_loss": 115.04, "take_profit_1": 57.78,  "break_even": 76.86,
      "context": "⚠️ Niveles pre-mercado. Crudo Jun-2026. Monitorear soporte $60 y noticias OPEP+."},
 
+    # ── PTS Reports Apr 13-15 2026 ───────────────────────────────────────────
+    {"ticker": "RKLB",  "yf_ticker": "RKLB",  "direction": "LONG",
+     "entry": 74.90,  "stop_loss": 63.35,  "take_profit_1": 91.0,  "take_profit_2": 100.0, "break_even": 83.0,
+     "context": "PTS 13-Abr-2026. Rocket Lab OPERACIÓN RÁPIDA. Si SP500 se mantiene arriba puede llegar rápido a targets. GR -1.1%. 1 acción/$1k."},
+
+    {"ticker": "XBI",   "yf_ticker": "XBI",   "direction": "LONG",
+     "entry": 133.0,  "stop_loss": 119.09, "take_profit_1": 150.0, "take_profit_2": 174.0, "break_even": 143.0,
+     "context": "PTS 14-Abr-2026. Biotech ETF DEFENSIVA SWING. Entrada activa zona 133-136. No cayó con SP500. GR -1.4%. 1 acción/$1k."},
+
+    {"ticker": "HOOD",  "yf_ticker": "HOOD",  "direction": "LONG",
+     "entry": 85.97,  "stop_loss": 65.35,  "take_profit_1": 120.0, "take_profit_2": 134.0, "break_even": 97.84,
+     "context": "PTS 14-Abr-2026. Robinhood OPERACIÓN RÁPIDA. Cayendo desde Octubre, posible suelo. GR -2%. 1 acción/$1k."},
+
+    {"ticker": "COIN",  "yf_ticker": "COIN",  "direction": "LONG",
+     "entry": 200.93, "stop_loss": 160.32, "take_profit_1": 286.0, "take_profit_2": 328.0, "take_profit_3": 382.0, "break_even": 254.0,
+     "context": "PTS 15-Abr-2026. Coinbase SWING ALCISTA. Mejor proxy crypto. GR -2%. 1 acción/$2k. El mejor activo crypto de 2025."},
+
+    {"ticker": "MP",    "yf_ticker": "MP",    "direction": "LONG",
+     "entry": 63.28,  "stop_loss": 48.11,  "take_profit_1": 79.0,  "take_profit_2": 89.0,  "break_even": 73.0,
+     "context": "PTS 15-Abr-2026. MP Materials SWING ALCISTA. Rare earth materials. Enorme rango de consolidación. GR -1.5%. 1 acción/$1k."},
+
+    {"ticker": "SOFI",  "yf_ticker": "SOFI",  "direction": "LONG",
+     "entry": 19.29,  "stop_loss": 15.60,  "take_profit_1": 25.0,  "take_profit_2": 28.0,  "break_even": 21.0,
+     "context": "PTS 15-Abr-2026. SoFi Technologies SWING ALCISTA. Posible formación de suelo tras fuertes caídas. GR -1.2%. 3 acciones/$1k."},
+
+    {"ticker": "SPY",   "yf_ticker": "SPY",   "direction": "SHORT",
+     "entry": 673.0,  "stop_loss": 700.0,  "take_profit_1": 632.0, "take_profit_2": 600.0, "break_even": 659.0,
+     "context": "PTS 15-Abr-2026. SP500 vigilancia bajista. Alerta si SP500 pierde 6,832 (SPY ~683) — prepararse. Entrada en SPY ~673 (SP500 6,728). Mientras no active, dejar tranquilo."},
+
+    # ── Mencionadas en PTS — niveles pendientes ───────────────────────────────
+    {"ticker": "IREN",  "yf_ticker": "IREN",  "direction": "LONG",
+     "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
+     "context": "PTS 14-Abr-2026. Bitcoin mining/AI. Candidata a rebote rápido si SP500 continúa arriba. Niveles pendientes próximo reporte."},
+
+    {"ticker": "MSFT",  "yf_ticker": "MSFT",  "direction": "LONG",
+     "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
+     "context": "PTS 14-Abr-2026. Microsoft. Candidata a rebote rápido si SP500 continúa arriba. Niveles pendientes próximo reporte."},
+
     # ── Ideas del live BitLobo 9-Abr-2026 ────────────────────────────────────
     {"ticker": "CRCL",  "yf_ticker": "CRCL",  "direction": "LONG",
      "entry": 83.53, "stop_loss": 60.75, "take_profit_1": 145.67, "take_profit_2": 174.51, "break_even": 105.0,
@@ -50,8 +88,8 @@ STOCK_WATCHLIST = [
 
     # ── Recomendaciones del bot ────────────────────────────────────────────────
     {"ticker": "GDX",   "yf_ticker": "GDX",   "direction": "LONG",
-     "entry": 92.78,  "stop_loss": 82.16,  "take_profit_1": 102.0,  "break_even": 97.0,
-     "context": "Setup PTS confirmado: DXY retrocede + oro rebota PHY. Operación rápida. BE en 97."},
+     "entry": 92.78,  "stop_loss": 96.0,  "take_profit_1": 102.0,  "break_even": 97.0,
+     "context": "PTS actualizado 14-Abr-2026. GDX en ganancias ~100. Stop movido a 96 (break even zone). Gold debilitándose — hold defensivo."},
 
     {"ticker": "MSTR",  "yf_ticker": "MSTR",  "direction": "LONG",
      "entry": 123.72, "stop_loss": 109.22, "take_profit_1": 152.73, "break_even": 138.22,

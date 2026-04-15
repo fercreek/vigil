@@ -87,16 +87,14 @@ def _fetch_prices(signals):
     yf_symbols = [s.get("yf_ticker", s["ticker"]) for s in signals if "ticker" in s]
     yf_symbols = list(dict.fromkeys(yf_symbols))  # deduplicar
     prices = {}
-    try:
-        yf_data = yf.Tickers(" ".join(yf_symbols))
-        for sym in yf_symbols:
-            display = _YF_ALIAS.get(sym, sym)
-            try:
-                prices[display] = yf_data.tickers[sym].fast_info.last_price
-            except Exception:
-                prices[display] = 0.0
-    except Exception as e:
-        logger.warning(f"yfinance error: {e}")
+    for sym in yf_symbols:
+        display = _YF_ALIAS.get(sym, sym)
+        try:
+            price = yf.Ticker(sym).fast_info.last_price
+            prices[display] = float(price) if price is not None else 0.0
+        except Exception as e:
+            logger.warning(f"yfinance error for {sym}: {e}")
+            prices[display] = 0.0
     return prices
 
 def check_stock_status():
@@ -274,7 +272,9 @@ def stock_watchdog():
         except Exception as e:
             logger.error(f"Error en Centinela Acciones (Watchdog loop): {e}")
             
-        time.sleep(900) # 15 minutos de espera
+        for _ in range(15):  # 15 × 60s = 15 min
+            time.sleep(60)
+            thread_health.heartbeat("stock")
 
 
 if __name__ == "__main__":

@@ -29,9 +29,11 @@ def calculate_rsi(prices, period=14):
     gain = (delta.where(delta > 0, 0)).ewm(alpha=1/period, adjust=False).mean()
     loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/period, adjust=False).mean()
     
-    rs = gain / loss
+    loss_safe = loss.replace(0, float('nan'))  # evita div/0 → inf cuando mercado solo sube
+    rs = gain / loss_safe
     rsi = 100 - (100 / (1 + rs))
-    return rsi.iloc[-1]
+    val = rsi.iloc[-1]
+    return float(val) if pd.notna(val) else 50.0  # 50 = neutral si NaN
 
 def get_rsi(symbol, timeframe='1h'):
     """Obtiene el RSI para un símbolo y temporalidad dados."""
@@ -303,10 +305,12 @@ def get_indicators(symbol, timeframe='1h'):
         print(f"[INDICATORS ERROR] {symbol}/{timeframe}: {e}")
         return 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "S/D", 0.0
 
+_LAST_VALID_DXY_VIX: dict = {}  # {"dxy": float, "vix": float} — fallback si yfinance falla
+
 def get_dxy_vix():
     """
     Obtiene DXY (índice del dólar) y VIX (volatilidad S&P 500) via yfinance.
-    Retorna: (dxy: float, vix: float) — 0.0 si no disponible.
+    Retorna: (dxy: float, vix: float) — último valor válido si yfinance falla.
 
     Reglas de interpretación para el bot:
     - DXY > 105 y subiendo → presión bajista en cripto (safe haven flows)
@@ -318,18 +322,25 @@ def get_dxy_vix():
     try:
         dxy_ticker = yf.Ticker("DX-Y.NYB")
         dxy_hist = dxy_ticker.history(period="2d", interval="1h")
-        dxy = float(dxy_hist['Close'].iloc[-1]) if not dxy_hist.empty else 0.0
+        dxy = float(dxy_hist['Close'].iloc[-1]) if not dxy_hist.empty else None
     except Exception as e:
         print(f"[DXY ERROR] {e}")
-        dxy = 0.0
+        dxy = None
     try:
         vix_ticker = yf.Ticker("^VIX")
         vix_hist = vix_ticker.history(period="2d", interval="1h")
-        vix = float(vix_hist['Close'].iloc[-1]) if not vix_hist.empty else 0.0
+        vix = float(vix_hist['Close'].iloc[-1]) if not vix_hist.empty else None
     except Exception as e:
         print(f"[VIX ERROR] {e}")
-        vix = 0.0
-    return round(dxy, 2), round(vix, 2)
+        vix = None
+    # Persistir últimas lecturas válidas para usar como fallback
+    if dxy is not None:
+        _LAST_VALID_DXY_VIX["dxy"] = dxy
+    if vix is not None:
+        _LAST_VALID_DXY_VIX["vix"] = vix
+    dxy_out = dxy if dxy is not None else _LAST_VALID_DXY_VIX.get("dxy", 0.0)
+    vix_out = vix if vix is not None else _LAST_VALID_DXY_VIX.get("vix", 0.0)
+    return round(dxy_out, 2), round(vix_out, 2)
 
 
 def get_macro_trend(symbol):

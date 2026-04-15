@@ -217,14 +217,9 @@ def analyze_symbol(symbol: str):
         print(f"    ⏩ Sin consenso ({kumo_status} vs {ai_bias}) — omitiendo")
         return
 
-    # 6. Cooldown
-    if _in_cooldown(symbol):
-        print(f"    ⏸️  En cooldown — omitiendo")
-        return
-
     side = "LONG" if ai_bias == "BULL" else "SHORT"
 
-    # 6b. Direction flip guard — no LONG→SHORT within 24h
+    # 6. Direction flip guard — no LONG→SHORT within 24h
     if not _can_flip_direction(symbol, side):
         print(f"    ⏸️  Direction flip blocked ({side}) — 24h cooldown activo")
         return
@@ -235,9 +230,11 @@ def analyze_symbol(symbol: str):
         ai_bias, kumo_status, tk_cross, kumo_cloud, analysis
     )
 
-    # 8. Enviar
-    send_telegram(msg)
-    _set_cooldown(symbol)
+    # 8. Enviar via alert_manager (cooldown persistente ante reinicios del hilo)
+    import alert_manager as _am
+    if _am.alert(f"swing_{sym}_{side}", msg, version="V2-AI-GEMINI", cooldown=ALERT_COOLDOWN) is None:
+        print(f"    ⏸️  En cooldown — omitiendo")
+        return
     _set_direction(symbol, side)
     tracker.log_trade(sym, side, price, tp1, tp2, sl, None,
                       version="SWING", rsi=50.0, bb="Ichimoku",
@@ -267,7 +264,9 @@ def run_zenith_swing():
                     print(f"  ❌ Error en {symbol}: {e}")
 
             print("⏳ Próximo ciclo en 4H...")
-            time.sleep(3600 * 4)
+            for _ in range(240):   # 240 × 60s = 4 horas
+                time.sleep(60)
+                thread_health.heartbeat("swing")
 
         except Exception as e:
             import logging

@@ -24,6 +24,11 @@ load_dotenv(override=True)
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 import ai_budget as _budget
+import time as _time
+
+# Circuit breaker para get_ai_consensus — backoff exponencial ante fallos de Gemini
+_gemini_fail_count = 0
+_gemini_backoff_until = 0.0
 
 # Claude — decisiones JSON-críticas (Haiku: < $1/mes con uso real del bot)
 _anthropic_client = None
@@ -216,6 +221,12 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
     
     risk_ctx = f"\n💀 PULSO DE RIESGO GLOBAL (Apocalipsis Radar):\n{risk_pulse}\n" if risk_pulse else ""
     
+    global _gemini_fail_count, _gemini_backoff_until
+    if _time.time() < _gemini_backoff_until:
+        remaining = int(_gemini_backoff_until - _time.time())
+        print(f"[Consensus] Circuit breaker activo — {remaining}s restantes")
+        return "🏛️ <i>Análisis pausado temporalmente (circuit breaker activo).</i>"
+
     prompt = (f"DEBATE DE LA CUADRILLA ZENITH: {symbol} @ ${ (price or 0.0):,.2f}\n"
               f"- Operación propuesta: {side} | Clasificación PTS: {trade_type}\n"
               f"- RSI: { (rsi or 0.0):.1f} | USDT.D: { (usdt_d or 0.0):.2f}%\n"
@@ -241,7 +252,7 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
     try:
         # Usamos el modelo flash para rapidez y ahorro de quota
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.8,
@@ -256,9 +267,13 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
             result = result + f"\n{bl_line}"
         except Exception:
             pass
+        _gemini_fail_count = 0  # reset en éxito
         return result
     except Exception as e:
-        print(f"[Consensus Error] {e}")
+        _gemini_fail_count += 1
+        backoff = min(300, 30 * _gemini_fail_count)
+        _gemini_backoff_until = _time.time() + backoff
+        print(f"[Consensus Error] {e} — backoff {backoff}s (fallo #{_gemini_fail_count})")
         return "🏛️ <i>Debate temporalmente suspendido por congestión de mercado.</i>"
 
 def _find_recent_chart(symbol: str) -> str | None:
