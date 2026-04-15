@@ -15,7 +15,7 @@ from config import (
     V4_RSI_HIGH, V4_RSI_HIGH_ZEC, V4_MIN_CONFLUENCE,
     V4_ATR_SL_MULT, V4_COOLDOWN, V4_EMA_PROX_MAP,
     RSI_SHORT_ENTRY, SHORT_MIN_CONFLUENCE, SHORT_REGIMES,
-    SHORT_EMA_SLOPE_MIN, RVOL_MIN_ENTRY,
+    SHORT_EMA_SLOPE_MIN, RVOL_MIN_ENTRY, RVOL_MIN_BTC, MIN_CONFLUENCE_SCORE,
     FOMC_NEXT_MEETING,
 )
 
@@ -450,6 +450,13 @@ def check_strategies(prices: dict):
                 if rsi < prev_rsi:
                     continue
 
+                # RVOL filter — skip entries on low volume (noise reduction)
+                rvol = prices.get(f"{sym}_RVOL", 1.0)
+                rvol_min = RVOL_MIN_BTC if sym in ("BTC", "ETH") else RVOL_MIN_ENTRY
+                if rvol < rvol_min:
+                    print(f"⏩ [V1-LONG] {sym} RVOL {rvol:.2f} < {rvol_min} — sin volumen confirmado")
+                    continue
+
                 if is_position_open(sym, "LONG"):
                     print(f"⏸️ [Position Guard] {sym} LONG ya está abierto — omitiendo señal duplicada")
                     continue
@@ -465,13 +472,13 @@ def check_strategies(prices: dict):
                 conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), funding_signal=funding_signal)
                 conf_score = round(conf_score + social_adj, 2)
 
-                if conf_score < 4:
+                if conf_score < MIN_CONFLUENCE_SCORE:
                     # Log episodio filtrado (para near-miss análisis)
                     _bb_pos = "LOWER" if p <= bb_l * 1.01 else "UPPER" if p >= bb_u * 0.99 else "MID"
                     _ema_trend = "ABOVE" if p > ema_200 else "BELOW"
                     _atr_pct = round((atr / p * 100) if p else 0, 3)
                     _em.log_episode(sym, "V1-TECH", "FILTERED", rsi, usdt_d, _bb_pos, _ema_trend, int(conf_score), _atr_pct)
-                    print(f"⏩ [V12-Audit] Señal {sym} ignorada (Score {conf_score} < 4)")
+                    print(f"⏩ [V12-Audit] Señal {sym} ignorada (Score {conf_score} < {MIN_CONFLUENCE_SCORE})")
                     continue
 
                 badge = get_confluence_badge(conf_score)

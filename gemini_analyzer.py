@@ -770,12 +770,22 @@ def get_weekly_bias(symbol: str, prices: dict) -> dict:
     ema = prices.get(f"{symbol}_EMA_200", 0)
     usdt_d = prices.get("USDT_D", 0)
     
+    # Pull macro context for enriched bias
+    import indicators as _ind
+    dxy, vix = _ind.get_dxy_vix()
+    btc_p = prices.get("BTC", 0)
+    spy_p = prices.get("SPY", 0)
+
     prompt = (f"REPORTE SEMANAL PARA {symbol} ({ts}):\n"
-              f"- Precio Actual: ${ (p or 0.0):,.2f}\n"
-              f"- RSI (H4): { (rsi or 0.0):.1f}\n"
-              f"- EMA 200 (H4): ${ (ema or 0.0):,.2f}\n"
-              f"- Dominancia USDT: {usdt_d}%\n\n"
-              f"Determina el Bias para los próximos 7 días.\n"
+              f"- Precio Actual: ${(p or 0.0):,.2f} | RSI (H4): {(rsi or 0.0):.1f}\n"
+              f"- EMA 200 (H4): ${(ema or 0.0):,.2f} | Dominancia USDT: {usdt_d}%\n"
+              f"- DXY (dólar índex): {dxy:.2f} | VIX (miedo mercado): {vix:.1f}\n"
+              f"- BTC precio referencia: ${(btc_p or 0):,.0f} | SPY: ${(spy_p or 0):,.2f}\n"
+              f"- Contexto macro FOMC: {FOMC_CONTEXT}\n\n"
+              f"Con base en TODOS los datos anteriores (técnicos + macro), "
+              f"determina el Bias para los próximos 7 días.\n"
+              f"Considera especialmente: VIX > 20 = reducir exposición LONG; "
+              f"DXY > 103 = presión bajista cripto; BTC dominancia trend.\n"
               f"Tu respuesta DEBE incluir al final una línea con: 'BIAS: [BULL/BEAR/ACCUMULATION]'.")
     
     # Claude Haiku para BIAS semanal — el "BIAS: BULL/BEAR/ACCUMULATION" requiere seguimiento exacto

@@ -123,8 +123,8 @@ USDT_D_THRESHOLD    = 8.05   # Por encima: condición bajista para cripto
 
 # ── Volatilidad / Riesgo ──────────────────────────────────────────────────────
 ZEC_MAX_VOL_PCT     = 3.5    # % ATR/Precio máximo para ZEC (guarda anti-manipulación)
-VIX_RAPIDA_THRESHOLD = 22.0  # VIX > 22 → trade RAPIDA (was 25 — FOMC Mar-26: Middle East elevó base VIX)
-VIX_EXTREME_THRESHOLD = 35.0 # VIX > 35 → no operar / mínima posición
+VIX_RAPIDA_THRESHOLD = 18.0  # VIX > 18 → trade RAPIDA (was 22 — VIX base post-FOMC Apr-26: ~18-20)
+VIX_EXTREME_THRESHOLD = 32.0 # VIX > 32 → no operar / mínima posición (was 35)
 DXY_CRIPTO_PRESSURE = 103.0  # DXY > 103 → presión bajista en cripto (was 105 — FOMC: USD safe-haven activo)
 OIL_INFLATION_THRESHOLD = 85.0  # Oil > $85 = presión inflacionaria → hawkish Fed (FOMC Mar-26)
 

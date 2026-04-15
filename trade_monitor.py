@@ -6,6 +6,10 @@ Extraído de scalp_alert_bot.py para mantener archivos < 600 líneas.
 
 import indicators
 import episode_memory as _em
+from datetime import datetime
+
+# SWING trades open > 36h without hitting TP1 = signal failed; close at market
+SWING_TIME_EXIT_HOURS = 36
 # GLOBAL_CACHE importado lazy dentro de monitor_open_trades para evitar circularidad
 
 
@@ -121,6 +125,44 @@ def monitor_open_trades(prices: dict):
                 tracker.update_sl(t["id"], new_sl)
                 alert(f"t_{t['id']}_p", f"🚀 <b>TP1 ASEGURADO</b>\nTrailing BE (0.1%) Activado. Fondos protegidos.", version=t["version"], reply_to=reply)
                 circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct) * 0.5)
+
+    # ── Time-Based Exit (SWING only) ───────────────────────────────────
+    # Data shows losing SWING trades stay open ~40h; winners close in ~19h.
+    # If a SWING hasn't hit TP1 after 36h, the thesis is invalidated — close it.
+    now_dt = datetime.now()
+    for t in open_trades:
+        if t.get("version") != "SWING":
+            continue
+        if t["status"] != "OPEN":  # PARTIAL_WON already hit TP1 — let it run
+            continue
+        try:
+            open_dt = datetime.strptime(t.get("open_time", ""), "%Y-%m-%d %H:%M:%S")
+            age_h = (now_dt - open_dt).total_seconds() / 3600
+        except Exception:
+            continue
+        if age_h < SWING_TIME_EXIT_HOURS:
+            continue
+
+        sym = t["symbol"]
+        if sym not in prices:
+            continue
+        curr_p = prices[sym]
+        entry = t["entry_price"]
+        tipo = t["type"]
+        pnl_pct = ((curr_p - entry) / entry * 100) if tipo == "LONG" else ((entry - curr_p) / entry * 100)
+
+        tracker.update_trade_status(t["id"], "LOST")
+        alert(
+            f"t_{t['id']}_timeout",
+            f"⏱️ <b>CIERRE POR TIEMPO: {sym} {tipo}</b>\n"
+            f"Trade SWING sin TP1 después de {age_h:.0f}h (umbral: {SWING_TIME_EXIT_HOURS}h)\n"
+            f"📥 Entrada: ${entry:,.2f} | Precio actual: ${curr_p:,.2f}\n"
+            f"💸 PnL: <b>{pnl_pct:+.2f}%</b>\n"
+            f"<i>Tesis invalidada — capital liberado.</i>",
+            version=t.get("version", "SWING")
+        )
+        circuit_breaker.record_outcome(is_win=False, pnl_pct=-abs(pnl_pct))
+        print(f"⏱️ [TimeExit] {sym} {tipo} cerrado por tiempo ({age_h:.0f}h) — PnL: {pnl_pct:+.2f}%")
 
     # ── Trailing Stop Updates ────────────────────────────────────────────
     tsl_updates = trailing_stop_mgr.calculate_trailing_updates(open_trades, prices)
