@@ -46,6 +46,10 @@ _last_direction: dict = {}  # {symbol: ("LONG"|"SHORT", timestamp)}
 # Minimum ATR filter: señal solo si ATR > 0.5% del precio
 MIN_ATR_PCT = 0.005
 
+# Símbolos donde se bloquean señales SHORT (WR < 10% históricamente)
+# TAO: 4% WR en SHORT (27 pérdidas consecutivas, tendencia alcista dominante)
+NO_SHORT = {"TAO/USDT"}
+
 binance = ccxt.binance({'timeout': 15000})
 
 
@@ -218,6 +222,11 @@ def analyze_symbol(symbol: str):
         return
 
     side = "LONG" if ai_bias == "BULL" else "SHORT"
+
+    # 5b. NO_SHORT filter — block SHORT signals for chronically losing symbols
+    if side == "SHORT" and symbol in NO_SHORT:
+        print(f"    ⛔ {symbol} SHORT bloqueado (NO_SHORT list — WR < 10%)")
+        return
 
     # 6. Direction flip guard — no LONG→SHORT within 24h
     if not _can_flip_direction(symbol, side):

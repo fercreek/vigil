@@ -144,6 +144,86 @@ def _has_open_commodity(key: str) -> bool:
     return False
 
 
+def _monitor_open_commodity(key: str, inst: dict):
+    """Check SL/TP on open COMMODITY trades using the correct futures price."""
+    open_trades = [t for t in tracker.get_open_trades()
+                   if t["symbol"] == key and t.get("version") == "COMMODITY"]
+    if not open_trades:
+        return
+
+    try:
+        price = float(yf.Ticker(inst["yf"]).fast_info.last_price or 0)
+    except Exception as e:
+        logger.warning("    %s: no se pudo obtener precio para monitor (%s)", key, e)
+        return
+    if not price:
+        return
+
+    dec = inst["decimals"]
+    for t in open_trades:
+        entry = t["entry_price"]
+        sl    = t["sl_price"]
+        tp1   = t["tp1_price"]
+        tp2   = t["tp2_price"]
+        side  = t["type"]
+
+        if side == "LONG":
+            pnl_pct = (price - entry) / entry * 100
+            if price <= sl:
+                tracker.update_trade_status(t["id"], "LOST")
+                send_telegram(
+                    f"🛑 <b>COMMODITY SL HIT: {key}</b>\n"
+                    f"{side} @ ${entry:,.{dec}f}\n"
+                    f"Precio: <code>${price:,.{dec}f}</code> ≤ SL <code>${sl:,.{dec}f}</code>\n"
+                    f"💸 PnL: <b>{pnl_pct:+.2f}%</b>"
+                )
+                logger.info("    %s LOST (SL hit) @ %.{dec}f", key, price)
+            elif tp2 and price >= tp2:
+                tracker.update_trade_status(t["id"], "FULL_WON")
+                send_telegram(
+                    f"🟢 <b>COMMODITY TP2 HIT: {key}</b>\n"
+                    f"{side} @ ${entry:,.{dec}f}\n"
+                    f"Precio: <code>${price:,.{dec}f}</code>\n"
+                    f"💰 PnL: <b>{pnl_pct:+.2f}%</b>"
+                )
+            elif tp1 and price >= tp1 and t["status"] == "OPEN":
+                tracker.update_trade_status(t["id"], "PARTIAL_WON")
+                new_sl = entry  # move to breakeven
+                tracker.update_sl(t["id"], new_sl)
+                send_telegram(
+                    f"🎯 <b>COMMODITY TP1 HIT: {key}</b>\n"
+                    f"{side} | SL movido a BE: <code>${new_sl:,.{dec}f}</code>\n"
+                    f"💰 Parcial: <b>{pnl_pct:+.2f}%</b>"
+                )
+        else:  # SHORT
+            pnl_pct = (entry - price) / entry * 100
+            if price >= sl:
+                tracker.update_trade_status(t["id"], "LOST")
+                send_telegram(
+                    f"🛑 <b>COMMODITY SL HIT: {key}</b>\n"
+                    f"{side} @ ${entry:,.{dec}f}\n"
+                    f"Precio: <code>${price:,.{dec}f}</code> ≥ SL <code>${sl:,.{dec}f}</code>\n"
+                    f"💸 PnL: <b>{pnl_pct:+.2f}%</b>"
+                )
+            elif tp2 and price <= tp2:
+                tracker.update_trade_status(t["id"], "FULL_WON")
+                send_telegram(
+                    f"🟢 <b>COMMODITY TP2 HIT: {key}</b>\n"
+                    f"{side} @ ${entry:,.{dec}f}\n"
+                    f"Precio: <code>${price:,.{dec}f}</code>\n"
+                    f"💰 PnL: <b>{pnl_pct:+.2f}%</b>"
+                )
+            elif tp1 and price <= tp1 and t["status"] == "OPEN":
+                tracker.update_trade_status(t["id"], "PARTIAL_WON")
+                new_sl = entry
+                tracker.update_sl(t["id"], new_sl)
+                send_telegram(
+                    f"🎯 <b>COMMODITY TP1 HIT: {key}</b>\n"
+                    f"{side} | SL movido a BE: <code>${new_sl:,.{dec}f}</code>\n"
+                    f"💰 Parcial: <b>{pnl_pct:+.2f}%</b>"
+                )
+
+
 # --- Core Analysis ---
 def analyze_commodity(key: str, inst: dict):
     yf_ticker = inst["yf"]
@@ -331,6 +411,7 @@ def run_commodities_bot():
 
             for key, inst in INSTRUMENTS.items():
                 try:
+                    _monitor_open_commodity(key, inst)
                     analyze_commodity(key, inst)
                 except Exception as e:
                     logger.error("Commodities %s error: %s", key, e, exc_info=True)

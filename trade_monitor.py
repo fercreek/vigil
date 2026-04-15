@@ -20,6 +20,10 @@ def monitor_open_trades(prices: dict):
     open_trades = tracker.get_open_trades()
     for t in open_trades:
         sym = t["symbol"]
+        # COMMODITY trades use yfinance futures prices (GC=F, CLM26) — not the
+        # crypto price cache.  commodities_bot.py handles its own SL/TP checks.
+        if t.get("version") == "COMMODITY":
+            continue
         if sym not in prices:
             continue
         curr_p, tipo, reply = prices[sym], t["type"], t["msg_id"]
