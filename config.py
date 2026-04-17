@@ -188,8 +188,8 @@ VERSIONS = ["V1-TECH", "V2-AI", "V4-EMA", "V5-MOMENTUM"]
 # ── Phase 2: Market Intelligence ─────────────────────────────────────────────
 FUNDING_EXTREME_LONG  = 0.0005   # 0.05% — ccxt devuelve decimal (longs crowded)
 FUNDING_EXTREME_SHORT = -0.0005  # -0.05% (shorts crowded)
-ADX_TRENDING_THRESHOLD = 25      # ADX > 25 = trending
-BB_WIDTH_RANGING_PCT   = 0.02    # BB width < 2% = ranging (bajo edge)
+ADX_TRENDING_THRESHOLD = 20      # ADX > 25 = trending
+BB_WIDTH_RANGING_PCT   = 0.015    # BB width < 2% = ranging (bajo edge)
 ATR_VOLATILE_PERCENTILE = 80     # ATR > percentil 80 = volatile
 REGIME_CACHE_TTL       = 900     # 15 min cache por simbolo
 FUNDING_CACHE_TTL      = 300     # 5 min cache

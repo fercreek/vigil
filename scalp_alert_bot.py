@@ -500,10 +500,10 @@ def get_prices() -> dict:
                     macro_vals[key] = GLOBAL_CACHE["macro_metrics"].get(key, 0.0)
             _yf_pool.shutdown(wait=False)
 
-            spy_p = macro_vals["spy"]
-            oil_p = macro_vals["oil"]
-            nvda_p = macro_vals["nvda"]
-            pltr_p = macro_vals["pltr"]
+            spy_p  = macro_vals.get("spy",  GLOBAL_CACHE["macro_metrics"].get("spy", 0.0))
+            oil_p  = macro_vals.get("oil",  GLOBAL_CACHE["macro_metrics"].get("oil", 0.0))
+            nvda_p = macro_vals.get("nvda", GLOBAL_CACHE["macro_metrics"].get("nvda", 0.0))
+            pltr_p = macro_vals.get("pltr", GLOBAL_CACHE["macro_metrics"].get("pltr", 0.0))
 
             # DXY + VIX (indicadores clave para clasificar trades como RAPIDA/SWING)
             dxy_p, vix_p = indicators.get_dxy_vix()
@@ -546,7 +546,13 @@ def get_prices() -> dict:
                     "elliott": vals[7], "poc": vals[8], "macro": macro
                 }
                 GLOBAL_CACHE["last_update"]["indicators"][sym] = now
-                
+                try:
+                    _df_rvol = indicators.get_df(sym, '15m', limit=50)
+                    if _df_rvol is not None and len(_df_rvol) >= 24:
+                        GLOBAL_CACHE["indicators"][sym]["rvol"] = indicators.calculate_rvol(_df_rvol, period=24)
+                except Exception:
+                    pass
+
                 # V15: Real Shadow Intel — Reportar POC al sidebar
                 if vals[8] > 0:
                     add_shadow_intel(sym, f"POC detectado en ${vals[8]:,.2f}. Zona de interés institucional.")
@@ -565,6 +571,7 @@ def get_prices() -> dict:
         res[f"{sym}_MACRO"] = ind.get("macro", {"consensus": "NEUTRAL", "1H": "UNKNOWN", "4H": "UNKNOWN"})
         res[f"{sym}_ELLIOTT"] = ind.get("elliott", "")
         res[f"{sym}_POC"] = ind.get("poc", 0.0)
+        res[f"{sym}_RVOL"] = ind.get("rvol", 1.0)
 
     return res
 
@@ -694,9 +701,10 @@ def main():
                 
                 # check_user_queries ahora se ejecuta en su propio hilo (run_telegram_worker)
                 
-                # Insights Horarios: AMBAS PERSONALIDADES (cada 3600 segundos)
+                # Insights Horarios: AMBAS PERSONALIDADES (cada 7200 segundos — 2h para reducir costo Gemini)
                 now = time.time()
-                if now - last_insight_time > 3600:
+                _hora_panorama = datetime.now().hour
+                if now - last_insight_time > 7200 and not (1 <= _hora_panorama < 8):
                     # V3.4: Actualizamos el tiempo ANTES para evitar bucles si falla la IA o Telegram
                     last_insight_time = now 
                     print("[Robot] Generando panorama horario...")
@@ -724,14 +732,14 @@ def main():
                 import episode_memory as _ep_mem
                 _ep_mem.check_pending_outcomes(prices)
 
-                # --- SALMOS PROPHECY (Cada 30 Minutos — suprimida en horario muerto 01-07h) ---
+                # --- SALMOS PROPHECY (Cada 60 Minutos — suprimida en horario muerto 01-08h) ---
                 _hora = datetime.now().hour
-                if now - last_salmos_time > 1800 and not (1 <= _hora < 7):
+                if now - last_salmos_time > 3600 and not (1 <= _hora < 8):
                     last_salmos_time = now
                     trigger_salmos_prophecy(prices)
                 
-                # --- SENTINEL REPORT (ZEC + TAO — Cada 1 Hora, solo si NO hay posición abierta) ---
-                if now - last_zec_sentinel_time > 3600:
+                # --- SENTINEL REPORT (ZEC + TAO — Cada 2 Horas, solo si NO hay posición abierta) ---
+                if now - last_zec_sentinel_time > 7200:
                     last_zec_sentinel_time = now
                     macro = GLOBAL_CACHE["macro_metrics"]
                     import tracker as _tracker

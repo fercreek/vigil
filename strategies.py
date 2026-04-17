@@ -445,7 +445,7 @@ def check_strategies(prices: dict):
         # v2.1: BB touch ahora es bonus en confluencia, no hard gate
         # ═══════════════════════════════════════════════════════════════════
         elif phase == "LONG" and p > ema_200 and regime in ("TRENDING_UP", "VOLATILE"):
-            entry_rsi = 48.0 if sym == "ZEC" else 45.0  # was 42
+            entry_rsi = 49.0 if sym == "ZEC" else 47.0  # was 45/48 — widen net during ranging
             if rsi <= entry_rsi:
                 if rsi < prev_rsi:
                     continue
@@ -703,13 +703,17 @@ def check_strategies(prices: dict):
         # Más activo que V1 (no requiere RSI < 45): opera en mercados normales.
         # Confluencia mínima: 3 (vs 4 de V1). Cooldown: 20 min.
         # ═══════════════════════════════════════════════════════════════════
-        from config import V5_MOMENTUM_MIN_CONF, V5_MOMENTUM_COOLDOWN
+        from config import V5_MOMENTUM_MIN_CONF, V5_MOMENTUM_COOLDOWN, V5_MOMENTUM_RVOL_MIN
         if (phase == "LONG" and p > ema_200 and not _fomc_suppressed and
                 regime != "RANGING" and
                 prev_rsi < 50.0 <= rsi):
             if is_position_open(sym, "LONG"):
                 print(f"⏸️ [Position Guard] {sym} LONG (V5-MOMENTUM) ya abierto")
             else:
+                _v5_rvol = prices.get(f"{sym}_RVOL", 1.0)
+                if _v5_rvol < V5_MOMENTUM_RVOL_MIN:
+                    print(f"⏩ [V5-MOMENTUM] {sym} RVOL {_v5_rvol:.2f} < {V5_MOMENTUM_RVOL_MIN} — skip")
+                    continue
                 side = "LONG"
                 funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
                 conf_score = calculate_confluence_score(
@@ -726,8 +730,7 @@ def check_strategies(prices: dict):
                     trade_label = "⚡ RAPIDA" if trade_type == "RAPIDA" else "📈 SWING"
 
                     # Volume confirmation (informativo, no bloquea)
-                    current_vol = prices.get(f"{sym}_VOL", 0.0)
-                    rvol = (current_vol / vol_sma) if (vol_sma and vol_sma > 0) else 1.0
+                    rvol = prices.get(f"{sym}_RVOL", 1.0)
                     vol_confirm = f"🔥 VOLUMEN CONFIRMADO ({rvol:.1f}x)" if rvol >= 1.2 else f"↔️ Vol normal ({rvol:.1f}x)"
 
                     sl_dist = max(atr * 2.0, p * 0.007)

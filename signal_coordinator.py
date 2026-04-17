@@ -11,7 +11,7 @@ from typing import Callable
 
 log = logging.getLogger(__name__)
 
-WINDOW_SECS = 300  # 5-min collection window before resolving
+WINDOW_SECS = 120  # 5-min collection window before resolving
 
 ACTIONABLE = {"LONG", "SHORT"}
 NEUTRAL = {"ESPERAR", "ACUMULAR", "REDUCIR"}
