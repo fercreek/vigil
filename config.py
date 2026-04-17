@@ -15,9 +15,13 @@ MACRO_WATCH = []  # Todos los símbolos ahora son operables
 # Confirmar y ajustar al precio real de apertura antes de operar.
 STOCK_WATCHLIST = [
     # ── Tu lista personal ─────────────────────────────────────────────────────
-    {"ticker": "TSLA",  "yf_ticker": "TSLA",  "direction": "SHORT",
-     "entry": 335.65, "stop_loss": 359.87, "take_profit_1": 302.0, "take_profit_2": 276.0, "take_profit_3": 217.0, "break_even": 320.0,
-     "context": "PTS 13-Abr-2026. TSLA SWING-POSICIONAL BAJISTA. La más débil de las 7 Magníficas. Activar sólo cuando alcance entrada. GR -2.4%. 1 acción/$2k."},
+    {"ticker": "TSLA",  "yf_ticker": "TSLA",  "direction": "LONG",
+     "entry": 400.62, "stop_loss": 367.55, "take_profit_1": 441.96, "take_profit_2": 475.03, "break_even": 421.0,
+     "context": "Actualizado 17-Abr-2026. Setup SHORT Apr-13 ($335.65) invalidado — precio en $400. Nuevo monitoreo LONG ATR-based. Esperar pullback a zona 375-390 para entrar. Setup original era bajista pero recuperó fuerza."},
+
+    {"ticker": "NVDA",  "yf_ticker": "NVDA",  "direction": "LONG",
+     "entry": 201.68, "stop_loss": 193.36, "take_profit_1": 212.07, "take_profit_2": 220.39, "break_even": 207.0,
+     "context": "Agregado 17-Abr-2026. NVIDIA LONG. Precio en máximo 5d ($201.70). ATR ~$4.16. R:R 1.3:1. También usado como indicador macro en scalp_bot. Esperar pullback a zona $193-196 para mejor entrada. AI infrastructure play."},
 
     {"ticker": "PLTR",  "yf_ticker": "PLTR",  "direction": "LONG",
      "entry": 150.07, "stop_loss": 135.79, "take_profit_1": 178.62, "break_even": 164.35,
