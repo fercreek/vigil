@@ -181,6 +181,19 @@ def analyze_symbol(symbol: str):
         print(f"    ⏸️  Ya hay swing abierto para {sym} — omitiendo")
         return
 
+    # 0b. Consecutive-loss guard — pausa 24h tras 2 pérdidas seguidas en el mismo símbolo
+    # Previene entrar en downtrend sostenido (p.ej. ZEC Apr 10-15)
+    _recent = tracker.get_recent_closed_trades_by_symbol(sym, limit=4, strategy="SWING")
+    _consec_losses = 0
+    for _t in _recent:
+        if _t["status"] == "LOST":
+            _consec_losses += 1
+        else:
+            break  # si encontramos un win, la racha termina
+    if _consec_losses >= 2:
+        print(f"    ⏸️  [{sym}] {_consec_losses} pérdidas SWING consecutivas — cooldown 24h activo")
+        return
+
     # 1. Datos OHLCV
     ohlcv = binance.fetch_ohlcv(symbol, timeframe=TIMEFRAME, limit=300)
     df    = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
@@ -214,7 +227,19 @@ def analyze_symbol(symbol: str):
     ai_bias   = ai_report.get("bias", "NEUTRAL")
     analysis  = ai_report.get("analysis", "Sin análisis disponible.")
 
-    print(f"    Kumo: {kumo_status} | AI Bias: {ai_bias} | ATR: {atr:.2f}")
+    # 4b. EMA50 trend filter — solo entrar con la tendencia de medio plazo (4H)
+    # Detectado en análisis de 77 trades: todas las pérdidas post-Apr-9 ocurrieron
+    # cuando ZEC estaba bajando. EMA50 en 4H actúa como filtro de tendencia sostenida.
+    _ema50_4h = float(df["close"].ewm(span=50, adjust=False).mean().iloc[-1])
+    _entry_side = "LONG" if ai_bias == "BULL" else "SHORT"
+    if _entry_side == "LONG" and price < _ema50_4h:
+        print(f"    ⏩ [EMA50 Trend] {sym} ${price:.2f} < EMA50-4H ${_ema50_4h:.2f} — downtrend, skip")
+        return
+    if _entry_side == "SHORT" and price > _ema50_4h:
+        print(f"    ⏩ [EMA50 Trend] {sym} ${price:.2f} > EMA50-4H ${_ema50_4h:.2f} — uptrend, skip SHORT")
+        return
+
+    print(f"    Kumo: {kumo_status} | AI Bias: {ai_bias} | ATR: {atr:.2f} | EMA50: ${_ema50_4h:.2f} ✅")
 
     # 5. Consenso: técnico + IA deben coincidir, no NEUTRAL
     if ai_bias != kumo_status or ai_bias == "NEUTRAL":

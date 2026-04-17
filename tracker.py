@@ -451,5 +451,63 @@ def get_recent_outcomes(n: int = 10) -> list:
     return results
 
 
+def get_recent_closed_trades_by_symbol(sym: str, limit: int = 5, strategy: str = None) -> list:
+    """
+    Retorna los últimos N trades cerrados de un símbolo específico.
+    Útil para detectar racha de pérdidas y aplicar cooldown automático.
+    strategy: filtrar por strategy_version (e.g. "SWING", "V1-TECH")
+    """
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    if strategy:
+        c.execute('''
+            SELECT id, symbol, status, open_time, close_time, strategy_version
+            FROM trades
+            WHERE symbol = ? AND strategy_version = ?
+              AND status IN ('WON', 'FULL_WON', 'LOST', 'PARTIAL_WON', 'PARTIAL_CLOSED')
+            ORDER BY id DESC LIMIT ?
+        ''', (sym, strategy, limit))
+    else:
+        c.execute('''
+            SELECT id, symbol, status, open_time, close_time, strategy_version
+            FROM trades
+            WHERE symbol = ?
+              AND status IN ('WON', 'FULL_WON', 'LOST', 'PARTIAL_WON', 'PARTIAL_CLOSED')
+            ORDER BY id DESC LIMIT ?
+        ''', (sym, limit))
+    rows = c.fetchall()
+    conn.close()
+    return [
+        {"id": r[0], "symbol": r[1], "status": r[2],
+         "open_time": r[3], "close_time": r[4], "version": r[5]}
+        for r in rows
+    ]
+
+
+def get_today_trade_count(sym: str, strategy: str = None) -> int:
+    """
+    Cuenta trades abiertos HOY para un símbolo (sin importar si ganaron o perdieron).
+    Útil para limitar max trades por día por símbolo.
+    """
+    from datetime import date
+    today = date.today().isoformat()  # "2026-04-17"
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    if strategy:
+        c.execute('''
+            SELECT COUNT(*) FROM trades
+            WHERE symbol = ? AND strategy_version = ?
+              AND open_time LIKE ?
+        ''', (sym, strategy, f"{today}%"))
+    else:
+        c.execute('''
+            SELECT COUNT(*) FROM trades
+            WHERE symbol = ? AND open_time LIKE ?
+        ''', (sym, f"{today}%"))
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
 # Inicializar BD al cargar el módulo
 init_db()

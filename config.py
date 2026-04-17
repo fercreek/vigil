@@ -189,6 +189,29 @@ V5_MOMENTUM_RVOL_MIN   = 1.2    # Volume ratio mínimo para confirmar momentum
 # ── Versiones de estrategia ───────────────────────────────────────────────────
 VERSIONS = ["V1-TECH", "V2-AI", "V4-EMA", "V5-MOMENTUM"]
 
+# ── Iteración del sistema (actualizar en cada mejora significativa) ───────────
+# Formato: v{major}.{minor} — major sube cuando cambia la lógica core
+# Minor sube cuando se ajustan parámetros o se agregan filtros
+STRATEGY_ITERATION = "v4.2"  # Apr 17 2026: EMA50 trend + consecutive-loss guard + SIM D2 hour filter
+
+# ── Win Rate Target (matemática real, no wishful thinking) ──────────────────
+# Fórmula break-even: WR_min = 1 / (1 + R:R)
+#   R:R 1.2 → WR_min = 45.5%  |  R:R 1.5 → WR_min = 40.0%  |  R:R 2.0 → WR_min = 33.3%
+#
+# Targets por categoría (industria, swing 4H crypto):
+#   Funcional:     40-50%  — rentable si R:R ≥ 1.5
+#   Profesional:   55-62%  — target real sostenible para retail algo
+#   Elite:         65-70%  — con tendencia fuerte + filtros avanzados
+#   Overfitting:   >75%    — casi seguro curve-fitted en <200 trades
+#
+# Target v4.2: 60-65% WR  |  R:R objetivo: 1.5:1  |  Half-Kelly bet: ~11%
+WR_TARGET_MIN   = 0.55   # mínimo aceptable para seguir operando el símbolo
+WR_TARGET_IDEAL = 0.62   # objetivo sostenible — re-evaluar cada 50 trades
+
+# ── Swing strategy hardening params ──────────────────────────────────────────
+SWING_CONSEC_LOSS_PAUSE = 2   # Pausar símbolo tras N pérdidas SWING consecutivas
+SWING_EMA50_TREND_FILTER = True  # Only enter with EMA50 direction (4H)
+
 # ── Phase 2: Market Intelligence ─────────────────────────────────────────────
 FUNDING_EXTREME_LONG  = 0.0005   # 0.05% — ccxt devuelve decimal (longs crowded)
 FUNDING_EXTREME_SHORT = -0.0005  # -0.05% (shorts crowded)
