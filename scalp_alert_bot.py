@@ -36,7 +36,7 @@ GLOBAL_CACHE = {
     "prices": {},
     "indicators": {},
     "global_metrics": {"usdt_d": 8.08, "btc_d": 52.0},
-    "macro_metrics": {"spy": 0.0, "oil": 0.0, "nvda": 0.0, "pltr": 0.0, "dxy": 0.0, "vix": 0.0},
+    "macro_metrics": {"spy": 0.0, "oil": 0.0, "nvda": 0.0, "pltr": 0.0, "tlt": 0.0, "hyg": 0.0, "dxy": 0.0, "vix": 0.0},
     "last_update": {
         "prices": 0,
         "indicators": {},
@@ -484,7 +484,15 @@ def get_prices() -> dict:
             import math
             from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
             # S&P 500, Petróleo, Nvidia y Palantir — descargar individualmente para evitar MultiIndex
-            macro_symbols = {"SPY": "spy", "CL=F": "oil", "NVDA": "nvda", "PLTR": "pltr"}
+            # SPY, OIL, NVDA, PLTR + iShares BlackRock ETFs (TLT=safe haven, HYG=risk appetite)
+            macro_symbols = {
+                "SPY":   "spy",
+                "CL=F":  "oil",
+                "NVDA":  "nvda",
+                "PLTR":  "pltr",
+                "TLT":   "tlt",   # iShares 20yr Treasury — TLT↑ = risk-off
+                "HYG":   "hyg",   # iShares High Yield — HYG↑ = risk-on
+            }
             macro_vals = {}
             _yf_pool = ThreadPoolExecutor(max_workers=1)
             for yf_sym, key in macro_symbols.items():
@@ -504,21 +512,33 @@ def get_prices() -> dict:
             oil_p  = macro_vals.get("oil",  GLOBAL_CACHE["macro_metrics"].get("oil", 0.0))
             nvda_p = macro_vals.get("nvda", GLOBAL_CACHE["macro_metrics"].get("nvda", 0.0))
             pltr_p = macro_vals.get("pltr", GLOBAL_CACHE["macro_metrics"].get("pltr", 0.0))
+            tlt_p  = macro_vals.get("tlt",  GLOBAL_CACHE["macro_metrics"].get("tlt", 0.0))
+            hyg_p  = macro_vals.get("hyg",  GLOBAL_CACHE["macro_metrics"].get("hyg", 0.0))
 
             # DXY + VIX (indicadores clave para clasificar trades como RAPIDA/SWING)
             dxy_p, vix_p = indicators.get_dxy_vix()
+
+            # BlackRock iShares bias (risk-on/off) — actualiza score en cache
+            try:
+                import blackrock_intel as _bri
+                _ishares_bias = _bri.get_ishares_bias_score()
+            except Exception:
+                _ishares_bias = 0
 
             from config import OIL_INFLATION_THRESHOLD
             _oil_pressure = float(oil_p) > OIL_INFLATION_THRESHOLD
             GLOBAL_CACHE["macro_metrics"] = {
                 "spy": float(spy_p), "oil": float(oil_p),
                 "nvda": float(nvda_p), "pltr": float(pltr_p),
+                "tlt": float(tlt_p), "hyg": float(hyg_p),
+                "ishares_bias": _ishares_bias,  # +1 risk-on | 0 neutral | -1 risk-off
                 "dxy": dxy_p, "vix": vix_p,
                 "oil_inflation_pressure": _oil_pressure,
             }
             GLOBAL_CACHE["last_update"]["macro_metrics"] = now
             _oil_tag = " | ⛽ OIL INFLATION PRESSURE" if _oil_pressure else ""
-            print(f"🌍 [Macro Update] SPY: ${spy_p:.2f} | DXY: {dxy_p:.2f} | VIX: {vix_p:.1f}{_oil_tag}")
+            _ishares_tag = f" | TLT: ${tlt_p:.2f} | HYG: ${hyg_p:.2f} | BRI: {'+1 RISK_ON' if _ishares_bias > 0 else ('-1 RISK_OFF' if _ishares_bias < 0 else '0 NEUTRAL')}"
+            print(f"🌍 [Macro Update] SPY: ${spy_p:.2f} | DXY: {dxy_p:.2f} | VIX: {vix_p:.1f}{_oil_tag}{_ishares_tag}")
         except Exception as e:
             print(f"⚠️ Error Macro (Yahoo): {e}")
 

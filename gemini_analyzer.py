@@ -776,16 +776,38 @@ def get_weekly_bias(symbol: str, prices: dict) -> dict:
     btc_p = prices.get("BTC", 0)
     spy_p = prices.get("SPY", 0)
 
+    # BlackRock iShares signals — risk-on/off desde los ETF más grandes del mundo
+    _bri_bias = "NEUTRAL"
+    _bri_summary = ""
+    try:
+        import blackrock_intel as _bri
+        _ishares = _bri.get_ishares_signals()
+        _bri_bias = _ishares.get("macro_bias", "NEUTRAL")
+        _bri_summary = _ishares.get("summary", "")
+    except Exception:
+        pass
+
+    # BII Weekly Commentary — perspectiva del asset manager más grande del mundo (1x/día)
+    _bii_context = ""
+    try:
+        import blackrock_intel as _bri
+        _bii_context = _bri.get_bii_summary()
+    except Exception:
+        pass
+
     prompt = (f"REPORTE SEMANAL PARA {symbol} ({ts}):\n"
               f"- Precio Actual: ${(p or 0.0):,.2f} | RSI (H4): {(rsi or 0.0):.1f}\n"
               f"- EMA 200 (H4): ${(ema or 0.0):,.2f} | Dominancia USDT: {usdt_d}%\n"
               f"- DXY (dólar índex): {dxy:.2f} | VIX (miedo mercado): {vix:.1f}\n"
               f"- BTC precio referencia: ${(btc_p or 0):,.0f} | SPY: ${(spy_p or 0):,.2f}\n"
-              f"- Contexto macro FOMC: {FOMC_CONTEXT}\n\n"
-              f"Con base en TODOS los datos anteriores (técnicos + macro), "
+              f"- Contexto macro FOMC: {FOMC_CONTEXT}\n"
+              f"- BlackRock iShares ETF bias: {_bri_bias} ({_bri_summary})\n"
+              + (f"- {_bii_context[:600]}\n" if _bii_context else "")
+              + f"\nCon base en TODOS los datos anteriores (técnicos + macro + BlackRock), "
               f"determina el Bias para los próximos 7 días.\n"
               f"Considera especialmente: VIX > 20 = reducir exposición LONG; "
-              f"DXY > 103 = presión bajista cripto; BTC dominancia trend.\n"
+              f"DXY > 103 = presión bajista cripto; BTC dominancia trend; "
+              f"iShares RISK_OFF = reducir longs.\n"
               f"Tu respuesta DEBE incluir al final una línea con: 'BIAS: [BULL/BEAR/ACCUMULATION]'.")
     
     # Claude Haiku para BIAS semanal — el "BIAS: BULL/BEAR/ACCUMULATION" requiere seguimiento exacto
