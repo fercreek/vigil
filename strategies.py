@@ -205,6 +205,14 @@ def check_strategies(prices: dict):
     if not prices:
         return
 
+    # Hour filter — basado en análisis de 77 trades reales (WR 0% confirmado por hora)
+    # SIM D2: bloquear 1,4,6,10,11,14,15,16,17,20 UTC → WR histórico 50.0% (12W/12L/24T)
+    _utc_hour = datetime.utcnow().hour
+    _BLOCKED_HOURS = {1, 4, 6, 10, 11, 14, 15, 16, 17, 20}
+    if _utc_hour in _BLOCKED_HOURS:
+        print(f"⏸️ [HourFilter] {_utc_hour:02d}:xx UTC — 0% WR histórico, entradas bloqueadas")
+        return
+
     # ── Circuit Breaker Gate ─────────────────────────────────────────────
     can_trade, cb_reason, cb_multiplier = circuit_breaker.can_trade()
     if not can_trade:
@@ -227,6 +235,9 @@ def check_strategies(prices: dict):
     except Exception:
         funding_data = {}
     for sym in _SYMBOLS:
+        from config import TAO_TRADING_ENABLED
+        if sym == "TAO" and not TAO_TRADING_ENABLED:
+            continue  # TAO disabled: 0% WR in 28 trades — re-enable when fixed
         p = prices.get(sym, 0.0)
         rsi = prices.get(f"{sym}_RSI", 50.0)
 
@@ -327,7 +338,10 @@ def check_strategies(prices: dict):
         # Filtros: RSI >= 55, EMA200 declining, regime TRENDING_DOWN/VOLATILE
         # Risk SHORT: RAPIDA forzado (max 0.75% via risk_manager)
         # ═══════════════════════════════════════════════════════════════════
-        if p < ema_200 and regime in SHORT_REGIMES and not _fomc_suppressed:
+        from config import V1_SHORT_ENABLED
+        if not V1_SHORT_ENABLED:
+            pass  # V1-SHORT disabled — 0% WR in 16 trades — re-enable when fixed
+        elif p < ema_200 and regime in SHORT_REGIMES and not _fomc_suppressed:
             short_rsi = RSI_SHORT_ENTRY  # 55.0 (was 62)
             if rsi >= short_rsi and rsi < prev_rsi:  # RSI falling = confirma presión bajista
                 if is_position_open(sym, "SHORT"):

@@ -117,6 +117,10 @@ ATR_TP3_MULT        = 7.0    # TP3 = 7:1 R:R (moonshot, V2-AI)
 ATR_MIN_SL_PCT      = 0.007  # SL mínimo: 0.7% del precio (evita SL muy ajustados)
 ATR_MIN_SL_REVERSAL = 0.010  # SL mínimo para reversals (wider = less noise stops)
 
+# --- STRATEGY KILL SWITCHES (basado en análisis win rate 76 trades) ---
+V1_SHORT_ENABLED     = False   # 0% WR en 16 trades — disabled Apr 2026
+TAO_TRADING_ENABLED  = False   # 0% WR en 28 trades — disabled Apr 2026
+
 # ── Confluence Score ──────────────────────────────────────────────────────────
 MIN_CONFLUENCE_SCORE = 4     # Score mínimo para disparar alerta
 USDT_D_THRESHOLD    = 8.05   # Por encima: condición bajista para cripto

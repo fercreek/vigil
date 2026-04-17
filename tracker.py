@@ -185,20 +185,21 @@ def get_open_trades():
     c = conn.cursor()
     c.execute('''
         SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, strategy_version,
-               rsi_entry, bb_status, atr, elliott_wave, conf_score
-        FROM trades 
+               rsi_entry, bb_status, atr, elliott_wave, conf_score, open_time
+        FROM trades
         WHERE status IN ('OPEN', 'PARTIAL_WON')
     ''')
     trades = c.fetchall()
     conn.close()
-    
+
     result = []
     for t in trades:
         result.append({
-            "id": t[0], "symbol": t[1], "type": t[2], 
-            "entry_price": t[3], "tp1_price": t[4], "tp2_price": t[5], 
+            "id": t[0], "symbol": t[1], "type": t[2],
+            "entry_price": t[3], "tp1_price": t[4], "tp2_price": t[5],
             "sl_price": t[6], "status": t[7], "msg_id": t[8], "version": t[9],
-            "rsi_entry": t[10], "bb_status": t[11], "atr": t[12], "elliott": t[13], "conf_score": t[14]
+            "rsi_entry": t[10], "bb_status": t[11], "atr": t[12], "elliott": t[13], "conf_score": t[14],
+            "open_time": t[15] or ""
         })
     return result
 
