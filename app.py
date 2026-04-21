@@ -4,6 +4,7 @@ import scalp_alert_bot
 import ai_budget
 from datetime import datetime, timedelta
 import time
+from webhook_security import require_tv_auth
 
 try:
     import analysis_science
@@ -415,9 +416,17 @@ def get_shadow_intel():
         return jsonify([])
 
 @app.route('/webhook/tradingview', methods=['POST'])
+@app.route('/webhook/tradingview/<token>', methods=['POST'])
+@require_tv_auth
 def tradingview_webhook():
     """
     Recibe alertas del Pine Script de TradingView como señal adicional.
+
+    Auth (via @require_tv_auth):
+      - HMAC SHA256 header `X-TV-Signature` (TV_WEBHOOK_SECRET)
+      - O token en path `/webhook/tradingview/<TV_WEBHOOK_TOKEN>`
+      - Rate limit TV_RATE_LIMIT_PER_MIN/min por IP
+      - Idempotency hash(payload+minuto)
 
     Payload JSON esperado:
     {
