@@ -1,5 +1,16 @@
 # CLAUDE.md — Scalp Bot / Zenith Trading Suite
 
+## Meta-contexto: Cortex Consejo
+
+Este proyecto vive bajo el marco operativo personal de Fernando documentado en `~/Documents/context/CLAUDE.md` sección 11 y en el plugin `~/.claude/plugins/cortex-consejo/`. Para decisiones estratégicas del bot (agregar sector, cambiar thresholds, abrir nueva cuenta, matar feature), usar `/consejo [decisión]` antes de ejecutar. Cuadrilla Zenith en `gemini_analyzer.py` es la **prueba validada** del patrón multi-voz que inspiró el plugin.
+
+Axiomas que aplican también al bot:
+- **Sabiduría > instinto** — el bot ya implementa esto con filtros (no tomar señal solo por RSI; requiere confluencia).
+- **Su suerte no está donde usted trabaja** (frase ancla Odi Sa) — si TAO lleva 0% win rate, validar si seguir ahí es el esfuerzo correcto.
+- **Hacer negocio solo** (Ojuani Tanshela) — ejecutar con cuenta propia, no partnerships de trading.
+
+---
+
 ## Contexto del Proyecto
 
 Bot de alertas de trading (Python/Flask) enfocado en cripto (BTC, ETH, TAO) con análisis técnico, integración con Gemini AI, y ejecución en Binance. Genera alertas con confluencia técnica múltiple (RSI, BB, EMA 200, Elliott Waves).

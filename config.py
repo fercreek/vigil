@@ -77,6 +77,15 @@ STOCK_WATCHLIST = [
      "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
      "context": "PTS 14-Abr-2026. Microsoft. Candidata a rebote rápido si SP500 continúa arriba. Niveles pendientes próximo reporte."},
 
+    # ── PTS Report 9-Abr-2026 (Operaciones Defensivas) ───────────────────────
+    {"ticker": "XOM",   "yf_ticker": "XOM",   "direction": "LONG",
+     "entry": 162.49, "stop_loss": 149.60, "take_profit_1": 185.0, "take_profit_2": 205.0, "take_profit_3": 227.0, "break_even": 176.0,
+     "context": "PTS 9-Abr-2026. ExxonMobil DEFENSIVA SWING. Sector energía, correlación inversa al mercado tech. GR -1%. 1 acción/$1k. Options: BUY CALL 18-Sep-2026 Strike 165."},
+
+    {"ticker": "MOO",   "yf_ticker": "MOO",   "direction": "LONG",
+     "entry": 87.64,  "stop_loss": 83.39,  "take_profit_1": 95.0,  "take_profit_2": 98.0,  "take_profit_3": 109.0, "break_even": 90.0,
+     "context": "PTS 9-Abr-2026. VanEck Agribusiness ETF DEFENSIVA SWING. Sector agrícola, descorrelacionado de tech. GR -1%. 3 acciones/$1k. Options: BUY CALL 21-Ago-2026 Strike 88."},
+
     # ── Ideas del live BitLobo 9-Abr-2026 ────────────────────────────────────
     {"ticker": "CRCL",  "yf_ticker": "CRCL",  "direction": "LONG",
      "entry": 83.53, "stop_loss": 60.75, "take_profit_1": 145.67, "take_profit_2": 174.51, "break_even": 105.0,
@@ -196,7 +205,7 @@ VERSIONS = ["V1-TECH", "V2-AI", "V4-EMA", "V5-MOMENTUM"]
 # ── Iteración del sistema (actualizar en cada mejora significativa) ───────────
 # Formato: v{major}.{minor} — major sube cuando cambia la lógica core
 # Minor sube cuando se ajustan parámetros o se agregan filtros
-STRATEGY_ITERATION = "v4.2"  # Apr 17 2026: EMA50 trend + consecutive-loss guard + SIM D2 hour filter
+STRATEGY_ITERATION = "v4.3"  # Apr 19 2026: +XOM +MOO watchlist (PTS 9-Abr defensivas)
 
 # ── Win Rate Target (matemática real, no wishful thinking) ──────────────────
 # Fórmula break-even: WR_min = 1 / (1 + R:R)
@@ -233,3 +242,9 @@ LEVERAGE_DEFAULT = 5       # Normal
 LEVERAGE_MAX = 7           # Low vol + TRENDING
 MAX_CONCURRENT_POSITIONS = 3       # Maximo 3 posiciones simultaneas
 MAX_PORTFOLIO_EXPOSURE = 3.0       # Exposure < 3x balance
+
+# ── Webhook TradingView: auth + rate limit ───────────────────────────────────
+# Los valores reales viven en .env (TV_WEBHOOK_SECRET, TV_WEBHOOK_TOKEN,
+# ENFORCE_HMAC, TV_RATE_LIMIT_PER_MIN). Ver webhook_security.py.
+# ENFORCE_HMAC=false default (canary) — activar tras validar Pine firma OK.
+TV_RATE_LIMIT_PER_MIN_DEFAULT = 10

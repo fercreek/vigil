@@ -351,7 +351,7 @@ def analyze_commodity(key: str, inst: dict):
         f"{inst['name']}\n\n"
         f"<b>ESTRATEGIA</b>: Conservadora 1H\n"
         f"<b>Confluencia</b>: {score}/5 ({strength})\n"
-        f"  EMA50 {'>' if ema50 > ema200 else '<'} EMA200\n"
+        f"  EMA50 {'&gt;' if ema50 > ema200 else '&lt;'} EMA200\n"
         f"  RSI: {rsi:.1f}\n"
         f"  DXY: {dxy:.2f}\n"
         f"  ATR: ${atr:,.2f}\n\n"

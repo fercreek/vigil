@@ -1,0 +1,280 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Zenith Suite v4.3 — Multi-Strategy Signal Engine
+// V1-TECH · V4-EMA Bounce · V5-Momentum · Extreme Reversal · PTS Fibonacci
+// ═══════════════════════════════════════════════════════════════════════════
+//@version=5
+indicator("Zenith v4.3 — Signal Engine", overlay=true, max_labels_count=200, max_lines_count=100)
+
+// ─── INPUTS ──────────────────────────────────────────────────────────────────
+g_rsi  = "RSI"
+rsi_len   = input.int(14,   "Period",          group=g_rsi)
+rsi_long  = input.float(45, "Long Entry",      group=g_rsi)
+rsi_short = input.float(55, "Short Entry",     group=g_rsi)
+rsi_xl    = input.float(30, "Extreme Long",    group=g_rsi)
+rsi_xs    = input.float(70, "Extreme Short",   group=g_rsi)
+
+g_ema  = "EMA"
+ema_fast = input.int(50,  "EMA Fast", group=g_ema)
+ema_slow = input.int(200, "EMA Slow", group=g_ema)
+
+g_risk = "ATR / Risk"
+atr_len  = input.int(14,   "ATR Period",    group=g_risk)
+sl_mult  = input.float(2.0, "SL x ATR",    group=g_risk)
+tp1_mult = input.float(2.0, "TP1 x ATR",   group=g_risk)
+tp2_mult = input.float(3.5, "TP2 x ATR",   group=g_risk)
+tp3_mult = input.float(7.0, "TP3 x ATR",   group=g_risk)
+
+g_v4   = "V4 — EMA Bounce"
+v4_prox_pct = input.float(2.0, "Max % above EMA200", group=g_v4) / 100
+v4_rsi_lo   = input.float(35,  "RSI Low",            group=g_v4)
+v4_rsi_hi   = input.float(50,  "RSI High",           group=g_v4)
+v4_min_c    = input.int(3,     "Min Score (max 4)",  group=g_v4)
+
+g_v1   = "V1 / V5 Confluence"
+v1_min_c = input.int(4, "V1 Min Score (max 6)", group=g_v1)
+v5_min_c = input.int(3, "V5 Min Score (max 6)", group=g_v1)
+v5_rvol  = input.float(1.2, "V5 Min RVOL",      group=g_v1)
+
+g_fib  = "Fibonacci"
+fib_bars = input.int(100,  "Lookback bars",    group=g_fib)
+show_fib = input.bool(true, "Show Fib Levels", group=g_fib)
+
+g_disp = "Display"
+show_v4zone = input.bool(true, "Show V4 EMA Zone",     group=g_disp)
+show_fomc   = input.bool(true, "Show FOMC Suppression", group=g_disp)
+
+// ─── CORE INDICATORS ─────────────────────────────────────────────────────────
+ema50  = ta.ema(close, ema_fast)
+ema200 = ta.ema(close, ema_slow)
+rsi    = ta.rsi(close, rsi_len)
+atr    = ta.atr(atr_len)
+
+[bb_up, _, bb_dn] = ta.bb(close, 20, 2.0)
+bb_w = (bb_up - bb_dn) / ta.ema(close, 20)
+
+[diplus, diminus, adx] = ta.dmi(14, 14)
+
+rvol = volume / ta.sma(volume, 20)
+
+// ─── REGIME ──────────────────────────────────────────────────────────────────
+bull_bias   = ema50 > ema200
+bear_bias   = ema50 < ema200
+is_choppy   = adx < 20 and bb_w < 0.04
+is_trending = adx >= 20
+ema200_up   = ema200 > ema200[5]
+ema200_dn   = ema200 < ema200[5]
+rsi_rising  = rsi > rsi[2]
+rsi_falling = rsi < rsi[2]
+
+// ─── LONG CONFLUENCE (max 6) ──────────────────────────────────────────────────
+lc1 = rsi <= rsi_xl   ? 2 : rsi <= rsi_long  ? 1 : 0   // RSI: 2pts extremo, 1pt normal
+lc2 = bull_bias        ? 1 : 0                           // EMA50 > EMA200
+lc3 = close < bb_dn   ? 1 : 0                           // Bajo Bollinger inferior
+lc4 = ema200_up        ? 1 : 0                           // EMA200 en pendiente alcista
+lc5 = rvol >= 1.0      ? 1 : 0                           // Volumen confirmado
+long_score = lc1 + lc2 + lc3 + lc4 + lc5
+
+// ─── SHORT CONFLUENCE (max 6) ─────────────────────────────────────────────────
+sc1 = rsi >= rsi_xs    ? 2 : rsi >= rsi_short ? 1 : 0   // RSI: 2pts extremo, 1pt normal
+sc2 = bear_bias         ? 1 : 0                           // EMA50 < EMA200
+sc3 = close > bb_up    ? 1 : 0                           // Sobre Bollinger superior
+sc4 = ema200_dn         ? 1 : 0                           // EMA200 en pendiente bajista
+sc5 = rvol >= 1.0       ? 1 : 0                           // Volumen confirmado
+short_score = sc1 + sc2 + sc3 + sc4 + sc5
+
+// ─── V4 — EMA200 BOUNCE ───────────────────────────────────────────────────────
+v4_near  = close >= ema200 * 1.001 and close <= ema200 * (1 + v4_prox_pct)
+v4_rsi_ok = rsi >= v4_rsi_lo and rsi <= v4_rsi_hi and rsi_rising
+v4_score = (v4_near ? 1 : 0) + (v4_rsi_ok ? 1 : 0) + (bull_bias ? 1 : 0) + (rvol >= 0.7 ? 1 : 0)
+v4_raw   = v4_score >= v4_min_c and is_trending and not is_choppy
+
+// ─── V5 — MOMENTUM BREAKOUT ──────────────────────────────────────────────────
+v5_long_raw  = ta.crossover(rsi, 50)  and rvol >= v5_rvol and bull_bias and not is_choppy and long_score  >= v5_min_c
+v5_short_raw = ta.crossunder(rsi, 50) and rvol >= v5_rvol and bear_bias and not is_choppy and short_score >= v5_min_c
+
+// ─── V1 — TECH CONFLUENCE ────────────────────────────────────────────────────
+v1_long_raw  = long_score  >= v1_min_c and bull_bias and rsi_rising  and not is_choppy
+v1_short_raw = short_score >= v1_min_c and bear_bias and rsi_falling and not is_choppy
+
+// ─── EXTREME REVERSALS ───────────────────────────────────────────────────────
+ext_long_raw  = rsi < rsi_xl and close < bb_dn
+ext_short_raw = rsi > rsi_xs and close > bb_up
+
+// ─── AGGREGATE (dedup via raw[1] — no self-reference) ───────────────────────
+long_raw  = v1_long_raw  or v4_raw or v5_long_raw  or ext_long_raw
+short_raw = v1_short_raw or v5_short_raw or ext_short_raw
+
+fire_long  = long_raw  and not nz(long_raw[1],  false)
+fire_short = short_raw and not nz(short_raw[1], false)
+
+// Strategy tag (para labels)
+strat_long  = v4_raw        ? "V4-EMA"   : v5_long_raw  ? "V5-MOM" : ext_long_raw  ? "REVERSAL" : "V1-TECH"
+strat_short = v5_short_raw  ? "V5-MOM"   : ext_short_raw ? "REVERSAL" : "V1-TECH"
+
+// ─── ATR LEVELS ──────────────────────────────────────────────────────────────
+atr_sl_use  = v4_raw ? 1.5 : sl_mult      // V4 usa SL más ajustado
+long_sl     = close - atr * atr_sl_use
+long_tp1    = close + atr * tp1_mult
+long_tp2    = close + atr * tp2_mult
+long_tp3    = close + atr * tp3_mult
+short_sl    = close + atr * sl_mult
+short_tp1   = close - atr * tp1_mult
+short_tp2   = close - atr * tp2_mult
+
+// ─── FIBONACCI ───────────────────────────────────────────────────────────────
+sw_hi = ta.highest(high, fib_bars)
+sw_lo = ta.lowest(low,   fib_bars)
+f_rng = sw_hi - sw_lo
+f236  = sw_hi - f_rng * 0.236
+f382  = sw_hi - f_rng * 0.382
+f500  = sw_hi - f_rng * 0.500
+f618  = sw_hi - f_rng * 0.618
+f786  = sw_hi - f_rng * 0.786   // PTS: suelo macro + cierre de gaps
+
+// ─── BASE PLOTS ──────────────────────────────────────────────────────────────
+p50  = plot(ema50,  "EMA 50",  color=color.new(color.orange, 15), linewidth=1)
+p200 = plot(ema200, "EMA 200", color=color.new(color.blue,   10), linewidth=2)
+pbu  = plot(bb_up,  "BB Up",   color=color.new(color.gray, 60),   linewidth=1)
+pbd  = plot(bb_dn,  "BB Down", color=color.new(color.gray, 60),   linewidth=1)
+plot(ta.ema(close, 20), "BB Mid", color=color.new(color.gray, 80), style=plot.style_circles, linewidth=1)
+
+fill(p50, p200, bull_bias ? color.new(color.green, 90) : color.new(color.red, 90))
+
+// ─── BACKGROUNDS ─────────────────────────────────────────────────────────────
+bgcolor(is_choppy                                  ? color.new(color.gray,  88) : na, title="Choppy — No Trade")
+bgcolor(ext_long_raw                               ? color.new(color.green, 86) : na, title="Extreme Oversold")
+bgcolor(ext_short_raw                              ? color.new(color.red,   86) : na, title="Extreme Overbought")
+bgcolor(show_v4zone and v4_near and not is_choppy  ? color.new(color.blue,  91) : na, title="V4 EMA Bounce Zone")
+
+fomc_start = timestamp("2026-04-27 18:00 -0500")
+fomc_end   = timestamp("2026-04-29 18:00 -0500")
+bgcolor(show_fomc and time >= fomc_start and time <= fomc_end ? color.new(color.yellow, 82) : na, title="FOMC Window")
+
+// ─── SIGNAL SHAPES ───────────────────────────────────────────────────────────
+plotshape(fire_long,  "LONG",    shape.labelup,   location.belowbar, color.new(color.green, 5), textcolor=color.white, text="▲", size=size.normal)
+plotshape(fire_short, "SHORT",   shape.labeldown, location.abovebar, color.new(color.red,   5), textcolor=color.white, text="▼", size=size.normal)
+plotshape(v4_raw and not nz(v4_raw[1], false),         "V4 Bounce",  shape.circle,  location.belowbar, color.new(color.aqua,  10), size=size.small)
+plotshape(v5_long_raw  and not nz(v5_long_raw[1],  false), "V5 Long",  shape.diamond, location.belowbar, color.new(color.teal,  10), size=size.tiny)
+plotshape(v5_short_raw and not nz(v5_short_raw[1], false), "V5 Short", shape.diamond, location.abovebar, color.new(color.maroon,10), size=size.tiny)
+
+// ─── LABELS Entry / SL / TP ──────────────────────────────────────────────────
+if fire_long
+    _sc  = v4_raw ? str.tostring(v4_score) + "/4" : str.tostring(long_score) + "/6"
+    _rr  = str.tostring(math.round(tp1_mult / atr_sl_use, 1)) + ":1"
+    _txt = "LONG [" + strat_long + "] " + _sc + " RR " + _rr + "\nEntry " + str.tostring(close, "#.####") + "  SL " + str.tostring(long_sl, "#.####") + "\nTP1 " + str.tostring(long_tp1, "#.####") + "  TP2 " + str.tostring(long_tp2, "#.####") + "\nTP3 " + str.tostring(long_tp3, "#.####")
+    label.new(bar_index, low - atr * 0.9, _txt, color=color.new(color.green, 5), textcolor=color.white, style=label.style_label_up, size=size.small)
+
+if fire_short
+    _sc  = str.tostring(short_score) + "/6"
+    _txt = "SHORT [" + strat_short + "] " + _sc + "\nEntry " + str.tostring(close, "#.####") + "  SL " + str.tostring(short_sl, "#.####") + "\nTP1 " + str.tostring(short_tp1, "#.####") + "  TP2 " + str.tostring(short_tp2, "#.####")
+    label.new(bar_index, high + atr * 0.9, _txt, color=color.new(color.red, 5), textcolor=color.white, style=label.style_label_down, size=size.small)
+
+// ─── SL/TP LINES ─────────────────────────────────────────────────────────────
+var line ln_sl  = na
+var line ln_tp1 = na
+var line ln_tp2 = na
+var line ln_tp3 = na
+
+if fire_long
+    line.delete(ln_sl)
+    line.delete(ln_tp1)
+    line.delete(ln_tp2)
+    line.delete(ln_tp3)
+    ln_sl  := line.new(bar_index, long_sl,  bar_index + 15, long_sl,  color=color.red,   style=line.style_dashed, width=1)
+    ln_tp1 := line.new(bar_index, long_tp1, bar_index + 15, long_tp1, color=color.green, style=line.style_dotted, width=1)
+    ln_tp2 := line.new(bar_index, long_tp2, bar_index + 15, long_tp2, color=color.lime,  style=line.style_dotted, width=1)
+    ln_tp3 := line.new(bar_index, long_tp3, bar_index + 15, long_tp3, color=color.teal,  style=line.style_dotted, width=1)
+
+if fire_short
+    line.delete(ln_sl)
+    line.delete(ln_tp1)
+    line.delete(ln_tp2)
+    ln_sl  := line.new(bar_index, short_sl,  bar_index + 15, short_sl,  color=color.red,   style=line.style_dashed, width=1)
+    ln_tp1 := line.new(bar_index, short_tp1, bar_index + 15, short_tp1, color=color.green, style=line.style_dotted, width=1)
+    ln_tp2 := line.new(bar_index, short_tp2, bar_index + 15, short_tp2, color=color.lime,  style=line.style_dotted, width=1)
+
+// ─── FIBONACCI LINES (solo en último bar) ────────────────────────────────────
+var line fl236 = na
+var line fl382 = na
+var line fl500 = na
+var line fl618 = na
+var line fl786 = na
+var label lb236 = na
+var label lb382 = na
+var label lb500 = na
+var label lb618 = na
+var label lb786 = na
+
+if show_fib and barstate.islast
+    line.delete(fl236)
+    line.delete(fl382)
+    line.delete(fl500)
+    line.delete(fl618)
+    line.delete(fl786)
+    label.delete(lb236)
+    label.delete(lb382)
+    label.delete(lb500)
+    label.delete(lb618)
+    label.delete(lb786)
+
+    start = bar_index - fib_bars
+    fl236 := line.new(start, f236, bar_index, f236, color=color.new(color.yellow, 40), style=line.style_dashed,  width=1)
+    fl382 := line.new(start, f382, bar_index, f382, color=color.new(color.orange, 40), style=line.style_dashed,  width=1)
+    fl500 := line.new(start, f500, bar_index, f500, color=color.new(color.gray,   50), style=line.style_dashed,  width=1)
+    fl618 := line.new(start, f618, bar_index, f618, color=color.new(color.purple, 40), style=line.style_dashed,  width=1)
+    fl786 := line.new(start, f786, bar_index, f786, color=color.new(color.red,    30), style=line.style_solid,   width=2)
+
+    lb236 := label.new(bar_index, f236, "0.236", color=color.new(color.yellow, 60), textcolor=color.yellow, style=label.style_label_left, size=size.tiny)
+    lb382 := label.new(bar_index, f382, "0.382", color=color.new(color.orange, 60), textcolor=color.orange, style=label.style_label_left, size=size.tiny)
+    lb500 := label.new(bar_index, f500, "0.500", color=color.new(color.gray,   60), textcolor=color.gray,   style=label.style_label_left, size=size.tiny)
+    lb618 := label.new(bar_index, f618, "0.618", color=color.new(color.purple, 60), textcolor=color.purple, style=label.style_label_left, size=size.tiny)
+    lb786 := label.new(bar_index, f786, "0.786 🔑", color=color.new(color.red, 40), textcolor=color.red,   style=label.style_label_left, size=size.tiny)
+
+// ─── INFO TABLE ──────────────────────────────────────────────────────────────
+var table tbl = table.new(position.top_right, 2, 11,
+     bgcolor=color.new(color.black, 72),
+     border_color=color.new(color.gray, 55), border_width=1)
+
+if barstate.islast
+    rsi_c   = rsi < rsi_xl ? color.lime : rsi > rsi_xs ? color.red : rsi <= rsi_long ? color.green : rsi >= rsi_short ? color.orange : color.gray
+    reg_txt = is_choppy ? "CHOPPY ⛔" : adx > 25 ? "TRENDING ✅" : "RANGING 🟡"
+    reg_c   = is_choppy ? color.red : adx > 25 ? color.green : color.yellow
+    bias_c  = bull_bias ? color.green : color.red
+    rv_c    = rvol >= 1.2 ? color.green : rvol >= 1.0 ? color.lime : color.gray
+    lsc     = long_score  >= v1_min_c ? color.green : color.gray
+    ssc     = short_score >= v1_min_c ? color.red   : color.gray
+    v4c     = v4_raw ? color.aqua : v4_near ? color.new(color.blue, 40) : color.gray
+    v5c     = v5_long_raw ? color.teal : v5_short_raw ? color.maroon : color.gray
+
+    table.cell(tbl, 0, 0,  "ZENITH v4.3",     bgcolor=color.new(color.navy, 20), text_color=color.white,  text_size=size.small)
+    table.cell(tbl, 1, 0,  timeframe.period,   bgcolor=color.new(color.navy, 20), text_color=color.silver, text_size=size.small)
+    table.cell(tbl, 0, 1,  "RSI",     text_color=color.gray,  text_size=size.small)
+    table.cell(tbl, 1, 1,  str.tostring(rsi, "#.0"), text_color=rsi_c, text_size=size.small)
+    table.cell(tbl, 0, 2,  "ADX",     text_color=color.gray,  text_size=size.small)
+    table.cell(tbl, 1, 2,  str.tostring(adx, "#.0") + "  " + reg_txt, text_color=reg_c, text_size=size.small)
+    table.cell(tbl, 0, 3,  "Bias",    text_color=color.gray,  text_size=size.small)
+    table.cell(tbl, 1, 3,  bull_bias ? "BULL 📈" : "BEAR 📉", text_color=bias_c, text_size=size.small)
+    table.cell(tbl, 0, 4,  "RVOL",    text_color=color.gray,  text_size=size.small)
+    table.cell(tbl, 1, 4,  str.tostring(rvol, "#.##") + "x",  text_color=rv_c, text_size=size.small)
+    table.cell(tbl, 0, 5,  "ATR",     text_color=color.gray,  text_size=size.small)
+    table.cell(tbl, 1, 5,  str.tostring(atr, "#.####"),        text_color=color.white, text_size=size.small)
+    table.cell(tbl, 0, 6,  "L-Score", text_color=color.gray,  text_size=size.small)
+    table.cell(tbl, 1, 6,  str.tostring(long_score)  + "/6",  text_color=lsc, text_size=size.small)
+    table.cell(tbl, 0, 7,  "S-Score", text_color=color.gray,  text_size=size.small)
+    table.cell(tbl, 1, 7,  str.tostring(short_score) + "/6",  text_color=ssc, text_size=size.small)
+    table.cell(tbl, 0, 8,  "V4-EMA",  text_color=color.gray,  text_size=size.small)
+    table.cell(tbl, 1, 8,  v4_raw ? "SIGNAL 🔵" : v4_near ? str.tostring(v4_score) + "/4 zona" : "—", text_color=v4c, text_size=size.small)
+    table.cell(tbl, 0, 9,  "V5-MOM",  text_color=color.gray,  text_size=size.small)
+    table.cell(tbl, 1, 9,  v5_long_raw ? "LONG ↑" : v5_short_raw ? "SHORT ↓" : "—", text_color=v5c, text_size=size.small)
+    table.cell(tbl, 0, 10, "FOMC",    text_color=color.gray,  text_size=size.small)
+    _fomc_active = time >= fomc_start and time <= fomc_end
+    table.cell(tbl, 1, 10, _fomc_active ? "SUPRESS" : "Apr 28-29", text_color=_fomc_active ? color.yellow : color.new(color.gray, 40), text_size=size.small)
+
+// ─── ALERTCONDITIONS ─────────────────────────────────────────────────────────
+alertcondition(fire_long,                              "Zenith LONG",         "🚀 LONG — Zenith v4.3")
+alertcondition(fire_short,                             "Zenith SHORT",        "📉 SHORT — Zenith v4.3")
+alertcondition(v4_raw and not nz(v4_raw[1], false),   "V4 EMA Bounce",       "🔵 V4 — EMA200 Bounce")
+alertcondition(v5_long_raw,                            "V5 Momentum Long",    "⚡ V5 Momentum — Long")
+alertcondition(v5_short_raw,                           "V5 Momentum Short",   "⚡ V5 Momentum — Short")
+alertcondition(ext_long_raw,                           "Extreme Oversold",    "🟢 Extreme Oversold")
+alertcondition(ext_short_raw,                          "Extreme Overbought",  "🔴 Extreme Overbought")
