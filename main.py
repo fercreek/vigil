@@ -6,6 +6,22 @@ from dotenv import load_dotenv
 # Cargamos .env ANTES de cualquier import que use variables de entorno
 load_dotenv(override=True)
 
+# F6 BOT_MODE resolver — selecciona token/chat_id según PROD vs DEV
+# Runs BEFORE any module imports TELEGRAM_TOKEN/TELEGRAM_CHAT_ID at module scope
+_bot_mode = os.getenv("BOT_MODE", "PROD").upper()
+if _bot_mode == "DEV":
+    _dev_token = os.getenv("TELEGRAM_TOKEN_DEV") or os.getenv("TELEGRAM_BOT_TOKEN_DEV")
+    _dev_chat  = os.getenv("TELEGRAM_CHAT_ID_DEV")
+    if _dev_token:
+        os.environ["TELEGRAM_TOKEN"] = _dev_token
+    if _dev_chat:
+        os.environ["TELEGRAM_CHAT_ID"] = _dev_chat
+    # Force PAPER in DEV to avoid real trades from dev iteration
+    os.environ["EXECUTION_MODE"] = "PAPER"
+    print(f"[BOOT] BOT_MODE=DEV — using dev token + EXECUTION_MODE=PAPER forced")
+else:
+    print(f"[BOOT] BOT_MODE=PROD")
+
 from logger_core import logger
 from app import app
 import scalp_alert_bot
