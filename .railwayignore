@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.env
+.env.local
+logs/*.log
+logs/*.pid
+docs/
+tests/
+*.db-journal
+*.db-wal
+*.db-shm
+reports/
