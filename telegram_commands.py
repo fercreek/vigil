@@ -499,6 +499,111 @@ def check_user_queries(prices: dict):
                     import commodities_bot as _cb
                     send_telegram(_cb.get_status_html(), keyboard=get_main_menu())
 
+                elif text.startswith("/pause"):
+                    import runtime_state
+                    import scalp_alert_bot as _sab
+                    runtime_state.set_field("paused", True)
+                    _sab.GLOBAL_CACHE["paused"] = True
+                    send_telegram("⏸️ <b>Bot pausado</b>. No ejecuta señales nuevas.\nUsa /resume para reanudar.",
+                                  keyboard=get_main_menu())
+
+                elif text.startswith("/resume"):
+                    import runtime_state
+                    import scalp_alert_bot as _sab
+                    runtime_state.set_field("paused", False)
+                    _sab.GLOBAL_CACHE["paused"] = False
+                    send_telegram("▶️ <b>Bot reanudado</b>. Ejecutando señales.",
+                                  keyboard=get_main_menu())
+
+                elif text.startswith("/balance"):
+                    try:
+                        import scalp_alert_bot as _sab
+                        executor = _sab.GLOBAL_CACHE.get("executor")
+                        if executor is None:
+                            from trading_executor import ZenithExecutor
+                            executor = ZenithExecutor()
+                        bal = executor.get_balance()
+                        mode = os.getenv("EXECUTION_MODE", "PAPER")
+                        send_telegram(f"💰 <b>USDT Futures</b>: ${bal:.2f}\nModo: <b>{mode}</b>",
+                                      keyboard=get_main_menu())
+                    except Exception as e:
+                        send_telegram(f"❌ Error balance: {e}", keyboard=get_main_menu())
+
+                elif text.startswith("/mode"):
+                    import runtime_state
+                    parts = text.split()
+                    if len(parts) < 2 or parts[1].upper() not in ("PAPER", "LIVE"):
+                        cur = os.getenv("EXECUTION_MODE", "PAPER")
+                        send_telegram(f"ℹ️ Modo actual: <b>{cur}</b>\nUso: /mode paper | /mode live",
+                                      keyboard=get_main_menu())
+                    else:
+                        new_mode = parts[1].upper()
+                        runtime_state.set_field("execution_mode", new_mode)
+                        os.environ["EXECUTION_MODE"] = new_mode
+                        # Refresh executor instance so it picks new mode
+                        import scalp_alert_bot as _sab
+                        try:
+                            from trading_executor import ZenithExecutor
+                            _sab.GLOBAL_CACHE["executor"] = ZenithExecutor()
+                        except Exception as e:
+                            print(f"WARN refresh executor: {e}")
+                        warn = " ⚠️ <b>LIVE: dinero real</b>" if new_mode == "LIVE" else ""
+                        send_telegram(f"✅ Modo cambiado a <b>{new_mode}</b>.{warn}",
+                                      keyboard=get_main_menu())
+
+                elif text.startswith("/logs"):
+                    parts = text.split()
+                    try:
+                        n = int(parts[1]) if len(parts) >= 2 else 30
+                    except ValueError:
+                        n = 30
+                    n = max(1, min(n, 200))
+                    log_path = "logs/bot.log"
+                    if not os.path.exists(log_path):
+                        log_path = "logs/app.log"
+                    if os.path.exists(log_path):
+                        try:
+                            with open(log_path, "r", encoding="utf-8", errors="replace") as lf:
+                                lines = lf.readlines()[-n:]
+                            body = "".join(lines)[-3500:]
+                            send_telegram(f"📜 <b>Últimas {len(lines)} líneas</b> ({log_path}):\n<pre>{safe_html(body)}</pre>",
+                                          keyboard=get_main_menu())
+                        except Exception as e:
+                            send_telegram(f"❌ Error leyendo log: {e}", keyboard=get_main_menu())
+                    else:
+                        send_telegram("⚠️ No se encontró log file.", keyboard=get_main_menu())
+
+                elif text.startswith("/setsl") or text.startswith("/settp"):
+                    parts = text.split()
+                    if len(parts) < 3:
+                        send_telegram("⚠️ Uso: /setsl SYM PCT  o  /settp SYM PCT", keyboard=get_main_menu())
+                    else:
+                        try:
+                            sym = parts[1].upper()
+                            pct = float(parts[2])
+                            field = "sl" if text.startswith("/setsl") else "tp1"
+                            open_trades = tracker.get_open_trades() if hasattr(tracker, "get_open_trades") else []
+                            target = next((t for t in open_trades if t.get("symbol", "").upper() == sym), None)
+                            if not target:
+                                send_telegram(f"⚠️ No hay trade abierto para {sym}.", keyboard=get_main_menu())
+                            else:
+                                entry = float(target.get("entry", 0))
+                                side = target.get("side", "LONG")
+                                direction = 1 if side == "LONG" else -1
+                                if field == "sl":
+                                    new_val = entry * (1 - direction * pct / 100)
+                                else:
+                                    new_val = entry * (1 + direction * pct / 100)
+                                if hasattr(tracker, "update_trade_levels"):
+                                    tracker.update_trade_levels(target["id"], **{field: new_val})
+                                    send_telegram(f"✅ {field.upper()} de {sym} ajustado a ${new_val:.4f} ({pct}%)",
+                                                  keyboard=get_main_menu())
+                                else:
+                                    send_telegram("⚠️ tracker.update_trade_levels no disponible — fix manual",
+                                                  keyboard=get_main_menu())
+                        except Exception as e:
+                            send_telegram(f"❌ Error: {e}", keyboard=get_main_menu())
+
                 else:
                     _handle_user_question(text, prices)
 

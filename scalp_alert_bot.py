@@ -48,8 +48,19 @@ GLOBAL_CACHE = {
     "social_intel": {},  # {sym: {"score": 0.0, "last_update": 0}}
     "executor": None, # V5.0 Instance
     "shadow_messages": [], # V15.0 Real Shadow Intel
-    "fear_greed": {"value": 50, "label": "Neutral"}
+    "fear_greed": {"value": 50, "label": "Neutral"},
+    "paused": False,  # F2 runtime flag (set via /pause, /resume)
 }
+
+# Hydrate runtime flags from disk (survive restarts)
+try:
+    import runtime_state as _rs
+    _persisted = _rs.load()
+    GLOBAL_CACHE["paused"] = bool(_persisted.get("paused", False))
+    if _persisted.get("execution_mode") in ("PAPER", "LIVE"):
+        os.environ["EXECUTION_MODE"] = _persisted["execution_mode"]
+except Exception as _e:
+    print(f"WARN runtime_state hydrate: {_e}")
 
 # --- POSITION TRACKER: evita alertas duplicadas para la misma posición abierta ---
 # Clave: "{sym}_{side}" → timestamp de cuando se abrió

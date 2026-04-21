@@ -69,6 +69,18 @@ class ZenithExecutor:
     def execute_bracket_order(self, symbol, side, entry, tp1, tp2, sl, tp3=None,
                               dynamic_leverage=None, dynamic_risk_pct=None):
         """Ejecuta una orden Bracket (Entrada + 3 TPs + SL) en Binance."""
+        # F2 runtime pause check
+        try:
+            import runtime_state
+            if runtime_state.is_paused():
+                print(f"[Zenith Executor] Paused — skip {symbol} {side}")
+                return {"status": "SKIPPED", "reason": "Bot paused (/pause)"}
+        except Exception as _e:
+            print(f"WARN pause check: {_e}")
+
+        # Re-read mode in case /mode switched it at runtime
+        self.mode = os.getenv("EXECUTION_MODE", "PAPER")
+
         print(f"💸 [Zenith Executor] Iniciando ciclo de ejecución V6 (3 TPs) para {symbol} ({side})...")
 
         balance = self.get_balance()
