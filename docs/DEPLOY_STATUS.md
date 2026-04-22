@@ -6,6 +6,47 @@ Plan completo: `~/.claude/plans/si-revids-quae-nerceistamos-precious-grove.md`
 
 ---
 
+## ⏸ SESIÓN PAUSADA 2026-04-21 — retomar esta noche
+
+**Estado actual:**
+- Bot local corriendo (PID 99086, Python 3.14, ~22h uptime) — sigue ejecutando sin interrupción
+- Railway service `web` existe pero deploy 18h failed (healthcheck) — vars Telegram/Binance/Gemini/Anthropic VACÍAS en Railway
+- Proyecto Railway `gentle-endurance` limpio (descartado `function-bun` accident)
+- Credit trial: ~$1.00 restante → upgrade Hobby $5/mo antes de deploy real
+
+**Blocker identificado para Railway deploy:**
+
+`.env` local tiene 3 secrets VACÍOS — hay que recuperar de password manager antes de pegar en Railway:
+
+| Var | Status .env local | Requerida |
+|---|---|---|
+| TELEGRAM_TOKEN | ✅ SET | sí |
+| TELEGRAM_CHAT_ID | ✅ SET | sí |
+| GEMINI_API_KEY | ✅ SET | sí |
+| ANTHROPIC_API_KEY | ❌ EMPTY | **NO** — fallback auto a Gemini. Agregar después si quieres Claude Haiku para decisiones críticas |
+| BINANCE_API_KEY | ❌ EMPTY | sí (PAPER mode también necesita para balance checks) |
+| BINANCE_SECRET_KEY | ❌ EMPTY | sí |
+
+**Decisión AI Router (2026-04-22):** solo Gemini por ahora. Router en `gemini_analyzer.py:38-46` detecta ANTHROPIC vacía → usa Gemini para todo. Sin penalización funcional. Eventualmente agregar Claude Haiku para decisiones JSON críticas (~$1/mes).
+
+**Primera acción al retomar (noche):**
+1. Recuperar 3 secrets faltantes de password manager / consoles
+2. Llenarlos en `.env` local (backup) **y** en Railway UI
+3. Abrir Railway Raw Editor: https://railway.com/project/d5ae9a55-6932-46d8-b281-87bc0fb9e170/service/29b6f05a-af97-4f62-9a28-b720bb21828e/variables
+4. Click "Raw Editor" → pegar bloque completo de [sección Env vars template](#env-vars--template-para-raw-editor) con valores reales
+5. Click Update Variables → Railway redeploya
+6. Monitor Deployments tab → SUCCESS
+7. Settings → Networking → Generate Domain
+8. `curl https://<url>/api/stats` → 200
+
+**TV secrets (generados, pegar tal cual en Railway):**
+- `TV_WEBHOOK_SECRET=7fc04b8d5a93aedb594ff0158636016d172330cf4c8159ec3c5ea96cf84e2400`
+- `TV_WEBHOOK_TOKEN=yYlPKWkhgVN0SzOIn_F3IWxwOs87W1LN`
+
+**Estado código:** 5 commits pushed a `fercreek/vigil@main` (cde0b3d). Bot local tiene vars completas en memoria — no lo reinicies antes de deploy remoto.
+
+---
+
 ## Resumen de fases
 
 | Fase | Estado | Notas |
@@ -60,9 +101,9 @@ BINANCE_API_KEY=<pegar>
 BINANCE_SECRET_KEY=<pegar>
 EXECUTION_MODE=PAPER
 
-# AI (copiar de .env local)
+# AI (Gemini only por ahora, Claude opcional)
 GEMINI_API_KEY=<pegar>
-ANTHROPIC_API_KEY=<pegar>
+# ANTHROPIC_API_KEY=<opcional — dejar fuera si no lo usas>
 
 # Loop
 CHECK_INTERVAL=35
