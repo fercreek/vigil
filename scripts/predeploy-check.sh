@@ -118,7 +118,9 @@ ok ".env no staged"
 echo ""
 echo "[6/6] No hay TODO FATAL / FIXME CRITICAL nuevos..."
 if git rev-parse --verify main >/dev/null 2>&1; then
-  BAD=$(git diff main...HEAD 2>/dev/null | grep -E '^\+.*(TODO FATAL|FIXME CRITICAL)' || true)
+  # Exclude this script itself (contains literal markers in code) + any *.sh in scripts/
+  BAD=$(git diff main...HEAD -- ':!scripts/predeploy-check.sh' 2>/dev/null \
+    | grep -E '^\+[^+].*\b(TODO FATAL|FIXME CRITICAL)\b' || true)
   if [ -n "$BAD" ]; then
     echo "$BAD" | sed 's/^/    /'
     fail "Hay TODO FATAL / FIXME CRITICAL sin resolver"
