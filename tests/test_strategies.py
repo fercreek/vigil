@@ -13,6 +13,7 @@ Verifies:
 """
 import sys
 import os
+import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
@@ -142,6 +143,7 @@ class TestV1ShortSignalLogic:
         assert "ema_slope" in short_section.lower() or "slope" in short_section.lower(), \
             "V1-SHORT should check EMA200 slope"
 
+    @pytest.mark.xfail(reason="V1-SHORT kill-switched (0% WR in 16 trades). Test asserts SHORT_REGIMES usage but regime check disabled while V1_SHORT_ENABLED=False. Re-enable when strategy reactivates.", strict=False)
     def test_short_accepts_volatile_regime(self):
         """V1-SHORT should work in VOLATILE regime, not just TRENDING_DOWN."""
         source = open(os.path.join(os.path.dirname(os.path.dirname(

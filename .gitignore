@@ -4,6 +4,18 @@
 logs/*.out
 memory/*.json
 
+# Runtime state (should not be committed)
+bot.log
+logs/*.log
+logs/*.jsonl
+logs/bot.pid
+risk_state.json
+runtime_state.json
+latest_report.txt
+
+# Claude Code local state
+.claude/scheduled_tasks.lock
+
 # Environment
 .env
 venv/

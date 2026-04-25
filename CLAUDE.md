@@ -488,6 +488,126 @@ Nuclear:   pendiente próximo reporte
 
 ---
 
+### 8h. PTS Update — Ruptura MACRO PHY + crypto breakout (21-23 Abril 2026)
+
+Reportes consecutivos de Daniel Marin que actualizan régimen post-ruptura del MACRO PHY al alza en SP500.
+
+**Régimen SP500 (zonas activas — usar como gate macro en bot):**
+
+| Zona | Rango | Régimen | Acción bot |
+|------|-------|---------|-----------|
+| 🟢 VERDE | >7,000 (consolidando 7,100-7,181) | Toros gobiernan, post-ruptura MACRO PHY | NO suprimir longs. Habilitar señales long en watchlist |
+| 🟡 AMARILLA | 6,800-7,000 | Reingreso a MACRO PHY → zona de decisión / posible falsa ruptura | Reducir tamaño 50%, requiere confluencia extra para long |
+| 🟠 NARANJA-ROJA | <6,800 | Falsa ruptura confirmada → escenario bajista activo (paralelo a 2025/2008) | Activar SHORT SPY + buscar shorts en watchlist débil |
+
+Resistencia clave: **7,181** (techo consolidación). Niveles trigger: pierde **7,000** = empieza alarma. Pierde **6,728** = SHORT activado.
+
+**Catalizadores macro Apr 21-23:**
+- Tregua Trump-Irán vence Mié 22 PM. Si "botas en tierra" Iran → catalizador bajista fuerte. Si solo retórica → TACO (Trump Always Chickens Out) bullish.
+- Kevin Warsh confirmó al Congreso que NO será títere de Trump. Sin recortes 2026 salvo recesión. Si inflación >3% → SUBIDA tasas posible.
+- Volatilidad intradía SP500 = 60-80 puntos por sesión. Bot debe usar posiciones pequeñas + paciencia.
+
+**Reporte 21 Abr — UUUU + IREN (sectores nuclear/data centers):**
+
+```
+UUUU (Energy Fuels — Uranium) — SWING ALCISTA
+  Entry: 22.77 | Stop: 19.60 | BE: 25
+  Targets: 28 / 31 / 35 | GR: -1% (3 acciones / $1,000)
+  Options: BUY CALL 16-Oct-2026 Strike 22 (ITM) | Riesgo: -$200 | Pot: $400-$950
+  Sector: Nuclear / uranium
+```
+
+```
+IREN (Iris Energy — Bitcoin mining + data centers) — SWING ALCISTA
+  Entry: 52.38 | Stop: 42.74 | BE: 59
+  Targets: 67 / 77 / 89 | GR: -1% (1 acción / $1,000)
+  Options: BUY CALL 18-Sep-2026 Strike 55 | Riesgo: -$530 | Pot: $950-$2,600
+  Sector: Crypto mining / energy data centers
+```
+
+**GDX cerrado** ~$96 con ganancias (entrada $92.78). Mover SL del watchlist a CLOSED.
+
+**Reporte 22 Abr — BTC + ETH (crypto breakout activado):**
+
+BTC formando 2do máximo más alto sobre rango 60k-76k. USDT.D al borde de ruptura bajista. Setup difiere de falsa ruptura previa (este sostuvo $73,800). Probabilidad ahora favorece ruptura real al alza.
+
+```
+BTC (Bitcoin) — SWING ALCISTA
+  Entry: 79,917 | Stop: 69,919 | BE: 85,000
+  Targets: 93,000 / 101,000 | GR: -2.4%
+  Exposición: 20% spot equivalente del capital total
+  Trigger: ruptura sostenida >$79.9k con USDT.D rompiendo rango bajista
+```
+
+```
+ETH (Ethereum) — SWING ALCISTA
+  Entry: 2,520 | Stop: 2,024 | BE: 2,967
+  Targets: 3,367 / 3,751 / 4,277 | GR: -2%
+  Exposición: 10% spot equivalente del capital total
+```
+
+**Pipeline post-activación BTC/ETH:** BNB, SOL, IBIT (options), ETHA (options). RIOT como crypto-stock.
+
+**Reporte 23 Abr — XLE (sector energía descorrelacionado):**
+
+XLE (Energy Select Sector SPDR) iniciando potencial alcista con phy alcista + ruptura 0.38 fib. Petroleras van a su propio ritmo en 2026 — no correlacionan con dirección del SP500.
+
+```
+XLE (Energy ETF) — SWING ALCISTA
+  Entry: 58.31 | Stop: 53.06 | BE: 61
+  Targets: 63 / 66 / 69 | GR: -1% (2 acciones / $1,000)
+  Options: BUY CALL 30-Sep-2026 Strike 60 | Riesgo: -$220 | Pot: $300-$700
+  Característica: descorrelacionado del SP500 → operable en cualquier zona
+```
+
+**Sectores en monitoreo** (esperando consolidación para entry):
+- IONQ — buscar entry zona 36-38 (PHY alcista). NO chase de subida vertical 25→50.
+- OKLO — esperar lateralización ~$76. Target potencial $200-250. Sector nuclear / SMRs.
+- SMR — alternativa a UUUU dentro de QF (UUUU no está en QF list).
+- RDDT — esperar earnings próxima semana antes de entrada.
+- BABA — posible suelo en formación, monitorear próximos días.
+
+**Estado consolidado watchlist activa (23 Abr):**
+
+| Símbolo | Status | Observación |
+|---------|--------|-------------|
+| SOFI | LONG abierto | Sobre zona entrada, lateral |
+| MP | LONG abierto | Positivo, una de las más fuertes |
+| COIN | LONG abierto | Volátil. +6% el 22, monitorear |
+| HOOD | LONG abierto | Resistente, en positivo |
+| XBI | LONG abierto | Ligeramente positivo |
+| RKLB | LONG abierto | T1 alcanzado, mover SL a BE |
+| GDX | CERRADO | +ganancias en $96 (entry $92.78) |
+| ASTS | Pending | No activado aún |
+| UUUU | Pending | Entry 22.77 |
+| IREN | Pending | Entry 52.38 |
+| XLE | Pending | Entry 58.31 |
+| BTC | Pending | Entry 79,917 (crypto breakout pending) |
+| ETH | Pending | Entry 2,520 |
+| TSLA | SHORT pending | Entry 335.65 (pendiente desde 13 Abr — solo activar si SP500 cae a naranja) |
+| SPY | SHORT watch | Trigger si SP500 pierde 6,728 |
+
+**Implicaciones para bot:**
+
+1. **Expandir DEFENSIVE_SECTORS:** `["XOM", "MOO", "GDX", "XBI", "COIN", "RKLB", "HOOD", "MP", "SOFI", "UUUU", "IREN", "XLE", "OKLO", "SMR", "IONQ", "RDDT"]`
+2. **Crypto LONG triggers nuevos en `config.py`:**
+   ```python
+   BTC_LONG_TRIGGER = 79917  # Entry PTS Apr 22
+   BTC_STOP = 69919
+   BTC_BE = 85000
+   ETH_LONG_TRIGGER = 2520
+   ETH_STOP = 2024
+   ETH_BE = 2967
+   ```
+3. **Macro gate dinámico** — leer SP500 actual y aplicar régimen:
+   - SP500 >7,000 → `MACRO_REGIME = "VERDE_BULL"` → no filtrar longs
+   - SP500 6,800-7,000 → `MACRO_REGIME = "AMARILLA_INDECISA"` → reducir tamaño 50%
+   - SP500 <6,800 → `MACRO_REGIME = "NARANJA_BEAR"` → activar SHORT SPY + filtrar longs débiles
+4. **Volatilidad intradía elevada** — bot debe respetar trailing stops más amplios (60-80 pts SP500 por sesión = ~1% intradía noise).
+5. **Cuadrilla Zenith** — actualizar `FOMC_CONTEXT` en `gemini_analyzer.py` para reflejar régimen post-ruptura MACRO PHY (aún hawkish hold, pero gráficamente alcista en zona verde).
+
+---
+
 ## Cómo Aplicar Estos Insights al Algoritmo
 
 ### Filtros a Implementar

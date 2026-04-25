@@ -1,8 +1,121 @@
 # DEPLOY STATUS — Scalp Bot / Zenith 24/7
 
-Estado vivo del deploy. Último update: 2026-04-21.
+Estado vivo del deploy. Último update: **2026-04-22 cierre sesión**.
 
 Plan completo: `~/.claude/plans/si-revids-quae-nerceistamos-precious-grove.md`
+
+---
+
+## ✅ SESIÓN 2026-04-22 — CERRADA. Bot 24/7 LIVE + workflow dev→prod completo
+
+### Milestone principal
+
+Bot Zenith corriendo 24/7 en Railway. Laptop ya NO es single point of failure. Workflow dev→prod endurecido con gate local + docs.
+
+### Estado prod (verificado al cierre)
+
+- **Service:** `gentle-endurance/web` — región europe-west4
+- **Commit live:** `07245f4` (tag `v1.0.0`)
+- **Domain público:** `https://web-production-75508.up.railway.app`
+- **Healthcheck `/api/stats`:** HTTP 200 / 0.66s / JSON válido
+- **Threads activos:** scalp + swing + commodities + stock_analyzer + telegram_worker + trade_monitor + macro_update
+- **Trade abierto gestionado por prod:** ZEC SHORT trailing +1.88% (TSL ajustando cada tick)
+- **Env vars Railway:** todas configuradas (Telegram, Gemini, Binance HMAC, TV webhook)
+- **Execution mode:** PAPER (por ahora)
+- **Local bot:** MUERTO — PID 73450 kill, conflict Telegram getUpdates resuelto
+
+### Lo que se entregó HOY
+
+**Infra 24/7:**
+- Railway project + service + domain público + env vars + healthcheck
+- `requirements.txt` fixed (yfinance + bs4 + 7 transitive deps)
+- commit `07245f4` pushed + tag `v1.0.0`
+
+**Workflow dev→prod (commit `563a73d` en `dev`, NO mergeado aún):**
+- Rama `dev` default, `main` = prod
+- `scripts/predeploy-check.sh` — gate 6 checks en <1s
+- `docs/DEPLOY_CHECKLIST.md` — runbook formal + rollback 3 opciones
+- `docs/ENV_REFERENCE.md` — tabla 14 env vars (PROD/DEV, Railway/.env)
+- `docs/DEV_WORKFLOW.md` — ciclo diario + @ZenithDevBot setup + semver
+- `docs/INDEX.md` — 14 docs categorizados
+- `README.md` — rewrite con ASCII arch + quick start
+- `.gitignore` endurecido (bot.log, logs/*, risk_state.json, etc.)
+- Test stale V1-SHORT marcado xfail + spawn task para fix real
+
+**Side deliverable:**
+- Post Contreras Code carrusel 7 slides para Jueves 23 abril PM (workflow dev→prod vendido como patrón para founders). P-005 movido a Mar 29 en registry.
+
+### Pendientes (próxima sesión)
+
+**Técnicos:**
+1. Merge `dev` → `main` con tag `v1.1.0`:
+   ```bash
+   cd /Users/fernandocastaneda/Documents/ideas/scalp_bot
+   ./scripts/predeploy-check.sh
+   git checkout main && git pull
+   git merge --no-ff dev
+   git tag -a v1.1.0 -m "workflow dev→prod + docs rewrite"
+   git push origin main --tags
+   ```
+2. Registrar `@ZenithDevBot` en @BotFather → agregar `TELEGRAM_TOKEN_DEV` + `TELEGRAM_CHAT_ID_DEV` al `.env` local (NUNCA a Railway)
+3. GitHub UI → Settings → Branches → protection rule para `main` (require PR + no force push)
+4. GitHub UI → Settings → Default branch → `dev`
+5. Railway upgrade Hobby $5/mo (trial ~$1 restante → se va a acabar)
+6. Opcional: Volume mount `/app/data` para SQLite persist entre deploys
+
+**Contenido:**
+7. Aprobar copy carrusel CC + correr `gen-cc-carrusel-workflow.py` (7 PNGs Pillow)
+8. Upload a LinkedIn + programar Metricool Jue 23 PM
+9. Actualizar placement P-012/LI `draft → scheduled` en `_registry.md`
+
+### Decisiones tomadas
+
+- **AI Router:** solo Gemini. ANTHROPIC fallback automático (ver `gemini_analyzer.py:30-46`). Agregar Claude Haiku cuando haya presupuesto para decisiones JSON críticas.
+- **Binance auth:** HMAC (no Ed25519/RSA — incompatible con ccxt)
+- **Dev bot:** vive solo en `.env` local. NUNCA `*_DEV` vars en Railway.
+- **EXECUTION_MODE:** PAPER hasta WR >50% verificado ≥1 semana.
+- **Versionado:** semver estricto. v1.0.0 = primer deploy Railway. v1.1.0 siguiente = workflow docs.
+
+---
+
+## ⏸ SESIÓN PAUSADA 2026-04-21 — retomar esta noche  (HISTÓRICO — ya resuelto)
+
+**Estado actual:**
+- Bot local corriendo (PID 99086, Python 3.14, ~22h uptime) — sigue ejecutando sin interrupción
+- Railway service `web` existe pero deploy 18h failed (healthcheck) — vars Telegram/Binance/Gemini/Anthropic VACÍAS en Railway
+- Proyecto Railway `gentle-endurance` limpio (descartado `function-bun` accident)
+- Credit trial: ~$1.00 restante → upgrade Hobby $5/mo antes de deploy real
+
+**Blocker identificado para Railway deploy:**
+
+`.env` local tiene 3 secrets VACÍOS — hay que recuperar de password manager antes de pegar en Railway:
+
+| Var | Status .env local | Requerida |
+|---|---|---|
+| TELEGRAM_TOKEN | ✅ SET | sí |
+| TELEGRAM_CHAT_ID | ✅ SET | sí |
+| GEMINI_API_KEY | ✅ SET | sí |
+| ANTHROPIC_API_KEY | ❌ EMPTY | **NO** — fallback auto a Gemini. Agregar después si quieres Claude Haiku para decisiones críticas |
+| BINANCE_API_KEY | ❌ EMPTY | sí (PAPER mode también necesita para balance checks) |
+| BINANCE_SECRET_KEY | ❌ EMPTY | sí |
+
+**Decisión AI Router (2026-04-22):** solo Gemini por ahora. Router en `gemini_analyzer.py:38-46` detecta ANTHROPIC vacía → usa Gemini para todo. Sin penalización funcional. Eventualmente agregar Claude Haiku para decisiones JSON críticas (~$1/mes).
+
+**Primera acción al retomar (noche):**
+1. Recuperar 3 secrets faltantes de password manager / consoles
+2. Llenarlos en `.env` local (backup) **y** en Railway UI
+3. Abrir Railway Raw Editor: https://railway.com/project/d5ae9a55-6932-46d8-b281-87bc0fb9e170/service/29b6f05a-af97-4f62-9a28-b720bb21828e/variables
+4. Click "Raw Editor" → pegar bloque completo de [sección Env vars template](#env-vars--template-para-raw-editor) con valores reales
+5. Click Update Variables → Railway redeploya
+6. Monitor Deployments tab → SUCCESS
+7. Settings → Networking → Generate Domain
+8. `curl https://<url>/api/stats` → 200
+
+**TV secrets (generados, pegar tal cual en Railway):**
+- `TV_WEBHOOK_SECRET=7fc04b8d5a93aedb594ff0158636016d172330cf4c8159ec3c5ea96cf84e2400`
+- `TV_WEBHOOK_TOKEN=yYlPKWkhgVN0SzOIn_F3IWxwOs87W1LN`
+
+**Estado código:** 5 commits pushed a `fercreek/vigil@main` (cde0b3d). Bot local tiene vars completas en memoria — no lo reinicies antes de deploy remoto.
 
 ---
 
@@ -60,9 +173,9 @@ BINANCE_API_KEY=<pegar>
 BINANCE_SECRET_KEY=<pegar>
 EXECUTION_MODE=PAPER
 
-# AI (copiar de .env local)
+# AI (Gemini only por ahora, Claude opcional)
 GEMINI_API_KEY=<pegar>
-ANTHROPIC_API_KEY=<pegar>
+# ANTHROPIC_API_KEY=<opcional — dejar fuera si no lo usas>
 
 # Loop
 CHECK_INTERVAL=35
