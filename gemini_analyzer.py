@@ -1070,7 +1070,7 @@ def get_sentinel_report_compact(symbol: str, current_price: float, rsi: float, e
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.5,
-                max_output_tokens=600,
+                max_output_tokens=1500,  # bumped from 600 — was truncating mid-JSON
                 response_mime_type="application/json",
                 system_instruction="Genera SOLO el JSON pedido. Cada voz ≤8 palabras. Sin prosa adicional.",
             ),
@@ -1079,7 +1079,8 @@ def get_sentinel_report_compact(symbol: str, current_price: float, rsi: float, e
         parsed = voice_compactor.parse_sentinel_json(raw)
         if parsed:
             return parsed
-        logger.warning(f"[Sentinel Compact] JSON unparseable for {symbol}: {raw[:120]}")
+        # Log full raw (no truncation) so we can debug parse failures end-to-end
+        logger.warning(f"[Sentinel Compact] JSON unparseable for {symbol} (len={len(raw)}): {raw!r}")
     except Exception as e:
         logger.warning(f"[Sentinel Compact] Error: {e}")
 
