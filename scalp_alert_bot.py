@@ -763,50 +763,84 @@ def main():
                 import episode_memory as _ep_mem
                 _ep_mem.check_pending_outcomes(prices)
 
-                # --- SALMOS PROPHECY (Cada 60 Minutos — suprimida en horario muerto 01-08h) ---
-                _hora = datetime.now().hour
-                if now - last_salmos_time > 3600 and not (1 <= _hora < 8):
-                    last_salmos_time = now
-                    trigger_salmos_prophecy(prices)
-                
-                # --- SENTINEL REPORT (ZEC + TAO — Cada 2 Horas, solo si NO hay posición abierta) ---
-                if now - last_zec_sentinel_time > 7200:
+                # --- SALMOS PROPHECY: REMOVIDO en v1.2.0 (duplicaba PANORAMA hourly) ---
+                # Para revertir: setear KILL_SALMOS_PROPHECY = False en config.py
+                # y descomentar bloque (ver git tag v1.1.0 en gemini_analyzer.py).
+                from config import KILL_SALMOS_PROPHECY
+                if not KILL_SALMOS_PROPHECY:
+                    _hora = datetime.now().hour
+                    if now - last_salmos_time > 3600 and not (1 <= _hora < 8):
+                        last_salmos_time = now
+                        trigger_salmos_prophecy(prices)
+
+                # --- SENTINEL REPORT v1.2.0 (compact + dedupe + score filter) ---
+                # Frecuencia 4h (era 2h). Solo si NO hay posición abierta.
+                # Score < 4/5 → skip. Mismo (sym, bias) en últimos 90min → skip.
+                from config import SENTINEL_INTERVAL_SEC
+                if now - last_zec_sentinel_time > SENTINEL_INTERVAL_SEC:
                     last_zec_sentinel_time = now
                     macro = GLOBAL_CACHE["macro_metrics"]
                     import tracker as _tracker
+                    import voice_compactor as _vc
+                    import runtime_state as _rs
                     _open_syms = {t["symbol"] for t in _tracker.get_open_trades()}
+                    _verbose = _rs.is_verbose()
                     for _sym in ["ZEC", "TAO"]:
                         if _sym in _open_syms:
                             print(f"⏭️ Sentinel {_sym}: Posición abierta — reporte omitido.")
                             continue
-                        print(f"🥷 Sentinel {_sym}: Generando reporte del Cuadrante Zenith...")
                         _p = prices.get(_sym, 0.0)
                         _rsi = prices.get(f"{_sym}_RSI", 50.0)
                         _ema = GLOBAL_CACHE["indicators"].get(_sym, {}).get("ema_200", _p)
                         _atr = prices.get(f"{_sym}_ATR", 0.0)
                         _bb_u = prices.get(f"{_sym}_BB_U", 0.0)
                         _bb_l = prices.get(f"{_sym}_BB_L", 0.0)
-                        sentinel_report = gemini_analyzer.get_sentinel_report(
-                            symbol=_sym,
-                            current_price=_p,
-                            rsi=_rsi,
-                            ema=_ema,
+
+                        if _verbose:
+                            # Verbose mode (legacy full Cuadrilla output)
+                            print(f"🥷 Sentinel {_sym}: VERBOSE mode — full report.")
+                            sentinel_report = gemini_analyzer.get_sentinel_report(
+                                symbol=_sym, current_price=_p, rsi=_rsi, ema=_ema,
+                                usdt_d=prices.get("USDT_D", 8.08),
+                                vix=macro.get("vix", 0.0), dxy=macro.get("dxy", 0.0),
+                                spy=macro.get("spy", 0.0), nvda=macro.get("nvda", 0.0),
+                                pltr=macro.get("pltr", 0.0),
+                                atr=_atr, bb_u=_bb_u, bb_l=_bb_l,
+                                btc_price=prices.get("BTC", 0.0),
+                                gold_price=prices.get("GOLD", 0.0),
+                            )
+                            _emoji = "🥷" if _sym == "ZEC" else "🏛️"
+                            import alert_manager as _am
+                            _sentinel_msg = f"{_emoji} <b>SENTINEL REPORT: {_sym}</b>\n\n{safe_html(sentinel_report)}"
+                            _am.send_telegram_long(_sentinel_msg)
+                            continue
+
+                        # Compact mode (default v1.2.0+)
+                        print(f"🥷 Sentinel {_sym}: compact mode — query Gemini JSON.")
+                        parsed = gemini_analyzer.get_sentinel_report_compact(
+                            symbol=_sym, current_price=_p, rsi=_rsi, ema=_ema,
                             usdt_d=prices.get("USDT_D", 8.08),
-                            vix=macro.get("vix", 0.0),
-                            dxy=macro.get("dxy", 0.0),
-                            spy=macro.get("spy", 0.0),
-                            nvda=macro.get("nvda", 0.0),
+                            vix=macro.get("vix", 0.0), dxy=macro.get("dxy", 0.0),
+                            spy=macro.get("spy", 0.0), nvda=macro.get("nvda", 0.0),
                             pltr=macro.get("pltr", 0.0),
-                            atr=_atr,
-                            bb_u=_bb_u,
-                            bb_l=_bb_l,
+                            atr=_atr, bb_u=_bb_u, bb_l=_bb_l,
                             btc_price=prices.get("BTC", 0.0),
                             gold_price=prices.get("GOLD", 0.0),
                         )
-                        _emoji = "🥷" if _sym == "ZEC" else "🏛️"
-                        import alert_manager as _am
-                        _sentinel_msg = f"{_emoji} <b>SENTINEL REPORT: {_sym}</b>\n\n{safe_html(sentinel_report)}"
-                        _am.send_telegram_long(_sentinel_msg)
+                        if not parsed:
+                            print(f"🔕 Sentinel {_sym}: parse failed, skipping (use /verbose on para forzar texto).")
+                            continue
+
+                        _bias = parsed.get("bias", "NEUTRAL")
+                        _score = parsed.get("score", 0)
+                        ok, reason = _vc.should_send_sentinel(_sym, _bias, _score)
+                        if not ok:
+                            print(f"🔕 Sentinel {_sym}: filtered — {reason}")
+                            continue
+
+                        msg = _vc.render_sentinel_compact(_sym, parsed, _p, _rsi)
+                        send_telegram(msg)
+                        print(f"✅ Sentinel {_sym}: enviado · {_bias} {_score}/5")
                 
                 # --- ALTCOIN SENTINEL (Cada 4 Horas) ---
                 if now - last_sentinel_time > 14400: # 4 horas

@@ -1,0 +1,82 @@
+{
+  "UUUU": {
+    "side": "LONG",
+    "entry": 22.77,
+    "stop": 19.6,
+    "targets": "28,31,35",
+    "be": 25.0,
+    "note": "nuclear/uranium · PTS 21-Abr"
+  },
+  "IREN": {
+    "side": "LONG",
+    "entry": 52.38,
+    "stop": 42.74,
+    "targets": "67,77,89",
+    "be": 59.0,
+    "note": "crypto mining · PTS 21-Abr"
+  },
+  "XLE": {
+    "side": "LONG",
+    "entry": 58.31,
+    "stop": 53.06,
+    "targets": "63,66,69",
+    "be": 61.0,
+    "note": "energy ETF · PTS 23-Abr"
+  },
+  "SOFI": {
+    "side": "LONG",
+    "entry": 19.29,
+    "stop": 15.6,
+    "targets": "25,28",
+    "be": 21.0,
+    "note": "fintech · PTS 15-Abr (open)"
+  },
+  "COIN": {
+    "side": "LONG",
+    "entry": 200.93,
+    "stop": 160.32,
+    "targets": "286,328,382",
+    "be": 254.0,
+    "note": "crypto stock · PTS 15-Abr (open)"
+  },
+  "HOOD": {
+    "side": "LONG",
+    "entry": 85.97,
+    "stop": 65.35,
+    "targets": "120,134",
+    "be": 97.84,
+    "note": "broker · PTS 14-Abr (open)"
+  },
+  "MP": {
+    "side": "LONG",
+    "entry": 63.28,
+    "stop": 48.11,
+    "targets": "79,89",
+    "be": 73.0,
+    "note": "rare earths · PTS 15-Abr (open)"
+  },
+  "XBI": {
+    "side": "LONG",
+    "entry": 134.0,
+    "stop": 119.09,
+    "targets": "150,174",
+    "be": 143.0,
+    "note": "biotech · PTS 14-Abr (open)"
+  },
+  "RKLB": {
+    "side": "LONG",
+    "entry": 74.9,
+    "stop": 63.35,
+    "targets": "91,100",
+    "be": 83.0,
+    "note": "aerospace · PTS 13-Abr (T1 hit)"
+  },
+  "TSLA": {
+    "side": "SHORT",
+    "entry": 335.65,
+    "stop": 359.87,
+    "targets": "302,276,217",
+    "be": 320.0,
+    "note": "posicional · solo si SP500 cae a naranja"
+  }
+}

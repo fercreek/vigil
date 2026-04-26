@@ -248,3 +248,11 @@ MAX_PORTFOLIO_EXPOSURE = 3.0       # Exposure < 3x balance
 # ENFORCE_HMAC, TV_RATE_LIMIT_PER_MIN). Ver webhook_security.py.
 # ENFORCE_HMAC=false default (canary) — activar tras validar Pine firma OK.
 TV_RATE_LIMIT_PER_MIN_DEFAULT = 10
+
+# ── v1.2.0: Cuadrilla Zenith — formato compacto + filtros ratio S/N ──────────
+# Cambios: SENTINEL solo si score >=4/5, dedupe 90min, frecuencia 4h (era 2h),
+# SALMOS PROPHECY hourly removido (duplicaba PANORAMA). /verbose toggle revierte.
+SENTINEL_MIN_SCORE_OF_5 = 4       # Skip si veredict score < 4/5
+SENTINEL_INTERVAL_SEC   = 14400   # 4h (era 7200 = 2h)
+SENTINEL_DEDUPE_MIN     = 90      # No re-enviar mismo (sym, bias) en últimos 90min
+KILL_SALMOS_PROPHECY    = True    # Mata trigger_salmos_prophecy() en main loop

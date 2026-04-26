@@ -551,6 +551,80 @@ def check_user_queries(prices: dict):
                         send_telegram(f"✅ Modo cambiado a <b>{new_mode}</b>.{warn}",
                                       keyboard=get_main_menu())
 
+                elif text.startswith("/verbose"):
+                    import runtime_state
+                    parts = text.split()
+                    if len(parts) < 2 or parts[1].lower() not in ("on", "off"):
+                        cur = "ON" if runtime_state.is_verbose() else "OFF"
+                        send_telegram(
+                            f"🗣️ <b>Verbose</b>: {cur}\n"
+                            f"<code>/verbose on</code>  → reportes Cuadrilla full\n"
+                            f"<code>/verbose off</code> → formato compacto (default)",
+                            keyboard=get_main_menu())
+                    else:
+                        new_val = parts[1].lower() == "on"
+                        runtime_state.set_field("verbose", new_val)
+                        if not new_val:
+                            # Limpia dedupe al volver a compact (permite ver primer reporte fresco)
+                            try:
+                                import voice_compactor as _vc
+                                _vc.clear_dedupe()
+                            except Exception:
+                                pass
+                        msg = "🗣️ Verbose <b>ON</b> — Cuadrilla full." if new_val else "🤐 Verbose <b>OFF</b> — formato compacto."
+                        send_telegram(msg, keyboard=get_main_menu())
+
+                elif text.startswith("/params"):
+                    try:
+                        from config import (
+                            RSI_LONG_ENTRY, RSI_SHORT_ENTRY, SHORT_MIN_CONFLUENCE,
+                            V3_MIN_CONFLUENCE, V4_EMA_PROX_MAP, ADX_TRENDING_THRESHOLD,
+                            BB_WIDTH_RANGING_PCT, RVOL_MIN_ENTRY, RVOL_MIN_BTC,
+                            SENTINEL_MIN_SCORE_OF_5, SENTINEL_INTERVAL_SEC,
+                            SENTINEL_DEDUPE_MIN, V1_SHORT_ENABLED,
+                        )
+                    except Exception as e:
+                        send_telegram(f"❌ Error leyendo config: {e}", keyboard=get_main_menu())
+                    else:
+                        sentinel_min_h = SENTINEL_INTERVAL_SEC // 3600
+                        msg = (
+                            "<b>⚙️ Parámetros activos</b>\n"
+                            "<code>━━━━━━━━━━━━━</code>\n"
+                            "<b>RSI thresholds</b>\n"
+                            f"  long ≤ <b>{RSI_LONG_ENTRY}</b> · short ≥ <b>{RSI_SHORT_ENTRY}</b>\n"
+                            "<b>Confluence min</b>\n"
+                            f"  V1-LONG: <b>{V3_MIN_CONFLUENCE}</b> · V1-SHORT: <b>{SHORT_MIN_CONFLUENCE}</b>\n"
+                            "<b>Regime</b>\n"
+                            f"  ADX trending: <b>{ADX_TRENDING_THRESHOLD}</b> · BB ranging: <b>{BB_WIDTH_RANGING_PCT*100:.1f}%</b>\n"
+                            "<b>RVOL min</b>\n"
+                            f"  default: <b>{RVOL_MIN_ENTRY}</b> · BTC: <b>{RVOL_MIN_BTC}</b>\n"
+                            "<b>EMA prox (V4)</b>\n"
+                            "  " + " · ".join(f"{k}:{v:.3f}" for k, v in list(V4_EMA_PROX_MAP.items())[:4]) + "\n"
+                            "<b>Kill switches</b>\n"
+                            f"  V1-LONG: ✅  V1-SHORT: {'✅' if V1_SHORT_ENABLED else '❌'}\n"
+                            "<b>Sentinel (compact)</b>\n"
+                            f"  min score: <b>{SENTINEL_MIN_SCORE_OF_5}/5</b> · interval: <b>{sentinel_min_h}h</b> · dedupe: <b>{SENTINEL_DEDUPE_MIN}min</b>"
+                        )
+                        send_telegram(msg, keyboard=get_main_menu())
+
+                elif text.startswith("/scan"):
+                    try:
+                        import scan_status as _scan
+                        msg = _scan.build_scan_report(prices)
+                        send_telegram(msg, keyboard=get_main_menu())
+                    except Exception as e:
+                        send_telegram(f"❌ Error /scan: {e}", keyboard=get_main_menu())
+
+                elif text.startswith("/stocks"):
+                    try:
+                        import stock_watchlist as _sw
+                        parts = text.split(maxsplit=1)
+                        args = parts[1].strip() if len(parts) > 1 else ""
+                        msg = _sw.handle_command(args)
+                        send_telegram(msg, keyboard=get_main_menu())
+                    except Exception as e:
+                        send_telegram(f"❌ Error /stocks: {e}", keyboard=get_main_menu())
+
                 elif text.startswith("/logs"):
                     parts = text.split()
                     try:
