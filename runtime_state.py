@@ -1,7 +1,7 @@
 """
 runtime_state.py — persist bot runtime flags between restarts.
 
-Managed fields: `paused`, `execution_mode` (override).
+Managed fields: `paused`, `execution_mode` (override), `verbose`.
 Keeps separate from risk_state.json (owned by risk_manager).
 """
 
@@ -11,7 +11,11 @@ import threading
 
 _FILE = "runtime_state.json"
 _LOCK = threading.Lock()
-_DEFAULT = {"paused": False, "execution_mode": None}
+_DEFAULT = {
+    "paused": False,
+    "execution_mode": None,
+    "verbose": False,  # True = full Cuadrilla output. False = compact format (default v1.2.0+)
+}
 
 
 def load() -> dict:
@@ -55,3 +59,7 @@ def get_execution_mode() -> str:
     if override in ("PAPER", "LIVE"):
         return override
     return os.getenv("EXECUTION_MODE", "PAPER")
+
+
+def is_verbose() -> bool:
+    return bool(load().get("verbose", False))

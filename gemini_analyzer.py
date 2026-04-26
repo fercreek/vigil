@@ -1022,6 +1022,70 @@ def get_zec_sentinel_report(current_price: float, rsi: float, ema: float, usdt_d
     return get_sentinel_report("ZEC", current_price, rsi, ema, usdt_d)
 
 
+def get_sentinel_report_compact(symbol: str, current_price: float, rsi: float, ema: float,
+                                usdt_d: float, vix: float = 0.0, dxy: float = 0.0,
+                                spy: float = 0.0, nvda: float = 0.0, pltr: float = 0.0,
+                                atr: float = 0.0, bb_u: float = 0.0, bb_l: float = 0.0,
+                                btc_price: float = 0.0, gold_price: float = 0.0):
+    """
+    v1.2.0 compact sentinel — returns parsed dict ready for voice_compactor renderer.
+    Returns None if Gemini fails or JSON unparseable (caller should fallback to verbose).
+
+    Tries Gemini JSON mode first, falls back to plain prompt + post-parse.
+    """
+    import voice_compactor
+
+    if not client:
+        return None
+
+    trend = "ALCISTA" if current_price > ema else "BAJISTA"
+    bb_ctx = ""
+    if bb_u > 0 and bb_l > 0:
+        if current_price >= bb_u * 0.99:
+            bb_ctx = "techo BB"
+        elif current_price <= bb_l * 1.01:
+            bb_ctx = "suelo BB"
+        else:
+            bb_ctx = "rango medio"
+
+    market_block = (
+        f"{symbol}: ${current_price:,.2f} | RSI {rsi:.1f} | EMA200 ${ema:,.2f} ({trend})\n"
+        f"BB: {bb_ctx} (U ${bb_u:,.2f} | L ${bb_l:,.2f})\n"
+        f"ATR: {atr:.4f} ({(atr/current_price*100 if current_price else 0):.2f}%)\n"
+        f"BTC ref: ${btc_price:,.2f} | Gold: ${gold_price:,.2f}"
+    )
+    macro_block = (
+        f"USDT.D: {usdt_d:.2f}% ({'press venta' if usdt_d > 8.05 else 'fav longs'})\n"
+        f"VIX: {vix:.1f} | DXY: {dxy:.2f} | SPY: ${spy:,.2f}"
+    )
+
+    learnings = get_neural_memory()
+    memory_ctx = f"\nLECCIONES NEURALES:\n{learnings}\n" if learnings else ""
+
+    prompt = voice_compactor.compact_sentinel_prompt(symbol, market_block, macro_block, memory_ctx)
+
+    try:
+        resp = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.5,
+                max_output_tokens=600,
+                response_mime_type="application/json",
+                system_instruction="Genera SOLO el JSON pedido. Cada voz ≤8 palabras. Sin prosa adicional.",
+            ),
+        )
+        raw = (resp.text or "").strip()
+        parsed = voice_compactor.parse_sentinel_json(raw)
+        if parsed:
+            return parsed
+        logger.warning(f"[Sentinel Compact] JSON unparseable for {symbol}: {raw[:120]}")
+    except Exception as e:
+        logger.warning(f"[Sentinel Compact] Error: {e}")
+
+    return None
+
+
 def get_sentinel_report(symbol: str, current_price: float, rsi: float, ema: float,
                         usdt_d: float, vix: float = 0.0, dxy: float = 0.0,
                         spy: float = 0.0, nvda: float = 0.0, pltr: float = 0.0,
