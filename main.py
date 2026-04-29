@@ -28,6 +28,7 @@ import scalp_alert_bot
 import swing_bot
 import stock_analyzer
 import commodities_bot
+import manual_positions_monitor
 import thread_health
 
 
@@ -92,6 +93,7 @@ if __name__ == "__main__":
     _start_thread("telegram", scalp_alert_bot.run_telegram_worker)
     _start_thread("stock", stock_analyzer.stock_watchdog)
     _start_thread("commodities", commodities_bot.run_commodities_bot)
+    _start_thread("manual_monitor", manual_positions_monitor.run_manual_monitor)
 
     # 4. Hilo principal para Flask (Keep-Alive)
     run_flask()
