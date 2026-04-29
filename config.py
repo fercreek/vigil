@@ -146,7 +146,7 @@ DXY_CRIPTO_PRESSURE = 103.0  # DXY > 103 → presión bajista en cripto (was 105
 OIL_INFLATION_THRESHOLD = 85.0  # Oil > $85 = presión inflacionaria → hawkish Fed (FOMC Mar-26)
 
 # ── FOMC Calendar ────────────────────────────────────────────────────────────
-FOMC_NEXT_MEETING = "2026-04-28"   # Próxima reunión FOMC — suprimir señales 24h antes
+FOMC_NEXT_MEETING = "2026-06-17"   # Próxima reunión FOMC (Apr 28-29 ya pasó) — suprimir señales 24h antes
 RATE_BIAS = "HAWKISH_HOLD"         # FOMC Mar-26: tasas 3.50-3.75%, 30% prob de subida, sin recortes hasta dic
 
 # ── Cache TTL (segundos) ──────────────────────────────────────────────────────
@@ -205,7 +205,7 @@ VERSIONS = ["V1-TECH", "V2-AI", "V4-EMA", "V5-MOMENTUM"]
 # ── Iteración del sistema (actualizar en cada mejora significativa) ───────────
 # Formato: v{major}.{minor} — major sube cuando cambia la lógica core
 # Minor sube cuando se ajustan parámetros o se agregan filtros
-STRATEGY_ITERATION = "v4.3"  # Apr 19 2026: +XOM +MOO watchlist (PTS 9-Abr defensivas)
+STRATEGY_ITERATION = "v4.4"  # Apr 29 2026: gold bull lock + commodities MIN_CONFLUENCE 3→4 + FOMC update
 
 # ── Win Rate Target (matemática real, no wishful thinking) ──────────────────
 # Fórmula break-even: WR_min = 1 / (1 + R:R)
@@ -256,3 +256,28 @@ SENTINEL_MIN_SCORE_OF_5 = 4       # Skip si veredict score < 4/5
 SENTINEL_INTERVAL_SEC   = 14400   # 4h (era 7200 = 2h)
 SENTINEL_DEDUPE_MIN     = 90      # No re-enviar mismo (sym, bias) en últimos 90min
 KILL_SALMOS_PROPHECY    = True    # Mata trigger_salmos_prophecy() en main loop
+
+# ── Manual Positions (Fernando) — contexto para Cuadrilla Zenith ─────────────
+# Actualizado: 2026-04-29. Usar en gemini_analyzer.py para que el análisis
+# considere exposición existente al calcular bias y tamaño de señal.
+MANUAL_POSITIONS = [
+    {
+        "symbol": "TAO", "side": "LONG", "entry": 295.0,
+        "current_approx": 261.0, "pnl_usd": -345.0,
+        "leverage_loss_usd": -163.0,  # pérdida realizada por apalancamiento
+        "platform": "Quantfy+leverage",
+        "note": "Posición en drawdown. Nivel clave de soporte: ~$250. Evaluar BE o cierre parcial si rebota a $280+."
+    },
+    {
+        "symbol": "ZEC", "side": "LONG", "entry": 358.0,
+        "current_approx": 334.0, "pnl_usd": -107.0,
+        "platform": "Binance spot",
+        "note": "En drawdown. ZEC WR histórico 29.5% — mejor activo del bot. Esperar confirmación técnica."
+    },
+    {
+        "symbol": "DOGE", "side": "LONG", "entry": 0.10299,
+        "current_approx": 0.10948, "pnl_usd": 136.0,
+        "platform": "Binance spot",
+        "note": "En ganancia +$136. Considerar mover SL a BE (~0.10299)."
+    },
+]
