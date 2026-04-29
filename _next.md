@@ -1,171 +1,152 @@
-# _next.md — Pickup point próxima sesión
+# _NEXT.md — Pickup point próxima sesión
 
-Última sesión: **2026-04-26** · cierre 22:55 hora MX
-Tag prod actual: **v1.2.1**
-Branch dev = main (sync OK)
+Última sesión: **2026-04-29** · bot v1.3.0
+Tag prod actual: **v1.3.0** (main = dev, ambos pushed)
 Bot: corriendo 24/7 en Railway · `https://web-production-75508.up.railway.app`
 
 ---
 
-## Verificaciones a correr al arrancar
+## ⚡ En proceso — retomar aquí
+
+### 1. Validar despliegue v1.3.0 en Railway (5 min)
+
+```bash
+railway logs --deployment 2>&1 | tail -40
+# Buscar:
+#   "MANUAL POSITIONS MONITOR ACTIVADO"
+#   "manual_monitor: store inicializado desde config (3 posiciones)"
+#   "Commodities: analizando GOLD" → NO debe ver GOLD SHORT (bull lock activo)
+```
+
+En Telegram tras redeploy:
+- `/manual` — debe mostrar TAO / ZEC / DOGE con P&L y recomendación
+- `/manual_be DOGE` — anotar que DOGE ya está en ganancia cerca de BE
+
+---
+
+### 2. Posiciones manuales activas (estado al cierre 2026-04-29)
+
+| Símbolo | Lado | Entry | Precio aprox | P&L | Acción recomendada |
+|---------|------|-------|-------------|-----|--------------------|
+| TAO | LONG (leverage) | $295.00 | ~$261 | -$345 unrealized / -$163 leverage | Hold si $250 aguanta; cierre si rompe |
+| ZEC | LONG spot | $358.00 | ~$334 | -$107 | Hold; ZEC WR bot 29.5% — mejor activo |
+| DOGE | LONG spot | $0.10299 | ~$0.10948 | +$136 | Mover SL a BE ($0.10299) ya |
+
+Portfolio total: **-$399.99** (screenshot 2026-04-29)
+Ganadores: DOGE +141, HBAR +43, LTC +37, ETH +4 | Perdedores: TAO -507, ZEC -107, SIL -12
+
+---
+
+## 💡 Backlog — próximas mejoras bot (en orden de impacto)
+
+### A. Conectar MANUAL_POSITIONS a Cuadrilla Zenith (~30 min)
+Cuadrilla no sabe de posiciones manuales abiertas. Agregar contexto en `gemini_analyzer.py`:
+- Leer `manual_positions.json` en `get_ai_consensus()`
+- Incluir en prompt: "Fernando tiene TAO LONG en -$345, ZEC LONG en -$107"
+- Cuadrilla considera correlación al dar bias
+
+### B. Investigar conf_score invertido (~1h)
+Win rate por confluencia (base 89 trades):
+- `conf_score 4` → **17.7% WR** (79 trades)
+- `conf_score 5` → **0.0% WR** (7 trades)
+Score más alto = peor resultado. El cálculo de confluencia tiene algo roto.
+Hipótesis: score 5 se activa solo en condiciones over-extended (RSI + BB extremos simultáneos).
+Fix: revisar `strategies.calculate_confluence_score()`, agregar logging de componentes activos.
+
+### C. Pack 4 — PTS Crypto Triggers (~1h, zero risk)
+BTC@79,917 + ETH@2,520 como triggers LONG one-way:
+- Nuevo módulo `pts_crypto_triggers.py`
+- Loop check: si `BTC >= 79917` y `USDT.D` rompiendo bajista → emit LONG
+- `/cryptoadd BTC LONG 79917 69919 93000,101000 85000`
+
+### D. Pack 3 — Eco Mercado (opcional, ~1h)
+`/eco SYM CANAL DIR NOTA` → guarda señales externas en `logs/external_signals.jsonl`
+Aparece en PANORAMA bajo "📡 ECO 24h"
+
+---
+
+## ✅ Completado esta sesión (2026-04-29)
+
+### Win Rate Audit
+- Global: **16.9%** (15W / 74L / 89 cerrados)
+- TAO: 3.1% (1/32) — ya deshabilitado (`TAO_TRADING_ENABLED = False`)
+- GOLD: 0% (0/6) — causa raíz: GOLD SHORT en bull market ATH
+- SHORT general: **4.3%** (1/23) — `V1_SHORT_ENABLED = False` ya activo
+- conf_score 5 = 0% WR (peor que conf 4) — investigación pendiente (backlog B)
+
+### Fixes deployados → main `ba29f12`
+
+**`commodities_bot.py`** (commit `5cab747`)
+- `MIN_CONFLUENCE` 3→4
+- Gold bull lock: `price > $2,500` → GOLD SHORT suprimido
+- OIL SHORT bloqueado cuando SP500 > 7,000
+
+**`config.py`** (commit `5cab747`)
+- `MANUAL_POSITIONS` agregado (TAO/ZEC/DOGE)
+- `FOMC_NEXT_MEETING` → Jun 17 (Apr 28-29 ya pasó)
+- `STRATEGY_ITERATION = "v4.4"`
+
+**`manual_positions_monitor.py`** nuevo (commit `0fa9133`)
+- Store persistente `manual_positions.json` (init desde config)
+- Análisis cada 30 min: precio Binance → P&L → recomendación LONG-oriented
+- +5% → mover BE | +8% → tomar parciales | -8% → alerta drawdown | cooldown 1h/sym
+
+**`telegram_commands.py`** (commit `0fa9133`)
+- `/manual` — P&L + recomendación todas las posiciones
+- `/manual_tp SYM [pct]` — TP completo o parcial
+- `/manual_sl SYM` — SL hit
+- `/manual_be SYM` — anotar BE movido
+- `/manual_off SYM` — pausar monitoreo
+- `/manual_add SYM ENTRY [LONG]` — agregar nueva posición
+
+**`main.py`** (commit `0fa9133`) — thread `manual_monitor` + watchdog heartbeat
+
+---
+
+## 🔒 Bloqueado / Decisiones pendientes
+
+1. **Volume mount Railway** — `manual_positions.json` NO persiste entre redeploys sin mount
+   → Workaround: actualizar `config.MANUAL_POSITIONS` antes de cada deploy
+2. **Railway upgrade Hobby $5/mo** — trial puede agotarse, revisar
+3. **GitHub branch protection** para `main` (3 min UI)
+4. **@ZenithDevBot** registro en @BotFather (dev bot separado)
+
+---
+
+## Verificaciones al arrancar próxima sesión
 
 ```bash
 cd /Users/fernandocastaneda/Documents/ideas/scalp_bot
 git pull origin dev
-railway logs --deployment 2>&1 | tail -30   # health prod
-curl -s https://web-production-75508.up.railway.app/api/stats   # 200 + JSON
+railway logs --deployment 2>&1 | tail -30
+# Telegram: /manual → TAO / ZEC / DOGE con P&L vivos
 ```
 
-En Telegram:
-- `/status` debería responder <2s
-- `/scan` debería listar crypto pending + watchlist PTS
-- `/params` muestra thresholds
-- `/stocks` lista 10 tickers PTS
-
 ---
 
-## Pendiente alto valor — orden recomendado
+## Memo arquitectura v1.3.0
 
-### 1. Validar SENTINEL compact (15 min)
+**Threads en producción:**
 
-Bug v1.2.0 → fixed en v1.2.1 (`max_output_tokens` 600→1500).
-**Verificar:** próxima ejecución SENTINEL (cada 4h) NO loguea `JSON unparseable`.
+| Thread | Módulo | Función |
+|--------|--------|---------|
+| scalp_bot | scalp_alert_bot.main | loop cripto (ZEC, BTC, ETH, SOL, HBAR, DOGE) |
+| swing | swing_bot | estrategias swing 4H |
+| telegram | scalp_alert_bot.run_telegram_worker | dispatcher comandos |
+| stock | stock_analyzer.stock_watchdog | watchlist PTS acciones |
+| commodities | commodities_bot | GOLD + OIL (15 min, 1H) |
+| **manual_monitor** | **manual_positions_monitor** | **posiciones manuales (30 min)** |
 
-Si sigue fallando:
-```bash
-railway logs --deployment 2>&1 | grep "Sentinel Compact"
-# Ahora muestra `raw` completo (sin truncate) — diagnose con regex/JSON shape
-```
-
-Si parse falla recurrente: subir a `gemini-2.5-pro` o usar `response_schema` con google-genai SDK.
-
----
-
-### 2. Pack 4 — Más entradas crypto (DECISIÓN, ~1h)
-
-Bot demasiado restrictivo. 4 dials para subir señales/día:
-
-| Dial | Hoy | Propuesta | Riesgo |
-|---|---|---|---|
-| Min confluence | 3 | 2 (solo BTC/ETH/SOL) | +30% señales, -10% precision |
-| Regime filter | RANGING bloquea todo | RANGING permite 50% size | +50% señales en lateral |
-| RSI long entry | 45 | 50 (más permisivo) | +20% señales tempranas |
-| **PTS triggers crypto** | — | BTC@79.9k, ETH@2.5k watchers long-only | +2 alertas pre-cargadas, **zero risk** |
-
-**Recomendación:** activar **solo PTS triggers** (zero risk, validados externamente). Otros dials esperar.
-
-Implementación PTS triggers:
-- Nuevo módulo `pts_crypto_triggers.py` — lee `data/crypto_triggers.json` (similar a stock_watchlist)
-- Loop en main check: si `BTC ≥ 79917` y `USDT.D rompiendo bajista` → emit LONG signal
-- Mismo patrón para ETH @ 2520
-
-**Comando para usar también:** `/cryptoadd BTC LONG 79917 69919 93000,101000 85000`
-
----
-
-### 3. Pack 3 — Eco Mercado (~1h, opcional)
-
-Comando `/eco SYM CANAL DIR NOTA`:
-```
-/eco BTC bitlobo bull "rompió zona resistencia 75k"
-→ guarda en logs/external_signals.jsonl
-→ aparece en próximo PANORAMA bajo "📡 ECO 24h"
-```
-
-Implementación:
-- Módulo `eco_signals.py` (load/save JSONL + dedupe por canal+sym 24h)
-- Modificar PANORAMA en `scalp_alert_bot.py:749` para incluir `eco_lines` (ya soportado por `voice_compactor.render_panorama_compact`)
-- Comando `/eco` en `telegram_commands.py`
-
-Canales a tracker: PTS, BitLobo, Rose, Whales, Denmark, Trade It Simple, Inversión y Trading.
-
----
-
-### 4. Tareas del workflow base pendientes (low priority pero importantes)
-
-Del cierre sesión 2026-04-22 (siguen abiertas):
-
-1. **Registrar `@ZenithDevBot` en @BotFather** (10 min) — pasos en `docs/DEV_WORKFLOW.md`
-2. **GitHub branch protection** rule para `main` (3 min UI)
-3. **GitHub default branch** → `dev` (UI)
-4. **Railway upgrade Hobby $5/mo** — trial casi agotado, urgente
-5. **Volume mount `/app/data`** (opcional, $0.25/mo) — SQLite persist entre redeploys
-
----
-
-### 5. Post Contreras Code Jue 23 — pendiente (alta prioridad)
-
-P-012 carrusel "Workflow dev→prod" (7 slides). Ver `_cortex.html` task ID P-012.
-
-Subtasks:
-- [ ] Aprobar copy: `~/Documents/context/content/linkedin/posts/2026-04-23-workflow-dev-prod-carrusel.md`
-- [ ] Generar `~/Documents/context/scripts/gen-cc-carrusel-workflow.py` (Pillow puro, patrón v3)
-- [ ] Correr → 7 PNGs 1080x1350 en `assets/contreras-code/ig-feed/`
-- [ ] Upload LinkedIn (drag 7 PNGs en orden 01-07)
-- [ ] Caption + hashtags `#softwareengineering #buildingpublic #devops #systems`
-- [ ] Programar Metricool
-- [ ] `_registry.md`: P-012/LI `⚪ draft` → `📤 scheduled`
-
----
-
-## Memo arquitectura v1.2.0+
-
-**Comando map:**
-
-| Comando | Implementación | Función |
-|---|---|---|
-| `/scan` | `scan_status.py` | estado pending alerts crypto + watchlist PTS |
-| `/params` | `telegram_commands.py:/params` | thresholds activos (RSI, conf, regime, sentinel) |
-| `/stocks [add\|rm\|status]` | `stock_watchlist.py` | PTS watchlist con yfinance live price |
-| `/verbose on\|off` | `runtime_state.is_verbose()` | revierte SENTINEL a Cuadrilla full |
-| `/pause /resume` | runtime_state.paused | bloquea/reanuda execution |
-| `/mode paper\|live` | runtime_state.execution_mode | switch ejecución |
-| `/balance` | trading_executor | USDT futures real |
-| `/logs [N]` | logs/bot.log tail | últimas N líneas |
-| `/setsl /settp SYM PCT` | tracker.update_trade | ajusta SL/TP trade abierto |
-
-**Filtros SENTINEL v1.2.0+:**
-- Score Gemini < 4/5 → skip
-- Mismo (sym, bias) en últimos 90min con score igual o menor → skip
-- Frecuencia 4h (era 2h)
-- SALMOS PROPHECY hourly removida (duplicaba PANORAMA)
+**Filtros activos v1.3.0:**
+- `V1_SHORT_ENABLED = False` — V1 shorts off (4.3% WR)
+- `TAO_TRADING_ENABLED = False` — TAO off (3.1% WR)
+- `GOLD_BULL_THRESHOLD = 2500` — no GOLD SHORT mientras price > $2,500
+- `MIN_CONFLUENCE (commodities) = 4` — era 3
 
 **Persistencia runtime:**
 - `runtime_state.json` — paused, execution_mode, verbose
-- `data/stock_watchlist.json` — watchlist PTS (10 tickers seed v1.2.0)
-- `risk_state.json` — owned por risk_manager (NO tocar)
+- `data/stock_watchlist.json` — watchlist PTS
+- `manual_positions.json` — posiciones manuales (⚠️ no persiste en Railway sin volume mount)
+- `risk_state.json` — risk_manager (NO tocar)
 
----
-
-## Health checks rápidos
-
-```bash
-# 1. Bot vivo
-curl -s https://web-production-75508.up.railway.app/api/stats
-
-# 2. Threads sanos
-railway logs --deployment 2>&1 | grep -E "heartbeat|Ciclo Swing|Macro Update" | tail -5
-
-# 3. Errores recientes
-railway logs --deployment 2>&1 | grep -iE "error|warning" | tail -10
-
-# 4. Predeploy gate local
-./scripts/predeploy-check.sh
-
-# 5. Git sync state
-git log --oneline origin/main..main 2>&1 | wc -l   # = 0 si sync
-git log --oneline origin/dev..dev 2>&1 | wc -l    # = 0 si sync
-```
-
----
-
-## Decisiones pendientes
-
-1. **Pack 4 dials** — ¿activar solo PTS triggers crypto, o también relajar regime filter?
-2. **Hetzner CAX11 fallback** — Railway funciona OK, ¿necesario migrar? Probable NO.
-3. **MCPs Claude** — SSH-MCP + tradingview-mcp todavía no instalados (Fase 5 plan original)
-4. **Pine V18 alertas live** — Webhook ya endurecido (HMAC + token), pero Pine V18 nunca deployado a TradingView (Fase 4 plan original)
-
----
-
-Tag prod actual: **v1.2.1** · Build SUCCESS · Healthcheck OK · ZEC monitor activo
+Tag prod: **v1.3.0** · main + dev sync · Railway auto-deploy en push a main
