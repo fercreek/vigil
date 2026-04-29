@@ -41,10 +41,15 @@ ATR_TP2 = 3.5
 ATR_TP3 = 5.0
 
 # --- Strategy thresholds ---
-MIN_CONFLUENCE     = 3
+MIN_CONFLUENCE     = 4       # Raised 3→4 (Apr-29: 3/5 generated too many false signals)
 MIN_ATR_PCT        = 0.003   # ATR > 0.3% del precio
 DXY_GOLD_LONG_MAX  = 103.0   # DXY < 103 favorece gold LONG
-DXY_GOLD_SHORT_MIN = 103.0   # DXY > 103 favorece gold SHORT
+DXY_GOLD_SHORT_MIN = 103.0   # DXY > 103 favorece gold SHORT (ignored if GOLD_BULL_LOCK active)
+
+# --- Gold bull market lock ---
+GOLD_BULL_THRESHOLD = 2500.0  # Gold > $2,500 = PHY alcista activo → LONG only, no shorts
+                               # DXY/Gold correlation broke in 2026 (gold ATH despite DXY strength)
+SP500_VERDE_MIN     = 7000    # SP500 > this → no OIL SHORT (bull regime, oil upward bias)
 
 # --- Cooldowns ---
 ALERT_COOLDOWN       = 3600       # 1h entre alertas del mismo instrumento
@@ -298,6 +303,24 @@ def analyze_commodity(key: str, inst: dict):
     # 5. ATR confirmation (already passed min filter, counts as +1)
     long_score += 1
     short_score += 1
+
+    # --- Macro regime guards (applied BEFORE signal determination) ---
+    # Gold bull lock: correlation DXY/Gold broke in 2026. Gold at ATH = LONG only.
+    if key == "GOLD" and price > GOLD_BULL_THRESHOLD:
+        short_score = 0  # kill any short signal while gold in bull market
+        logger.info("    GOLD: bull lock active (price $%.0f > $%.0f) — shorts suppressed", price, GOLD_BULL_THRESHOLD)
+
+    # SP500 VERDE regime: no oil shorts when equities in bull mode
+    if key == "OIL":
+        try:
+            import yfinance as _yf
+            spy_price = float(_yf.Ticker("SPY").fast_info.last_price or 0)
+            sp500_approx = spy_price * 10  # SPY ≈ SP500 / 10
+            if sp500_approx > SP500_VERDE_MIN:
+                short_score = 0
+                logger.info("    OIL: SP500 VERDE (%.0f > %d) — oil shorts suppressed", sp500_approx, SP500_VERDE_MIN)
+        except Exception:
+            pass
 
     # --- Determine signal ---
     side = None

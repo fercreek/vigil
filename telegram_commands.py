@@ -499,6 +499,64 @@ def check_user_queries(prices: dict):
                     import commodities_bot as _cb
                     send_telegram(_cb.get_status_html(), keyboard=get_main_menu())
 
+                elif text.startswith("/manual"):
+                    import manual_positions_monitor as _mpm
+                    parts = text.split()
+                    subcmd = parts[1].lower() if len(parts) > 1 else ""
+
+                    # /manual_tp SYM [pct] or /manual tp SYM [pct]
+                    if subcmd in ("tp", "_tp") or text.startswith("/manual_tp"):
+                        raw = text.replace("/manual_tp", "").replace("/manual tp", "").strip().split()
+                        if not raw:
+                            send_telegram("⚠️ Uso: /manual_tp SYM [pct]\nEj: /manual_tp TAO 50", keyboard=get_main_menu())
+                        else:
+                            sym = raw[0].upper()
+                            pct = int(raw[1]) if len(raw) > 1 else 100
+                            send_telegram(_mpm.cmd_tp(sym, pct), keyboard=get_main_menu())
+
+                    # /manual_sl SYM or /manual sl SYM
+                    elif subcmd in ("sl", "_sl") or text.startswith("/manual_sl"):
+                        raw = text.replace("/manual_sl", "").replace("/manual sl", "").strip().split()
+                        if not raw:
+                            send_telegram("⚠️ Uso: /manual_sl SYM\nEj: /manual_sl ZEC", keyboard=get_main_menu())
+                        else:
+                            send_telegram(_mpm.cmd_sl(raw[0].upper()), keyboard=get_main_menu())
+
+                    # /manual_be SYM
+                    elif subcmd in ("be", "_be") or text.startswith("/manual_be"):
+                        raw = text.replace("/manual_be", "").replace("/manual be", "").strip().split()
+                        if not raw:
+                            send_telegram("⚠️ Uso: /manual_be SYM\nEj: /manual_be DOGE", keyboard=get_main_menu())
+                        else:
+                            send_telegram(_mpm.cmd_be(raw[0].upper()), keyboard=get_main_menu())
+
+                    # /manual_off SYM
+                    elif subcmd in ("off", "_off") or text.startswith("/manual_off"):
+                        raw = text.replace("/manual_off", "").replace("/manual off", "").strip().split()
+                        if not raw:
+                            send_telegram("⚠️ Uso: /manual_off SYM\nEj: /manual_off TAO", keyboard=get_main_menu())
+                        else:
+                            send_telegram(_mpm.cmd_off(raw[0].upper()), keyboard=get_main_menu())
+
+                    # /manual_add SYM ENTRY [LONG|SHORT] [note]
+                    elif subcmd in ("add", "_add") or text.startswith("/manual_add"):
+                        raw = text.replace("/manual_add", "").replace("/manual add", "").strip().split()
+                        if len(raw) < 2:
+                            send_telegram("⚠️ Uso: /manual_add SYM ENTRY [LONG]\nEj: /manual_add SOL 140.5 LONG", keyboard=get_main_menu())
+                        else:
+                            try:
+                                sym = raw[0].upper()
+                                entry = float(raw[1])
+                                side = raw[2].upper() if len(raw) > 2 and raw[2].upper() in ("LONG","SHORT") else "LONG"
+                                note = " ".join(raw[3:]) if len(raw) > 3 else ""
+                                send_telegram(_mpm.cmd_add(sym, entry, side, note), keyboard=get_main_menu())
+                            except ValueError:
+                                send_telegram("⚠️ Entry debe ser número. Ej: /manual_add SOL 140.5", keyboard=get_main_menu())
+
+                    # /manual — show all positions
+                    else:
+                        send_telegram(_mpm.cmd_status(), keyboard=get_main_menu())
+
                 elif text.startswith("/pause"):
                     import runtime_state
                     import scalp_alert_bot as _sab
