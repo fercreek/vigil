@@ -10,6 +10,9 @@ _check_usdtd_breakout()
 import time
 from datetime import datetime
 import episode_memory as _em
+
+_phy_last_alert: dict = {}   # {sym: timestamp} — cooldown 30 min to stop PHY spam
+PHY_ALERT_COOLDOWN = 1800    # 30 min
 from config import (
     V4_EMA_PROXIMITY_MAX, V4_EMA_PROXIMITY_MIN, V4_RSI_LOW,
     V4_RSI_HIGH, V4_RSI_HIGH_ZEC, V4_MIN_CONFLUENCE,
@@ -299,7 +302,9 @@ def check_strategies(prices: dict):
 
         if phy_bias != "NONE":
             trade_type = "RAPIDA"
-            print(f"👁️ [PHY ALERT] {sym} detectó {phy_bias} — forzando modo RAPIDA")
+            if time.time() - _phy_last_alert.get(sym, 0) >= PHY_ALERT_COOLDOWN:
+                print(f"👁️ [PHY ALERT] {sym} detectó {phy_bias} — forzando modo RAPIDA")
+                _phy_last_alert[sym] = time.time()
 
         # --- SOCIAL INTELLIGENCE (TTL controlado por TTL_SOCIAL en scalp_alert_bot) ---
         now_ts = time.time()

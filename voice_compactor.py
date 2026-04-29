@@ -118,9 +118,32 @@ def parse_sentinel_json(raw: str) -> Optional[dict]:
             data = json.loads(match.group(0))
             return _validate(data)
         except json.JSONDecodeError:
-            return None
+            pass
 
-    return None
+    # Fallback: regex-extract top-level scalar fields from truncated JSON.
+    # Handles Gemini cutting off mid-string inside "voices" — we recover
+    # bias/score/verdict which are sufficient for the renderer.
+    return _repair_partial(text)
+
+
+def _repair_partial(text: str) -> Optional[dict]:
+    """Extract top-level scalar fields from truncated JSON via regex."""
+    bias_m    = re.search(r'"bias"\s*:\s*"([^"]+)"', text)
+    score_m   = re.search(r'"score"\s*:\s*(\d+)', text)
+    verdict_m = re.search(r'"verdict"\s*:\s*"([^"]+)"', text)
+    action_m  = re.search(r'"action"\s*:\s*"([^"]+)"', text)
+
+    if not (bias_m and score_m):
+        return None   # not enough data to build a useful result
+
+    partial = {
+        "bias":    bias_m.group(1),
+        "score":   int(score_m.group(1)),
+        "verdict": verdict_m.group(1) if verdict_m else "ESPERAR",
+        "action":  action_m.group(1) if action_m else "—",
+        "voices":  {},   # truncated — renderer shows "—" placeholders
+    }
+    return _validate(partial)
 
 
 def _validate(data: dict) -> Optional[dict]:
