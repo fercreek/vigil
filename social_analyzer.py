@@ -166,7 +166,10 @@ def _analyze_sentiment_with_gemini(ticker: str, news: str, social: str, sentinel
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.7)
+            config=types.GenerateContentConfig(
+                temperature=0.7,
+                max_output_tokens=600
+            )
         )
         result = response.text.strip()
         log_ai_decision("SOCIAL_SENTINEL", prompt, result)

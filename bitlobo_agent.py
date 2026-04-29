@@ -138,7 +138,8 @@ def analyze_chart(image_path: str, symbol: str, timeframe: str = "4H",
             ],
             config=types.GenerateContentConfig(
                 system_instruction=BITLOBO_SYSTEM,
-                temperature=0.7
+                temperature=0.7,
+                max_output_tokens=400
             )
         )
         result = response.text.strip()
@@ -191,7 +192,8 @@ def get_opinion(symbol: str, direction: str, price: float,
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=BITLOBO_SYSTEM,
-                temperature=0.7
+                temperature=0.7,
+                max_output_tokens=400
             )
         )
         result = response.text.strip()
@@ -258,7 +260,8 @@ def get_consensus_line(symbol: str, direction: str, price: float,
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=BITLOBO_SYSTEM,
-                temperature=0.6
+                temperature=0.6,
+                max_output_tokens=256
             )
         )
         return f"🐺 <b>BitLobo</b>: {resp.text.strip()}"
