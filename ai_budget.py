@@ -46,40 +46,53 @@ def init_db():
     conn = sqlite3.connect(DB_FILE)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS ai_calls (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts          TEXT NOT NULL,
-            provider    TEXT NOT NULL,
-            model       TEXT NOT NULL,
-            call_type   TEXT NOT NULL,
-            tokens_in   INTEGER DEFAULT 0,
-            tokens_out  INTEGER DEFAULT 0,
-            cost_usd    REAL DEFAULT 0.0,
-            symbol      TEXT DEFAULT '',
-            approved    INTEGER DEFAULT 1
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts               TEXT NOT NULL,
+            provider         TEXT NOT NULL,
+            model            TEXT NOT NULL,
+            call_type        TEXT NOT NULL,
+            tokens_in        INTEGER DEFAULT 0,
+            tokens_out       INTEGER DEFAULT 0,
+            cached_tokens_in INTEGER DEFAULT 0,
+            cost_usd         REAL DEFAULT 0.0,
+            symbol           TEXT DEFAULT '',
+            approved         INTEGER DEFAULT 1
         )
     """)
+    # Migración: añadir columna si la tabla ya existía sin ella
+    try:
+        conn.execute("ALTER TABLE ai_calls ADD COLUMN cached_tokens_in INTEGER DEFAULT 0")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # columna ya existe
     conn.commit()
     conn.close()
 
 
 def log_ai_call(provider: str, model: str, call_type: str,
                 tokens_in: int = 0, tokens_out: int = 0,
+                cached_tokens_in: int = 0,
                 symbol: str = "", approved: bool = True) -> float:
     """
     Registra una llamada de IA con su costo estimado.
+    cached_tokens_in: tokens servidos desde caché (10% del precio normal).
     Retorna el costo en USD de la llamada.
     """
     rates = COST_PER_TOKEN.get(model, {"in": 0.0, "out": 0.0})
-    cost_usd = tokens_in * rates["in"] + tokens_out * rates["out"]
+    # Tokens no cacheados al precio normal; tokens cacheados al 10%
+    uncached_in = max(0, tokens_in - cached_tokens_in)
+    cost_usd = (uncached_in * rates["in"]
+                + cached_tokens_in * rates["in"] * 0.1
+                + tokens_out * rates["out"])
 
     try:
         conn = sqlite3.connect(DB_FILE)
         conn.execute("""
             INSERT INTO ai_calls
-                (ts, provider, model, call_type, tokens_in, tokens_out, cost_usd, symbol, approved)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (ts, provider, model, call_type, tokens_in, tokens_out, cached_tokens_in, cost_usd, symbol, approved)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (datetime.now().isoformat(), provider, model, call_type,
-              tokens_in, tokens_out, round(cost_usd, 8), symbol, int(approved)))
+              tokens_in, tokens_out, cached_tokens_in, round(cost_usd, 8), symbol, int(approved)))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -99,22 +112,24 @@ def get_monthly_cost(month: str = None) -> dict:
         conn = sqlite3.connect(DB_FILE)
         row = conn.execute("""
             SELECT
-                COALESCE(SUM(cost_usd), 0.0)                                          AS total,
-                COUNT(*)                                                               AS calls,
+                COALESCE(SUM(cost_usd), 0.0)                                           AS total,
+                COUNT(*)                                                                AS calls,
                 COALESCE(SUM(CASE WHEN provider='claude' THEN cost_usd ELSE 0 END), 0) AS claude_cost,
                 COALESCE(SUM(CASE WHEN provider='gemini' THEN cost_usd ELSE 0 END), 0) AS gemini_cost,
-                COALESCE(SUM(tokens_in),  0)                                           AS t_in,
-                COALESCE(SUM(tokens_out), 0)                                           AS t_out
+                COALESCE(SUM(tokens_in),  0)                                            AS t_in,
+                COALESCE(SUM(tokens_out), 0)                                            AS t_out,
+                COALESCE(SUM(cached_tokens_in), 0)                                      AS t_cached
             FROM ai_calls
             WHERE ts LIKE ? AND approved = 1
         """, (f"{month}%",)).fetchone()
         conn.close()
-        total, calls, claude_cost, gemini_cost, t_in, t_out = row
+        total, calls, claude_cost, gemini_cost, t_in, t_out, t_cached = row
     except Exception as e:
         print(f"[ai_budget] Error getting monthly cost: {e}")
         total = calls = claude_cost = gemini_cost = t_in = t_out = 0
 
     used_pct = round(total / MAX_MONTHLY_USD * 100, 1)
+    cached_pct = round(t_cached / max(t_in, 1) * 100, 1)
     return {
         "month":            month,
         "total_usd":        round(total, 4),
@@ -123,6 +138,8 @@ def get_monthly_cost(month: str = None) -> dict:
         "gemini_usd":       round(gemini_cost, 4),
         "tokens_in":        t_in,
         "tokens_out":       t_out,
+        "tokens_cached":    t_cached,
+        "cached_pct":       cached_pct,
         "budget_used_pct":  used_pct,
         "remaining_usd":    round(max(0.0, MAX_MONTHLY_USD - total), 4),
         "max_monthly_usd":  MAX_MONTHLY_USD,
@@ -206,12 +223,14 @@ def get_budget_summary_html() -> str:
     bar = "█" * filled + "░" * (10 - filled)
 
     status_emoji = "🟢" if m["budget_used_pct"] < 60 else ("🟡" if m["budget_used_pct"] < 85 else "🔴")
+    cache_emoji = "🟢" if m["cached_pct"] >= 80 else ("🟡" if m["cached_pct"] >= 40 else "🔴")
     return (
         f"💰 <b>Presupuesto IA — {m['month']}</b> {status_emoji}\n"
         f"[{bar}] {m['budget_used_pct']:.1f}%\n"
         f"Gastado: <code>${m['total_usd']:.4f}</code> / <code>${m['max_monthly_usd']:.0f}</code>\n"
         f"├ Claude: <code>${m['claude_usd']:.4f}</code>\n"
         f"└ Gemini: <code>${m['gemini_usd']:.4f}</code>\n"
+        f"Cache hit: <code>{m['cached_pct']:.1f}%</code> {cache_emoji} ({m['tokens_cached']:,} / {m['tokens_in']:,} tokens)\n"
         f"Decisiones hoy: <code>{daily} / {MAX_DAILY_DECISIONS}</code>\n"
         f"Restante: <code>${m['remaining_usd']:.4f}</code>"
     )

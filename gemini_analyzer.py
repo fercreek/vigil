@@ -30,6 +30,11 @@ import time as _time
 _gemini_fail_count = 0
 _gemini_backoff_until = 0.0
 
+def _gemini_is_available() -> bool:
+    """Returns False if Gemini is in backoff cooldown."""
+    import time as _t
+    return _t.time() >= _gemini_backoff_until
+
 # Claude — decisiones JSON-críticas (Haiku: < $1/mes con uso real del bot)
 _anthropic_client = None
 _HAS_CLAUDE = False
@@ -46,13 +51,16 @@ except ImportError:
     print("[AI Router] SDK anthropic no instalado — usando Gemini para todo")
 
 
+MAX_AGENT_TURNS = 3  # guard contra loops agente-a-agente
+
 def _call_claude_decision(system: str, prompt: str,
                            call_type: str = "decision",
                            symbol: str = "") -> str | None:
     """
     Llama a Claude Haiku para decisiones JSON críticas.
     Verifica presupuesto y límite diario antes de llamar.
-    Registra tokens y costo en ai_budget.
+    Usa prompt caching en el system prompt (cache_control ephemeral).
+    Registra tokens, cached tokens y costo en ai_budget.
     Retorna el texto de la respuesta o None si falla/bloqueado.
     """
     if not _HAS_CLAUDE:
@@ -70,15 +78,21 @@ def _call_claude_decision(system: str, prompt: str,
             model="claude-haiku-4-5-20251001",
             max_tokens=512,
             temperature=0.3,
-            system=system,
-            messages=[{"role": "user", "content": prompt}]
+            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": prompt}],
+            extra_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
         )
+        cached_in = getattr(msg.usage, "cache_read_input_tokens", 0) or 0
+        ratio = msg.usage.input_tokens / max(msg.usage.output_tokens, 1)
+        if ratio > 50:
+            logger.warning(f"[Claude Ratio] {ratio:.0f}x input/output — {call_type}/{symbol} — posible cache miss o contexto inflado")
         _budget.log_ai_call(
             provider="claude",
             model="claude-haiku-4-5-20251001",
             call_type=call_type,
             tokens_in=msg.usage.input_tokens,
             tokens_out=msg.usage.output_tokens,
+            cached_tokens_in=cached_in,
             symbol=symbol,
             approved=True,
         )
@@ -119,7 +133,7 @@ def _save_memory(persona: str, context: list):
     path = _memory_file(persona)
     try:
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(context[-60:], f, ensure_ascii=False, indent=2)  # máx 60 entradas
+            json.dump(context[-20:], f, ensure_ascii=False, indent=2)  # máx 20 entradas
     except Exception as e:
         print(f"[Memory Error] {e}")
 
@@ -222,7 +236,7 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
     risk_ctx = f"\n💀 PULSO DE RIESGO GLOBAL (Apocalipsis Radar):\n{risk_pulse}\n" if risk_pulse else ""
     
     global _gemini_fail_count, _gemini_backoff_until
-    if _time.time() < _gemini_backoff_until:
+    if not _gemini_is_available():
         remaining = int(_gemini_backoff_until - _time.time())
         print(f"[Consensus] Circuit breaker activo — {remaining}s restantes")
         return "🏛️ <i>Análisis pausado temporalmente (circuit breaker activo).</i>"
@@ -256,6 +270,7 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.8,
+                max_output_tokens=500,
                 system_instruction="Eres el moderador de la CUADRILLA ZENITH. Genera las respuestas de Genesis, Exodo, Salmos y Apocalipsis manteniendo sus personalidades institucionales."
             )
         )
@@ -333,7 +348,8 @@ def _chat_with_persona(persona: str, message: str, image_path: str = None) -> tu
     try:
         config = types.GenerateContentConfig(
             system_instruction=system,
-            temperature=0.7
+            temperature=0.4,
+            max_output_tokens=400
         )
 
         contents = []
@@ -512,7 +528,11 @@ def get_market_pulse_analysis(symbol, price, side, rsi, bb_u, bb_l, ema_200, atr
     """
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=prompt
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.5,
+                max_output_tokens=800
+            )
         )
         return response.text.strip()
     except Exception as e:
@@ -531,11 +551,22 @@ def propose_optimization(persona: str, version_tag: str, params: dict):
         json.dump(data, f, indent=4)
     print(f"📦 Propuesta {version_tag} guardada por {persona}")
 
+def _call_persona_task(persona_name: str, prompt: str) -> tuple[str, str | None]:
+    """Worker para ejecutar una persona en paralelo."""
+    answer, _ = _chat_with_persona(persona_name, prompt)
+    return persona_name, answer
+
+
 def get_hourly_panorama(prices_dict: dict) -> dict:
     """
     Genera el panorama horario desde AMBOS agentes de forma independiente.
     Incluye una solicitud de optimización si detectan patrones.
     """
+    if not _gemini_is_available():
+        return {}
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     ts = datetime.now().strftime("%H:%M")
     usdt_d = (prices_dict.get("USDT_D") or 8.08)
     context_line = ""
@@ -557,13 +588,18 @@ Prohibido: narrativas, metáforas, listas, encabezados, frases poéticas.
 Solo <b>, <i>, <code>. Máximo 5 líneas totales."""
 
     results = {}
-    for persona in ["CONSERVADOR", "SCALPER", "SALMOS", "APOCALIPSIS"]:
-        info = PERSONAS[persona]
-        answer, _ = _chat_with_persona(persona, prompt)
-        if answer:
-            results[persona.lower()] = f"{info['emoji']} <b>{info['name']}</b>\n\n{answer}"
-        else:
-            results[persona.lower()] = f"{info['emoji']} <b>{info['name']}</b>: Error de sistema."
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(_call_persona_task, persona, prompt): persona
+            for persona in ["CONSERVADOR", "SCALPER", "SALMOS", "APOCALIPSIS"]
+        }
+        for future in as_completed(futures):
+            persona, answer = future.result()
+            info = PERSONAS[persona]
+            if answer:
+                results[persona.lower()] = f"{info['emoji']} <b>{info['name']}</b>\n\n{answer}"
+            else:
+                results[persona.lower()] = f"{info['emoji']} <b>{info['name']}</b>: Error de sistema."
 
     return results
 
@@ -870,7 +906,7 @@ def get_market_scan(symbols: list, prices_dict: dict) -> str:
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
-                config=types.GenerateContentConfig(temperature=0.5)
+                config=types.GenerateContentConfig(temperature=0.5, max_output_tokens=256)
             )
             result = response.text.strip()
         except Exception as e:

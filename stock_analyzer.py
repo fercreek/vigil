@@ -61,6 +61,7 @@ def extract_stock_signals():
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.0,
+                max_output_tokens=256,
                 response_mime_type="application/json"
             )
         )
