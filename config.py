@@ -49,12 +49,12 @@ STOCK_WATCHLIST = [
      "context": "PTS 14-Abr-2026. Biotech ETF DEFENSIVA SWING. Entrada activa zona 133-136. No cayó con SP500. GR -1.4%. 1 acción/$1k."},
 
     {"ticker": "HOOD",  "yf_ticker": "HOOD",  "direction": "LONG",
-     "entry": 85.97,  "stop_loss": 65.35,  "take_profit_1": 120.0, "take_profit_2": 134.0, "break_even": 97.84,
-     "context": "PTS 14-Abr-2026. Robinhood OPERACIÓN RÁPIDA. Cayendo desde Octubre, posible suelo. GR -2%. 1 acción/$1k."},
+     "entry": 70.0,   "stop_loss": 65.35,  "take_profit_1": 120.0, "take_profit_2": 134.0, "break_even": 97.84,
+     "context": "PTS 29-Abr-2026. HOOD post-earnings. Entry zona 70-85 (bajada vs 85.97 original). Earnings: crypto bajo pero options +8%, stocks +46%, subs Gold +36%, nuevos depósitos +22%. Buyback $1.5B a avg $81 = soporte invisible. GR -2%. 1 acción/$1k. Options: BUY CALL 21-Ago-2026 Strike 90."},
 
     {"ticker": "COIN",  "yf_ticker": "COIN",  "direction": "LONG",
-     "entry": 200.93, "stop_loss": 160.32, "take_profit_1": 286.0, "take_profit_2": 328.0, "take_profit_3": 382.0, "break_even": 254.0,
-     "context": "PTS 15-Abr-2026. Coinbase SWING ALCISTA. Mejor proxy crypto. GR -2%. 1 acción/$2k. El mejor activo crypto de 2025."},
+     "entry": 178.0,  "stop_loss": 160.32, "take_profit_1": 286.0, "take_profit_2": 328.0, "take_profit_3": 382.0, "break_even": 254.0,
+     "context": "PTS 29-Abr-2026. Coinbase SWING ALCISTA. Entry zona 178-200 (bajada post-barrida). Rebotando en ZR. Mejor proxy crypto. GR -2%. 1 acción/$2k. Options: BUY CALL 18-Sep-2026 Strike 220."},
 
     {"ticker": "MP",    "yf_ticker": "MP",    "direction": "LONG",
      "entry": 63.28,  "stop_loss": 48.11,  "take_profit_1": 79.0,  "take_profit_2": 89.0,  "break_even": 73.0,
@@ -70,8 +70,16 @@ STOCK_WATCHLIST = [
 
     # ── Mencionadas en PTS — niveles pendientes ───────────────────────────────
     {"ticker": "IREN",  "yf_ticker": "IREN",  "direction": "LONG",
-     "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
-     "context": "PTS 14-Abr-2026. Bitcoin mining/AI. Candidata a rebote rápido si SP500 continúa arriba. Niveles pendientes próximo reporte."},
+     "entry": 45.22,  "stop_loss": 35.78,  "take_profit_1": 67.0, "take_profit_2": 77.0, "take_profit_3": 89.0, "break_even": 59.0,
+     "context": "PTS 29-Abr-2026. Iris Energy (bitcoin mining/data centers) SWING ALCISTA. Re-entry bajado de 52.38. Esperar recuperación a 45.22. GR -1%. 1 acción/$1k. Options: BUY CALL 18-Sep-2026 Strike 55."},
+
+    {"ticker": "UUUU",  "yf_ticker": "UUUU",  "direction": "LONG",
+     "entry": 21.14,  "stop_loss": 18.50,  "take_profit_1": 28.0, "take_profit_2": 31.0, "take_profit_3": 35.0, "break_even": 25.36,
+     "context": "PTS 29-Abr-2026. Energy Fuels (uranium/nuclear) SWING ALCISTA. Entrar si recupera 21.14. Sector nuclear despertando. GR -1%. 3 acciones/$1k. Options: BUY CALL 16-Oct-2026 Strike 22 (riesgo ~$200, pot $400-950). Solo brokers de options (no QF)."},
+
+    {"ticker": "IONQ",  "yf_ticker": "IONQ",  "direction": "LONG",
+     "entry": 42.45,  "stop_loss": 35.44,  "take_profit_1": 62.0, "take_profit_2": 72.0, "break_even": 50.0,
+     "context": "PTS 29-Abr-2026. IonQ (quantum computing) SWING ALCISTA. Entry bajado a 42.45 (era 45.30). Sector cuántico despertando. GR -2%. 2 acciones/$1k. Options: BUY CALL 16-Oct-2026 Strike 50 (riesgo ~$480, pot $1,100-1,500)."},
 
     {"ticker": "MSFT",  "yf_ticker": "MSFT",  "direction": "LONG",
      "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
