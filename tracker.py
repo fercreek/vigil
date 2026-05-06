@@ -395,11 +395,14 @@ def update_sl(trade_id: int, new_sl: float):
     conn.close()
 
 def get_win_rate(version: str = None):
+    """Win rate de trades REALES (is_sim=0). Excluye señales skiadas (SIM)."""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    
+
+    SIM_FILTER = "AND (is_sim = 0 OR is_sim IS NULL)"
+
     def count_status(status_val, v):
-        q = "SELECT COUNT(*) FROM trades WHERE status = ?"
+        q = f"SELECT COUNT(*) FROM trades WHERE status = ? {SIM_FILTER}"
         p = [status_val]
         if v:
             q += " AND strategy_version = ?"
@@ -408,30 +411,75 @@ def get_win_rate(version: str = None):
         return c.fetchone()[0]
 
     full_won = count_status('FULL_WON', version)
-    
-    # Para Partial Won (especial)
-    q_pw = "SELECT COUNT(*) FROM trades WHERE status IN ('PARTIAL_WON', 'PARTIAL_CLOSED')"
+
+    q_pw = f"SELECT COUNT(*) FROM trades WHERE status IN ('PARTIAL_WON', 'PARTIAL_CLOSED') {SIM_FILTER}"
     p_pw = []
     if version:
         q_pw += " AND strategy_version = ?"
         p_pw.append(version)
     c.execute(q_pw, p_pw)
     partial_won = c.fetchone()[0]
-    
+
     lost = count_status('LOST', version)
     conn.close()
-    
+
     total = full_won + partial_won + lost
     return full_won, partial_won, lost, total
 
+
+def get_winrate_comparison() -> dict:
+    """
+    Compara win rate REAL (trades activados) vs SIM (señales skiadas).
+
+    Real  = is_sim=0, status cerrado
+    SIM   = is_sim=1, status cerrado
+    Gap positivo → Fernando está skiando señales buenas (dejar pasar)
+    Gap negativo → El filtro humano agrega valor (skipear fue correcto)
+    """
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    def _calc(sim_val: int) -> dict:
+        c.execute('''
+            SELECT
+                SUM(CASE WHEN status IN ('FULL_WON','PARTIAL_WON','PARTIAL_CLOSED') THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'LOST' THEN 1 ELSE 0 END),
+                COUNT(*)
+            FROM trades
+            WHERE (is_sim = ? OR (? = 0 AND is_sim IS NULL))
+              AND status IN ('FULL_WON','PARTIAL_WON','PARTIAL_CLOSED','LOST')
+        ''', (sim_val, sim_val))
+        row = c.fetchone()
+        wins, losses, total = row[0] or 0, row[1] or 0, row[2] or 0
+        wr = round(wins / total * 100, 1) if total > 0 else 0.0
+        return {"wins": wins, "losses": losses, "total": total, "wr": wr}
+
+    real = _calc(0)
+    sim  = _calc(1)
+    conn.close()
+
+    gap = round(sim["wr"] - real["wr"], 1)
+    verdict = ""
+    if sim["total"] == 0:
+        verdict = "Sin datos SIM aún — usa Skip en próximas señales"
+    elif gap > 5:
+        verdict = f"⚠️ Estás skiando señales buenas (+{gap}pp WR perdido)"
+    elif gap < -5:
+        verdict = f"✅ Tu filtro humano agrega valor ({gap}pp mejor que SIM)"
+    else:
+        verdict = f"↔️ Tus skips son neutrales (gap {gap:+.1f}pp)"
+
+    return {"real": real, "sim": sim, "gap": gap, "verdict": verdict}
+
 def get_alert_stats():
-    """Desglose de win rate por tipo de alerta (alert_type) para comparar estrategias."""
+    """Desglose de win rate por tipo de alerta (alert_type). Solo trades REALES (is_sim=0)."""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''
         SELECT alert_type, strategy_version, symbol, status, COUNT(*) as n
         FROM trades
         WHERE status IN ('FULL_WON', 'PARTIAL_WON', 'PARTIAL_CLOSED', 'LOST')
+          AND (is_sim = 0 OR is_sim IS NULL)
         GROUP BY alert_type, strategy_version, symbol, status
     ''')
     rows = c.fetchall()
@@ -502,7 +550,7 @@ def get_audit_metrics():
     
     # 1. Obtener todos los trades cerrados con PnL (simulando 1% riesgo por trade)
     # V13.5: Sincronizado con estados PARTIAL_WON de V12
-    c.execute("SELECT status, type FROM trades WHERE status IN ('FULL_WON', 'LOST', 'PARTIAL_CLOSED', 'PARTIAL_WON')")
+    c.execute("SELECT status, type FROM trades WHERE status IN ('FULL_WON', 'LOST', 'PARTIAL_CLOSED', 'PARTIAL_WON') AND (is_sim = 0 OR is_sim IS NULL)")
     trades = c.fetchall()
     conn.close()
     

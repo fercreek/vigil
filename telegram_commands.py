@@ -447,7 +447,30 @@ def check_user_queries(prices: dict):
                     parts = text.split()
                     if len(parts) > 1 and parts[-1].isdigit():
                         days = int(parts[-1])
-                    send_telegram(_em.format_winrate_telegram(days), keyboard=get_main_menu())
+
+                    # Base winrate report
+                    base_msg = _em.format_winrate_telegram(days)
+
+                    # Real vs SIM comparison (nuevo — Activate/Skip tracking)
+                    try:
+                        cmp = tracker.get_winrate_comparison()
+                        r, s = cmp["real"], cmp["sim"]
+                        gap_icon = "⚠️" if cmp["gap"] > 5 else ("✅" if cmp["gap"] < -5 else "↔️")
+                        sim_section = (
+                            f"\n\n<b>📊 Real vs SIM (Activate/Skip)</b>\n"
+                            f"<code>{'─'*28}</code>\n"
+                            f"🟢 <b>Real</b>: {r['wins']}W / {r['losses']}L / {r['total']} → <b>{r['wr']}%</b>\n"
+                            f"🔵 <b>SIM</b>:  {s['wins']}W / {s['losses']}L / {s['total']} → <b>{s['wr']}%</b>\n"
+                            f"{gap_icon} {cmp['verdict']}\n"
+                            f"<i>SIM = señales que skiaste. "
+                            f"Gap {cmp['gap']:+.1f}pp.</i>"
+                        ) if s["total"] > 0 else (
+                            f"\n\n<b>📊 Real vs SIM</b>\n"
+                            f"Sin datos SIM aún — skipea señales para ver comparación."
+                        )
+                        send_telegram(base_msg + sim_section, keyboard=get_main_menu())
+                    except Exception:
+                        send_telegram(base_msg, keyboard=get_main_menu())
 
                 elif "budget" in t or text.startswith("/budget"):
                     import ai_budget
