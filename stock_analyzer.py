@@ -146,14 +146,41 @@ def check_stock_status():
     report += "🔄 <code>Puedes editar el latest_report.txt en el bot para actualizar este radar.</code>"
     return report
 
-def _send_alert(msg: str):
+def _send_alert(msg: str) -> str | None:
+    """Envía alerta sin inline keyboard. Retorna msg_id o None."""
     import requests
     url = f"https://api.telegram.org/bot{os.getenv('TELEGRAM_TOKEN')}/sendMessage"
     payload = {"chat_id": os.getenv("TELEGRAM_CHAT_ID"), "text": msg, "parse_mode": "HTML"}
     try:
-        requests.post(url, json=payload, timeout=5)
+        r = requests.post(url, json=payload, timeout=5)
+        return str(r.json().get("result", {}).get("message_id", "")) if r.ok else None
     except:
-        pass
+        return None
+
+
+def _send_alert_with_kb(msg: str, keyboard: dict) -> str | None:
+    """Envía alerta con inline keyboard. Retorna msg_id o None."""
+    import requests
+    url = f"https://api.telegram.org/bot{os.getenv('TELEGRAM_TOKEN')}/sendMessage"
+    payload = {
+        "chat_id": os.getenv("TELEGRAM_CHAT_ID"),
+        "text": msg, "parse_mode": "HTML",
+        "reply_markup": keyboard,
+    }
+    try:
+        r = requests.post(url, json=payload, timeout=5)
+        return str(r.json().get("result", {}).get("message_id", "")) if r.ok else None
+    except:
+        return None
+
+
+def _fetch_live_price_stock(ticker: str) -> float:
+    """Precio live via yfinance para stocks/ETFs (no crypto)."""
+    try:
+        p = yf.Ticker(ticker).fast_info.last_price
+        return float(p or 0)
+    except Exception:
+        return 0.0
 
 _alert_cache = {}
 
@@ -207,35 +234,70 @@ def stock_watchdog():
                         _alert_cache.setdefault(t, []).append("ZONE_ALERT")
                         _em.log_alert_episode(t, "STOCK", direction, entry, sl, tp, source="BITLOBO")
 
-                # Check 1: NEAR ENTRY
+                # Check 1: NEAR ENTRY — usa Activate/Skip en lugar de log inmediato
                 if entry and "ENTRY_ALERT" not in _alert_cache.get(t, []):
                     dist = abs(p - entry) / entry
                     if dist <= 0.005:  # 0.5%
                         sl_line = f"🛑 Stop Loss: <b>${sl:.2f}</b>\n" if sl else ""
                         tp_line = f"🎯 Target: <b>${tp:.2f}</b>\n" if tp else ""
                         be_line = f"🔒 Break Even: ${be:.2f}\n" if be else ""
-                        _send_alert(
-                            f"🚨 <b>ALERTA DE ENTRADA INMINENTE: {t}</b>\n"
-                            f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
+                        msg = (
+                            f"🚨 <b>ALERTA DE ENTRADA: {t}</b>\n"
+                            f"📌 {direction} — Precio actual: <b>${p:.2f}</b>\n"
                             f"🎯 Entrada obj: <b>${entry:.2f}</b> (dist. {dist*100:.2f}%)\n"
                             f"{sl_line}{tp_line}{be_line}"
-                            f"<i>{s.get('context', '')[:80]}</i>"
+                            f"<i>{s.get('context', '')[:80]}</i>\n\n"
+                            f"⚠️ <i>Al activar se usará precio LIVE del momento.</i>"
                         )
+                        try:
+                            from scalp_alert_bot import _store_pending
+                            import alert_manager as _am
+                            atr_est = abs(entry - (sl or entry * 0.95)) * 0.5  # ATR estimado
+                            tp2_est = tp  # usar tp como tp1 y tp2
+                            _sid = _store_pending(
+                                t, direction, entry,
+                                tp or entry * 1.05, tp2_est or entry * 1.08,
+                                sl or entry * 0.95,
+                                atr_est, 50.0, 4,  # atr, rsi placeholder, score
+                                "stock_entry", "STOCK", None,
+                                macro_regime=s.get("context", "")[:40],
+                            )
+                            _send_alert_with_kb(msg, _am.get_signal_keyboard(_sid, t, direction))
+                        except Exception as _e:
+                            logger.warning("stock_analyzer: signal keyboard fallback (%s)", _e)
+                            _send_alert(msg)
                         _alert_cache.setdefault(t, []).append("ENTRY_ALERT")
                         _em.log_alert_episode(t, "STOCK", direction, entry, sl, tp,
                                               source="STOCK")
+
+                # Helper: management keyboard si hay trade abierto en DB
+                def _mgmt_kb(ticker, side):
+                    try:
+                        import tracker as _trk
+                        import alert_manager as _am
+                        trade = _trk.get_last_open_trade(ticker)
+                        if trade:
+                            return _am.get_management_keyboard(trade["id"], ticker, side)
+                    except Exception:
+                        pass
+                    return None
 
                 # Check 2: BREAK EVEN
                 if be and entry and "BE_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p <= be) or (direction == "LONG" and p >= be):
                         tp_line = f"🎯 Próximo target: ${tp:.2f}\n" if tp else ""
-                        _send_alert(
+                        msg_be = (
                             f"🛡️ <b>BREAK EVEN ALCANZADO: {t}</b>\n"
                             f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
                             f"✅ BE nivel: <b>${be:.2f}</b> superado\n"
                             f"Acción: Mover SL a entrada <b>${entry:.2f}</b> (riesgo = 0)\n"
                             f"{tp_line}"
                         )
+                        kb = _mgmt_kb(t, direction)
+                        if kb:
+                            _send_alert_with_kb(msg_be, kb)
+                        else:
+                            _send_alert(msg_be)
                         _alert_cache.setdefault(t, []).append("BE_ALERT")
 
                 # Check 3: TAKE PROFIT
@@ -243,7 +305,7 @@ def stock_watchdog():
                     if (direction == "SHORT" and p <= tp) or (direction == "LONG" and p >= tp):
                         pnl_pct = round(abs(tp - entry) / entry * 100, 2) if entry else 0
                         entry_line = f"📥 Entrada: ${entry:.2f}\n" if entry else ""
-                        _send_alert(
+                        msg_tp = (
                             f"🎯 <b>TAKE PROFIT HIT: {t}</b>\n"
                             f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
                             f"{entry_line}"
@@ -251,6 +313,11 @@ def stock_watchdog():
                             f"💰 PnL potencial: <b>+{pnl_pct:.2f}%</b>\n"
                             f"Cierra posición completa o parcial."
                         )
+                        kb = _mgmt_kb(t, direction)
+                        if kb:
+                            _send_alert_with_kb(msg_tp, kb)
+                        else:
+                            _send_alert(msg_tp)
                         _alert_cache.setdefault(t, []).append("TP_ALERT")
                         _em.fill_outcome_by_symbol(t, "STOCK", "WIN", pnl_pct)
 
@@ -259,7 +326,7 @@ def stock_watchdog():
                     if (direction == "SHORT" and p >= sl) or (direction == "LONG" and p <= sl):
                         pnl_pct = round(-abs(sl - entry) / entry * 100, 2) if entry else 0
                         entry_line = f"📥 Entrada: ${entry:.2f}\n" if entry else ""
-                        _send_alert(
+                        msg_sl = (
                             f"🛑 <b>STOP LOSS HIT: {t}</b>\n"
                             f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
                             f"{entry_line}"
@@ -267,6 +334,11 @@ def stock_watchdog():
                             f"💸 PnL: <b>{pnl_pct:.2f}%</b>\n"
                             f"Cierra posición para proteger capital."
                         )
+                        kb = _mgmt_kb(t, direction)
+                        if kb:
+                            _send_alert_with_kb(msg_sl, kb)
+                        else:
+                            _send_alert(msg_sl)
                         _alert_cache.setdefault(t, []).append("SL_ALERT")
                         _em.fill_outcome_by_symbol(t, "STOCK", "LOSS", pnl_pct)
                         
