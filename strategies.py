@@ -194,7 +194,9 @@ def check_strategies(prices: dict):
         is_position_open, open_position, close_position,
         register_signal_event, send_telegram, safe_html,
         alert, get_alert_inline_keyboard, get_main_menu,
+        _store_pending,
     )
+    import alert_manager as _alert_mgr
     import indicators
     import risk_manager
     from risk_manager import circuit_breaker
@@ -405,14 +407,14 @@ def check_strategies(prices: dict):
                                    f"🛑 SL: <b>${sl:,.2f}</b>\n"
                                    f"⚡ Tipo: RAPIDA (SHORT = 75% risk)")
 
+                            _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type_short, phy_bias, conf_score, "v1_short", "SHORT", rsi_threshold=short_rsi)
+                            _sid = _store_pending(sym, "SHORT", p, tp1, tp2, sl, atr, rsi, conf_score, "v1_short", "V1-TECH", _tc, macro_status)
                             mid = alert(f"{sym}_v1_short", msg, version="V1-TECH",
-                                        inline_keyboard=get_alert_inline_keyboard(sym, "SHORT"))
+                                        inline_keyboard=_alert_mgr.get_signal_keyboard(_sid, sym, "SHORT"))
                             if mid:
                                 open_position(sym, "SHORT")
-                                _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type_short, phy_bias, conf_score, "v1_short", "SHORT", rsi_threshold=short_rsi)
-                                _trade_db_id = tracker.log_trade(sym, "SHORT", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v1_short", trigger_conditions=_tc)
                                 _ep_id = _em.log_alert_episode(sym, "V1-SHORT", "SHORT", p, sl, tp1, rsi=rsi, confluence=int(conf_score), source="CRYPTO")
-                                GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
+                                GLOBAL_CACHE.setdefault("pending_ep_ids", {})[_sid] = _ep_id
                                 gemini_analyzer.log_alert_to_context(sym, "SHORT", p, rsi, tp1, sl, "V1-TECH")
                                 register_signal_event(sym.replace("/USDT", ""), prices)
 
@@ -448,14 +450,14 @@ def check_strategies(prices: dict):
                     print(f"⏸️ [Position Guard] {sym} LONG (Reversal) ya está abierto — omitiendo señal duplicada")
                     continue
 
+                _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v3_reversal", "LONG", rsi_threshold=reversal_rsi)
+                _sid = _store_pending(sym, "LONG", p, tp1, tp2, sl, atr, rsi, conf_score, "v3_reversal", "V1-TECH", _tc, macro_status)
                 mid = alert(f"{sym}_v3_reversal", msg, version="V1-TECH",
-                            inline_keyboard=get_alert_inline_keyboard(sym, "LONG"))
+                            inline_keyboard=_alert_mgr.get_signal_keyboard(_sid, sym, "LONG"))
                 if mid:
                     open_position(sym, "LONG")
-                    _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v3_reversal", "LONG", rsi_threshold=reversal_rsi)
-                    _trade_db_id = tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v3_reversal", trigger_conditions=_tc)
                     _ep_id = _em.log_alert_episode(sym, "V3-REV", "LONG", p, sl, tp1, rsi=rsi, confluence=int(conf_score), source="CRYPTO")
-                    GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
+                    GLOBAL_CACHE.setdefault("pending_ep_ids", {})[_sid] = _ep_id
                     gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
                     register_signal_event(sym.replace("/USDT", ""), prices)
 
@@ -524,19 +526,17 @@ def check_strategies(prices: dict):
                        f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                        f"🎙️ <b>DEBATE DEL CUADRANTE ZENITH:</b>\n"
                        f"{gemini_analyzer.get_ai_consensus(sym, p, 'LONG', rsi, usdt_d, spy=prices.get('SPY', 0), oil=prices.get('OIL', 0), nvda=prices.get('NVDA', 0), pltr=prices.get('PLTR', 0), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias)}")
+                _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v1_long", "LONG", rsi_threshold=entry_rsi)
+                _sid = _store_pending(sym, "LONG", p, tp1, tp2, sl, atr, rsi, conf_score, "v1_long", "V1-TECH", _tc, macro_status)
                 mid = alert(f"{sym}_v1_long", msg, version="V1-TECH",
-                            inline_keyboard=get_alert_inline_keyboard(sym, "LONG"))
+                            inline_keyboard=_alert_mgr.get_signal_keyboard(_sid, sym, "LONG"))
                 if mid:
                     open_position(sym, "LONG")
-                    _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v1_long", "LONG", rsi_threshold=entry_rsi)
-                    _trade_db_id = tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v1_long", trigger_conditions=_tc)
-                    # Log episodio vinculando con el ID real del trade en BD
                     _bb_pos = "LOWER" if p <= bb_l * 1.01 else "UPPER" if p >= bb_u * 0.99 else "MID"
                     _ema_trend = "ABOVE" if p > ema_200 else "BELOW"
                     _atr_pct = round((atr / p * 100) if p else 0, 3)
                     _ep_id = _em.log_episode(sym, "V1-TECH", "LONG", rsi, usdt_d, _bb_pos, _ema_trend, int(conf_score), _atr_pct)
-                    # Guardar ep_id en caché para fill_outcome al cerrar
-                    GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
+                    GLOBAL_CACHE.setdefault("pending_ep_ids", {})[_sid] = _ep_id
                     gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
                     register_signal_event(sym.replace("/USDT", ""), prices)
 
@@ -590,14 +590,14 @@ def check_strategies(prices: dict):
                            f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                            f"🎙️ <b>DEBATE DEL CUADRANTE ZENITH:</b>\n"
                            f"{gemini_analyzer.get_ai_consensus(sym, p, phase, rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias)}")
+                    _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v2_ai_long", phase, rsi_threshold=entry_rsi)
+                    _sid = _store_pending(sym, phase, p, tp1, tp2, sl, atr, rsi, conf_score, "v2_ai_long", "V2-AI", _tc, macro_status)
                     mid = alert(f"{sym}_v2_ai_{phase}", msg, version="V2-AI",
-                                inline_keyboard=get_alert_inline_keyboard(sym, phase))
+                                inline_keyboard=_alert_mgr.get_signal_keyboard(_sid, sym, phase))
                     if mid:
                         open_position(sym, phase)
-                        _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v2_ai_long", phase, rsi_threshold=entry_rsi)
-                        _trade_db_id = tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, conf_score, ai_analysis=full_analysis, macro_bias=macro_status, alert_type="v2_ai_long", trigger_conditions=_tc)
                         _ep_id = _em.log_alert_episode(sym, "V2-AI", phase, p, sl, tp1, rsi=rsi, confluence=int(conf_score), source="CRYPTO")
-                        GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
+                        GLOBAL_CACHE.setdefault("pending_ep_ids", {})[_sid] = _ep_id
                         register_signal_event(sym.replace("/USDT", ""), prices)
 
         # ═══════════════════════════════════════════════════════════════════
@@ -648,15 +648,15 @@ def check_strategies(prices: dict):
                        f"🎯 TP2: <b>${tp2:,.2f}</b> (3:1)\n"
                        f"🛑 SL: <b>${sl:,.2f}</b>")
 
+                _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v4_ema_bounce", "LONG", rsi_threshold=rsi_high)
+                _sid = _store_pending(sym, "LONG", p, tp1, tp2, sl, atr, rsi, conf_score, "v4_ema_bounce", "V1-TECH", _tc, macro_status)
                 mid = alert(f"{sym}_v4_ema_bounce", msg, version="V1-TECH",
                             cooldown=V4_COOLDOWN,
-                            inline_keyboard=get_alert_inline_keyboard(sym, "LONG"))
+                            inline_keyboard=_alert_mgr.get_signal_keyboard(_sid, sym, "LONG"))
                 if mid:
                     open_position(sym, "LONG")
-                    _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v4_ema_bounce", "LONG", rsi_threshold=rsi_high)
-                    _trade_db_id = tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH", rsi, bb_ctx, atr, elliott, conf_score, alert_type="v4_ema_bounce", trigger_conditions=_tc)
                     _ep_id = _em.log_alert_episode(sym, "V4-EMA", "LONG", p, sl, tp1, rsi=rsi, confluence=int(conf_score), source="CRYPTO")
-                    GLOBAL_CACHE.setdefault("episode_ids", {})[_trade_db_id] = _ep_id
+                    GLOBAL_CACHE.setdefault("pending_ep_ids", {})[_sid] = _ep_id
                     gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
                     register_signal_event(sym.replace("/USDT", ""), prices)
 
@@ -710,10 +710,13 @@ def check_strategies(prices: dict):
                        f"🎙️ <b>DEBATE DEL CUADRANTE ZENITH:</b>\n"
                        f"{gemini_analyzer.get_ai_consensus(sym, p, side, rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias)}")
 
-                mid = alert(f"{sym}_v2_short", msg, version="V2-AI")
+                _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, 5 if is_consensus else 4, "v2_ai_consensus", side, rsi_threshold=40.0)
+                _score_v2 = 5 if is_consensus else 4
+                _sid = _store_pending(sym, phase, p, tp1, tp2, sl, atr, rsi, _score_v2, "v2_ai_consensus", "V2-AI", _tc, macro_status)
+                mid = alert(f"{sym}_v2_short", msg, version="V2-AI",
+                            inline_keyboard=_alert_mgr.get_signal_keyboard(_sid, sym, phase))
                 if mid:
-                    _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, 5 if is_consensus else 4, "v2_ai_consensus", side, rsi_threshold=40.0)
-                    tracker.log_trade(sym, phase, p, tp1, tp2, sl, mid, "V2-AI", rsi, bb_ctx, atr, elliott, 5 if is_consensus else 4, ai_analysis=full_analysis, macro_bias=macro_status, alert_type="v2_ai_consensus", trigger_conditions=_tc)
+                    GLOBAL_CACHE.setdefault("pending_ep_ids", {})[_sid] = None  # no episode for V2-short
                     gemini_analyzer.log_alert_to_context(sym, side, p, rsi, tp1, sl, "V2-AI")
 
         # ═══════════════════════════════════════════════════════════════════
@@ -775,19 +778,18 @@ def check_strategies(prices: dict):
                            f"🛑 SL: <b>${sl:,.2f}</b>\n"
                            f"⚡ Tipo: {trade_label}")
 
+                    _tc = build_trigger_conditions(
+                        sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d,
+                        vix, dxy, macro_dict, macro_status, atr, elliott,
+                        ob_detected, social_adj, trade_type, phy_bias, conf_score,
+                        "v5_momentum", "LONG", rsi_threshold=50.0)
+                    _sid = _store_pending(sym, "LONG", p, tp1, tp2, sl, atr, rsi, conf_score, "v5_momentum", "V1-TECH", _tc, macro_status)
                     mid = alert(f"{sym}_v5_momentum", msg, version="V1-TECH",
                                 cooldown=V5_MOMENTUM_COOLDOWN,
-                                inline_keyboard=get_alert_inline_keyboard(sym, "LONG"))
+                                inline_keyboard=_alert_mgr.get_signal_keyboard(_sid, sym, "LONG"))
                     if mid:
                         open_position(sym, "LONG")
-                        _tc = build_trigger_conditions(
-                            sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d,
-                            vix, dxy, macro_dict, macro_status, atr, elliott,
-                            ob_detected, social_adj, trade_type, phy_bias, conf_score,
-                            "v5_momentum", "LONG", rsi_threshold=50.0)
-                        tracker.log_trade(sym, "LONG", p, tp1, tp2, sl, mid, "V1-TECH",
-                                          rsi, bb_ctx, atr, elliott, conf_score,
-                                          alert_type="v5_momentum", trigger_conditions=_tc)
+                        GLOBAL_CACHE.setdefault("pending_ep_ids", {})[_sid] = None
                         gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
                         register_signal_event(sym.replace("/USDT", ""), prices)
 

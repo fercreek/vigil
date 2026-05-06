@@ -68,6 +68,144 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 OFFSET_FILE      = "last_update_id.txt"
 
 
+# ── Helpers compartidos: cálculo de niveles y pickers ─────────────────────────
+
+def compute_levels(side: str, price: float, atr: float = 0.0) -> dict:
+    """Calcula SL/TP1/TP2 via ATR (mismo método que el flujo LONG/SHORT free-text).
+
+    Args:
+        side: 'LONG' o 'SHORT'
+        price: precio de entrada
+        atr: ATR del símbolo (si 0, usa 1% del precio como floor)
+
+    Returns dict con keys sl, tp1, tp2.
+    """
+    sl_d = max(atr * 1.5, price * 0.005)
+    if side == "LONG":
+        sl = round(price - sl_d, 4)
+        tp1 = round(price + sl_d * 2.0, 4)
+        tp2 = round(price + sl_d * 3.5, 4)
+    else:
+        sl = round(price + sl_d, 4)
+        tp1 = round(price - sl_d * 2.0, 4)
+        tp2 = round(price - sl_d * 3.5, 4)
+    return {"sl": sl, "tp1": tp1, "tp2": tp2}
+
+
+def open_picker_keyboard() -> dict:
+    """Keyboard inline con MANUAL_SYMBOLS para elegir símbolo. Usado por /open."""
+    from config import MANUAL_SYMBOLS
+    rows = []
+    for i in range(0, len(MANUAL_SYMBOLS), 3):
+        row = [{"text": s, "callback_data": f"open_sym:{s}"} for s in MANUAL_SYMBOLS[i:i+3]]
+        rows.append(row)
+    rows.append([{"text": "❌ Cancel", "callback_data": "open_cancel"}])
+    return {"inline_keyboard": rows}
+
+
+def open_side_keyboard(sym: str) -> dict:
+    """Keyboard inline con LONG/SHORT después de elegir símbolo."""
+    return {
+        "inline_keyboard": [[
+            {"text": "🟢 LONG", "callback_data": f"open_side:{sym}:LONG"},
+            {"text": "🔴 SHORT", "callback_data": f"open_side:{sym}:SHORT"},
+        ], [
+            {"text": "❌ Cancel", "callback_data": "open_cancel"},
+        ]]
+    }
+
+
+def open_confirm_keyboard(sym: str, side: str, entry: float) -> dict:
+    """Keyboard inline para confirmar apertura con precio precalculado."""
+    return {
+        "inline_keyboard": [[
+            {"text": "✅ Confirmar", "callback_data": f"open_confirm:{sym}:{side}:{entry}"},
+        ], [
+            {"text": "❌ Cancel", "callback_data": "open_cancel"},
+        ]]
+    }
+
+
+def cmd_pos(args: str, prices: dict) -> str:
+    """Vista unificada de posiciones (manual + auto). Modo compact (default) o full.
+
+    Args:
+        args: string con flags (e.g. 'full' habilita modo extendido)
+        prices: dict de precios actuales
+    """
+    import tracker as _trk
+    full = "full" in (args or "").lower()
+    open_trades = _trk.get_open_trades()
+
+    if not open_trades:
+        return "Sin posiciones abiertas."
+
+    lines = [f"<b>POSICIONES ({len(open_trades)})</b>\n"]
+    for t in open_trades:
+        sym = t["symbol"]
+        side = t["type"]
+        marker = "🟡" if t.get("is_manual") else "🤖"
+        ep = t.get("entry_price") or 0
+        cur = prices.get(sym, 0) or 0
+        pnl_str = ""
+        if cur and ep:
+            pnl = ((cur - ep) / ep) * 100
+            if side == "SHORT":
+                pnl = -pnl
+            pnl_icon = "🟢" if pnl >= 0 else "🔴"
+            pnl_str = f" {pnl_icon} {pnl:+.1f}%"
+        be_tag = " [BE]" if t.get("be_moved") else ""
+        partial_tag = f" [{t.get('partial_pct',0)}%]" if t.get("partial_pct", 0) > 0 else ""
+
+        if not full:
+            lines.append(f"{marker} <b>{sym} {side}</b>{be_tag}{partial_tag} @ ${ep:,.4f} → ${cur:,.4f}{pnl_str}")
+        else:
+            sl = t.get("sl_price") or 0
+            tp1 = t.get("tp1_price") or 0
+            tp2 = t.get("tp2_price") or 0
+            ot = t.get("open_time") or ""
+            lines.append(
+                f"{marker} <b>{sym} {side}</b>{be_tag}{partial_tag} ({t.get('version','?')})\n"
+                f"  Entry: <code>${ep:,.4f}</code> → ${cur:,.4f}{pnl_str}\n"
+                f"  TP1: ${tp1:,.4f} | TP2: ${tp2:,.4f} | SL: ${sl:,.4f}\n"
+                f"  Open: {ot}"
+            )
+
+    msg = "\n".join(lines)
+
+    if full:
+        # Append health + recommendations en modo full
+        try:
+            import thread_health
+            import risk_manager as _rm
+            status = thread_health.get_status()
+            alive = sum(1 for s in status.values() if s.get("alive"))
+            total = len(status)
+            can_t, _, cb_mult = _rm.circuit_breaker.can_trade()
+            cb_icon = "NORMAL" if can_t else f"BLOQUEADO (x{cb_mult})"
+            msg += f"\n\n<b>BOT HEALTH</b>\nThreads: {alive}/{total} | CB: {cb_icon}"
+        except Exception:
+            pass
+
+        try:
+            import manual_positions_monitor as _mpm
+            manual_active = _trk.get_open_manual_trades()
+            if manual_active:
+                msg += "\n\n" + _mpm.cmd_status()
+        except Exception:
+            pass
+
+    return msg
+
+
+def cmd_open(prices: dict) -> tuple:
+    """Inicia flujo de apertura via inline keyboard. Returns (msg, keyboard)."""
+    return (
+        "➕ <b>Abrir posición manual</b>\n\nElige símbolo:",
+        open_picker_keyboard(),
+    )
+
+
 def check_user_queries(prices: dict):
     """Escucha comandos del usuario en Telegram para modo interactivo."""
     # Lazy imports para evitar circularidad
@@ -235,9 +373,22 @@ def check_user_queries(prices: dict):
                         )
                     send_telegram(audit_msg, keyboard=get_main_menu())
 
+                elif text.startswith("/open") or "/open" in text or text.lower() == "open":
+                    msg, kb = cmd_open(prices)
+                    send_telegram(msg, keyboard=kb)
+
+                elif text.startswith("/pos") or "/pos" in text or text.lower().startswith("pos "):
+                    # Acepta "/pos", "/pos full", o el botón "📂 /pos"
+                    args = "full" if "full" in text.lower() else ""
+                    send_telegram(cmd_pos(args, prices), keyboard=get_main_menu())
+
                 elif "LONG" in text or "SHORT" in text:
+                    from config import MANUAL_SYMBOLS
                     clean = text.replace("/", "").upper()
-                    sym   = next((s for s in ["SOL", "BTC", "TAO", "ZEC"] if s in clean), None)
+                    pool = list(set(MANUAL_SYMBOLS + ["SOL", "BTC", "TAO", "ZEC", "ETH", "DOGE"]))
+                    sym = next((s for s in pool if s in clean.split()), None)
+                    if not sym:
+                        sym = next((s for s in pool if s in clean), None)
                     if sym:
                         side = "LONG" if "LONG" in clean else "SHORT"
                         p    = prices.get(sym) or 0.0
@@ -248,21 +399,23 @@ def check_user_queries(prices: dict):
                             if last["type"] == "SHORT": pnl = -pnl
                             tracker.update_trade_status(last["id"], "WON" if pnl > 0 else "LOST")
                             send_telegram(f"🔄 Cerrando {sym} {last['type']} previo (PnL: {pnl:+.2f}%)", reply_to=last["msg_id"])
-                        sl_d = max(atr * 1.5, p * 0.005)
-                        sl   = round(p - sl_d if side == "LONG" else p + sl_d, 2)
-                        tp1  = round(p + sl_d * 2.0 if side == "LONG" else p - sl_d * 2.0, 2)
-                        tp2  = round(p + sl_d * 3.5 if side == "LONG" else p - sl_d * 3.5, 2)
                         if p > 0:
+                            lv = compute_levels(side, p, atr)
                             mid = send_telegram(
-                                f"🚀 <b>{sym} {side} MANUAL</b>\nEntrada: ${p:,.2f}\n"
-                                f"🎯 TP1: <b>${tp1:,.2f}</b> | TP2: <b>${tp2:,.2f}</b>\n🛑 SL: <b>${sl:,.2f}</b>",
+                                f"🚀 <b>{sym} {side} MANUAL</b>\nEntrada: ${p:,.4f}\n"
+                                f"🎯 TP1: <b>${lv['tp1']:,.4f}</b> | TP2: <b>${lv['tp2']:,.4f}</b>\n🛑 SL: <b>${lv['sl']:,.4f}</b>",
                                 keyboard=get_main_menu(sym)
                             )
-                            tracker.log_trade(sym, side, p, tp1, tp2, sl, mid, version="MANUAL", rsi=prices.get(f"{sym}_RSI", 50))
+                            tid = tracker.log_trade(
+                                sym, side, p, lv["tp1"], lv["tp2"], lv["sl"], mid,
+                                version="MANUAL", rsi=prices.get(f"{sym}_RSI", 50),
+                                is_manual=1,
+                            )
+                            tracker.append_event(tid, f"OPENED {side} @ ${p:.4f}")
                         else:
                             send_telegram(f"❌ No se pudo obtener precio de {sym}.")
                     else:
-                        send_telegram("❌ Símbolo no reconocido. Usa BTC/SOL/TAO/ZEC.")
+                        send_telegram("❌ Símbolo no reconocido. Usa BTC/SOL/TAO/ZEC/DOGE/ETH.")
 
                 elif "CERRAR " in text or "CLOSE " in text or text.startswith("/close "):
                     from config import SYMBOLS as _all_syms
@@ -430,21 +583,8 @@ def check_user_queries(prices: dict):
                     )
 
                 elif text.startswith("/portfolio"):
-                    import risk_manager
-                    import tracker as _trk
-                    open_trades = _trk.get_open_trades() if hasattr(_trk, 'get_open_trades') else []
-                    try:
-                        from scalp_alert_bot import _CACHE
-                        p = {s: _CACHE.get(s, {}).get("v", 0) for s in ["TAO", "ZEC"]}
-                    except Exception:
-                        p = {}
-                    balance = 1000.0  # Paper default
-                    send_telegram(
-                        risk_manager.portfolio_risk.get_portfolio_html(
-                            open_trades, p, balance
-                        ),
-                        keyboard=get_main_menu()
-                    )
+                    # Alias → vista unificada full
+                    send_telegram(cmd_pos("full", prices), keyboard=get_main_menu())
 
                 elif text.lower().startswith("/wrong "):
                     raw = text.replace("/wrong ", "").strip().upper()
@@ -457,43 +597,12 @@ def check_user_queries(prices: dict):
                         send_telegram("❌ Agente no válido. Usa: Genesis, Exodo, Shadow, Salmos, Apocalipsis")
 
                 elif text.startswith("/positions") or "positions" in t or "posiciones" in t:
-                    open_trades = tracker.get_open_trades()
-                    if not open_trades:
-                        send_telegram("Sin posiciones abiertas.", keyboard=get_main_menu())
-                    else:
-                        msg = f"<b>POSICIONES ABIERTAS ({len(open_trades)})</b>\n\n"
-                        for trade in open_trades:
-                            ep = trade.get("entry_price") or 0
-                            cur_p = prices.get(trade["symbol"], 0)
-                            pnl_str = ""
-                            if cur_p and ep:
-                                pnl = ((cur_p - ep) / ep) * 100
-                                if trade["type"] == "SHORT":
-                                    pnl = -pnl
-                                pnl_str = f"  PnL: <b>{pnl:+.1f}%</b>"
-                            msg += (
-                                f"<b>{trade['symbol']} {trade['type']}</b> ({trade.get('version','?')})\n"
-                                f"  Entrada: <code>${ep:,.2f}</code>{pnl_str}\n"
-                                f"  TP1: ${(trade.get('tp1_price') or 0):,.2f} | SL: ${(trade.get('sl_price') or 0):,.2f}\n\n"
-                            )
-                        send_telegram(msg, keyboard=get_main_menu())
+                    # Alias → vista unificada compact
+                    send_telegram(cmd_pos("", prices), keyboard=get_main_menu())
 
                 elif text.startswith("/health") or "health" in t:
-                    import thread_health
-                    import risk_manager as _rm
-                    status = thread_health.get_status()
-                    alive = sum(1 for s in status.values() if s.get("alive"))
-                    total = len(status)
-                    can_t, cb_reason, cb_mult = _rm.circuit_breaker.can_trade()
-                    cb_icon = "NORMAL" if can_t else f"BLOQUEADO (x{cb_mult})"
-                    msg = f"<b>BOT HEALTH</b>\n\n"
-                    msg += f"Threads: <b>{alive}/{total}</b> vivos\n"
-                    msg += f"Circuit Breaker: <b>{cb_icon}</b>\n\n"
-                    for name, st in status.items():
-                        icon = "OK" if st.get("alive") else "DEAD"
-                        age = st.get("age_seconds", 0)
-                        msg += f"  {icon} {name}: {age:.0f}s ago\n"
-                    send_telegram(msg, keyboard=get_main_menu())
+                    # Alias → vista unificada full (incluye health block)
+                    send_telegram(cmd_pos("full", prices), keyboard=get_main_menu())
 
                 elif text.startswith("/commodities") or text.startswith("/gold") or text.startswith("/oil"):
                     import commodities_bot as _cb

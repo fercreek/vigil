@@ -70,9 +70,9 @@ def get_main_menu(symbol: str = "ZEC") -> dict:
     V14.1: Diseño compacto y descriptivo.
     """
     keyboard = [
-        [{"text": "📊 Mercado"}, {"text": "📈 Acciones"}, {"text": "🎯 Setup"}],
-        [{"text": "🛡️ Macro"}, {"text": "🏦 PnL HOY"}, {"text": "🏛️ Audit"}],
-        [{"text": "🥷 Intel ZEC"}, {"text": "🏛️ Intel TAO"}, {"text": "🤖 Flow"}]
+        [{"text": "📂 /pos"}, {"text": "➕ /open"}, {"text": "🎯 Setup"}],
+        [{"text": "📊 Mercado"}, {"text": "🛡️ Macro"}, {"text": "🏦 PnL HOY"}],
+        [{"text": "🥷 Intel ZEC"}, {"text": "🏛️ Intel TAO"}, {"text": "🏛️ Audit"}]
     ]
 
     return {
@@ -90,16 +90,18 @@ def set_bot_commands():
     """
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setMyCommands"
     commands = [
-        {"command": "status", "description": "Resumen de precios e indicadores (V14)"},
-        {"command": "setup", "description": "Escaneo de mercado por IA (ZEC/TAO/BTC)"},
-        {"command": "audit", "description": "Auditoría de rendimiento institucional"},
+        {"command": "open",   "description": "Abrir posición manual (picker inline)"},
+        {"command": "pos",    "description": "Ver posiciones abiertas (manual + auto). Usa /pos full para detalle"},
+        {"command": "status", "description": "Resumen de precios e indicadores"},
+        {"command": "setup",  "description": "Escaneo de mercado por IA (ZEC/TAO/BTC)"},
+        {"command": "audit",  "description": "Auditoría de rendimiento institucional"},
         {"command": "pnl",    "description": "Profit & Loss del día actual"},
         {"command": "macro",  "description": "Análisis de Dom USDT y Sentimiento Macro"},
-        {"command": "stocks", "description": "Radar de acciones (Yahoo Finance)"},
         {"command": "intel",  "description": "Social Intel & News Feed"},
-        {"command": "flow",   "description": "Explicación del flujo Zenith Quadrant"},
         {"command": "budget", "description": "Consumo de API y presupuesto IA"},
-        {"command": "add_chart", "description": "Sube imagen: /add_chart SYMBOL TF"}
+        {"command": "manual_tp", "description": "Tomar TP/parcial: /manual_tp SYM [pct]"},
+        {"command": "manual_sl", "description": "Marcar SL: /manual_sl SYM"},
+        {"command": "manual_be", "description": "Mover SL a break even: /manual_be SYM"},
     ]
     
     try:
@@ -241,6 +243,64 @@ def get_alert_inline_keyboard(sym: str, side: str = "LONG") -> dict:
             [
                 {"text": "💰 Budget IA", "callback_data": "budget"},
                 {"text": "📊 Estado posición", "callback_data": f"status:{base}"},
+            ],
+        ]
+    }
+
+
+def get_signal_keyboard(sid: int, sym: str, side: str) -> dict:
+    """
+    Keyboard de decisión para señal auto-detectada (pre-activación).
+    Fernando ve la señal y decide Activar (loguea real) o Skip (loguea SIM).
+
+    Callback format:
+      activate:SID:SYM:SIDE  → log_trade real + cambiar a management keyboard
+      skip:SID:SYM:SIDE      → log_simulated + marcar SKIPPED
+    """
+    base = sym.replace("/USDT", "")
+    label = f"✅ Activar {base} {side}"
+    return {
+        "inline_keyboard": [
+            [
+                {"text": label, "callback_data": f"activate:{sid}:{base}:{side}"},
+                {"text": "⏭️ Skip", "callback_data": f"skip:{sid}:{base}:{side}"},
+            ],
+            [
+                {"text": "📊 Ver niveles", "callback_data": f"status:{base}"},
+                {"text": "💰 Budget IA", "callback_data": "budget"},
+            ],
+        ]
+    }
+
+
+def get_management_keyboard(trade_id: int, sym: str, side: str) -> dict:
+    """
+    Keyboard de gestión post-apertura: TP parciales, SL, cierre inmediato.
+    Se adjunta cuando Fernando activa una señal o abre manual.
+
+    Callback format nuevo (trade_id en posición 1):
+      tp1:TRADE_ID:SYM:SIDE  →  partial 50%
+      tp2:TRADE_ID:SYM:SIDE  →  partial 80%
+      tp3:TRADE_ID:SYM:SIDE  →  full WON
+      sl:TRADE_ID:SYM:SIDE   →  LOST
+      close_now:TRADE_ID:SYM:SIDE → cierra al precio actual (WON o LOST)
+      pnl:TRADE_ID:SYM       →  P&L flotante
+    """
+    base = sym.replace("/USDT", "")
+    tid = str(trade_id)
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "✅ TP1 (50%)", "callback_data": f"tp1:{tid}:{base}:{side}"},
+                {"text": "✅ TP2 (80%)", "callback_data": f"tp2:{tid}:{base}:{side}"},
+            ],
+            [
+                {"text": "🏆 TP3 full", "callback_data": f"tp3:{tid}:{base}:{side}"},
+                {"text": "🛑 SL tocado", "callback_data": f"sl:{tid}:{base}:{side}"},
+            ],
+            [
+                {"text": "🔴 Cerrar @ live", "callback_data": f"close_now:{tid}:{base}:{side}"},
+                {"text": "📊 P&L actual", "callback_data": f"pnl:{tid}:{base}"},
             ],
         ]
     }
