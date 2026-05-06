@@ -265,27 +265,7 @@ SENTINEL_INTERVAL_SEC   = 14400   # 4h (era 7200 = 2h)
 SENTINEL_DEDUPE_MIN     = 90      # No re-enviar mismo (sym, bias) en últimos 90min
 KILL_SALMOS_PROPHECY    = True    # Mata trigger_salmos_prophecy() en main loop
 
-# ── Manual Positions (Fernando) — contexto para Cuadrilla Zenith ─────────────
-# Actualizado: 2026-04-29. Usar en gemini_analyzer.py para que el análisis
-# considere exposición existente al calcular bias y tamaño de señal.
-MANUAL_POSITIONS = [
-    {
-        "symbol": "TAO", "side": "LONG", "entry": 295.0,
-        "current_approx": 261.0, "pnl_usd": -345.0,
-        "leverage_loss_usd": -163.0,  # pérdida realizada por apalancamiento
-        "platform": "Quantfy+leverage",
-        "note": "Posición en drawdown. Nivel clave de soporte: ~$250. Evaluar BE o cierre parcial si rebota a $280+."
-    },
-    {
-        "symbol": "ZEC", "side": "LONG", "entry": 358.0,
-        "current_approx": 334.0, "pnl_usd": -107.0,
-        "platform": "Binance spot",
-        "note": "En drawdown. ZEC WR histórico 29.5% — mejor activo del bot. Esperar confirmación técnica."
-    },
-    {
-        "symbol": "DOGE", "side": "LONG", "entry": 0.10299,
-        "current_approx": 0.10948, "pnl_usd": 136.0,
-        "platform": "Binance spot",
-        "note": "En ganancia +$136. Considerar mover SL a BE (~0.10299)."
-    },
-]
+# ── Manual Positions ─────────────────────────────────────────────────────────
+# Storage unificado en trades.db (flag is_manual=1). Sin seed hardcoded.
+# Lista de símbolos preferidos para el picker de /open (inline keyboard).
+MANUAL_SYMBOLS = ["TAO", "ZEC", "DOGE", "SOL", "BTC", "ETH"]

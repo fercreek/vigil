@@ -74,6 +74,36 @@ TTL_GLOBAL = 600     # Métricas Globales: 10 min
 TTL_MACRO = 900      # Macro (SPY/Oil): 15 min (Lento)
 TTL_SOCIAL = 1800    # Inteligencia Social: 30 min (sin Twitter API, reducir tokens)
 
+# ─── Pending Signals Store ───────────────────────────────────────────────────
+# Señales detectadas esperando decisión de Fernando (Activar / Skip).
+# NO se loguean en DB hasta que Fernando elija. GC automático cada ciclo.
+_PENDING_SIGNALS: dict[int, dict] = {}  # {signal_id: {...params}}
+_PENDING_SIG_COUNTER: int = 0
+_PENDING_SIG_TTL: float = 14400.0      # 4h: señal expira si no se decide
+
+def _store_pending(sym, side, entry, tp1, tp2, sl, atr, rsi, score,
+                   alert_type, version, trigger_conditions, macro_regime="") -> int:
+    """Guarda parámetros de señal. Retorna signal_id para callback_data."""
+    global _PENDING_SIG_COUNTER
+    _PENDING_SIG_COUNTER += 1
+    sid = _PENDING_SIG_COUNTER
+    _PENDING_SIGNALS[sid] = {
+        "sym": sym, "side": side, "entry": entry,
+        "tp1": tp1, "tp2": tp2, "sl": sl, "atr": atr,
+        "rsi": rsi, "score": score, "alert_type": alert_type,
+        "version": version, "trigger_conditions": trigger_conditions,
+        "macro_regime": macro_regime, "ts": time.time(),
+    }
+    return sid
+
+def _gc_pending_signals():
+    """Limpia señales pendientes expiradas."""
+    now = time.time()
+    expired = [sid for sid, s in _PENDING_SIGNALS.items()
+               if now - s.get("ts", 0) > _PENDING_SIG_TTL]
+    for sid in expired:
+        _PENDING_SIGNALS.pop(sid, None)
+
 # ─── Multi-Symbol Event Detector ─────────────────────────────────────────────
 # Detecta cuando varios símbolos disparan señales simultáneamente → market scan
 _SIGNAL_EVENTS: dict = {}   # {symbol: timestamp}
@@ -228,6 +258,8 @@ def _handle_callback(callback: dict, prices: dict):
     if chat_id != str(TELEGRAM_CHAT_ID):
         return
 
+    _gc_pending_signals()  # limpia señales expiradas en cada callback
+
     parts = data.split(":")
     action = parts[0]
 
@@ -237,6 +269,199 @@ def _handle_callback(callback: dict, prices: dict):
         summary = ai_budget.get_budget_summary_html()
         send_telegram(summary)
         _answer_callback(cb_id, "💰 Budget actualizado")
+        return
+
+    # ── Open flow (inline picker /open) ──────────────────────────────────────
+    if action.startswith("open_"):
+        import requests as _req
+        import telegram_commands as _tc
+
+        def _edit_msg(text: str, kb: dict = None):
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/editMessageText"
+            payload = {
+                "chat_id": TELEGRAM_CHAT_ID, "message_id": int(msg_id),
+                "text": text, "parse_mode": "HTML",
+            }
+            if kb is not None:
+                payload["reply_markup"] = kb
+            try:
+                _req.post(url, json=payload, timeout=10)
+            except Exception as e:
+                print(f"❌ editMessageText: {e}")
+
+        if action == "open_cancel":
+            _edit_msg("❌ Apertura cancelada.")
+            _answer_callback(cb_id, "Cancelado")
+            return
+
+        if action == "open_sym" and len(parts) >= 2:
+            sym = parts[1].upper()
+            _edit_msg(
+                f"➕ <b>{sym}</b> seleccionado. Side?",
+                _tc.open_side_keyboard(sym),
+            )
+            _answer_callback(cb_id, sym)
+            return
+
+        if action == "open_side" and len(parts) >= 3:
+            sym = parts[1].upper()
+            side = parts[2].upper()
+            p = prices.get(sym) or 0.0
+            atr = prices.get(f"{sym}_ATR") or p * 0.01
+            if p <= 0:
+                _edit_msg(f"❌ Sin precio para {sym}. Aborta.")
+                _answer_callback(cb_id, "Sin precio")
+                return
+            lv = _tc.compute_levels(side, p, atr)
+            text = (
+                f"➕ <b>{sym} {side} MANUAL</b>\n"
+                f"Entrada: <code>${p:,.4f}</code>\n"
+                f"🎯 TP1: <b>${lv['tp1']:,.4f}</b> | TP2: <b>${lv['tp2']:,.4f}</b>\n"
+                f"🛑 SL: <b>${lv['sl']:,.4f}</b>\n\n"
+                f"Confirmar apertura?"
+            )
+            _edit_msg(text, _tc.open_confirm_keyboard(sym, side, p))
+            _answer_callback(cb_id, f"{sym} {side}")
+            return
+
+        if action == "open_confirm" and len(parts) >= 4:
+            sym = parts[1].upper()
+            side = parts[2].upper()
+            try:
+                entry = float(parts[3])
+            except ValueError:
+                _edit_msg("❌ Entry inválido.")
+                _answer_callback(cb_id, "Entry inválido")
+                return
+            atr = prices.get(f"{sym}_ATR") or entry * 0.01
+            lv = _tc.compute_levels(side, entry, atr)
+            tid = tracker.log_trade(
+                sym, side, entry, lv["tp1"], lv["tp2"], lv["sl"], msg_id,
+                version="MANUAL", rsi=prices.get(f"{sym}_RSI", 50),
+                is_manual=1,
+            )
+            tracker.append_event(tid, f"OPENED {side} @ ${entry:.4f} via /open")
+            import alert_manager as _am
+            _edit_msg(
+                f"✅ <b>{sym} {side} ABIERTO</b> (id {tid})\n"
+                f"Entrada: <code>${entry:,.4f}</code>\n"
+                f"🎯 TP1: ${lv['tp1']:,.4f} | TP2: ${lv['tp2']:,.4f}\n"
+                f"🛑 SL: ${lv['sl']:,.4f}",
+                kb=_am.get_management_keyboard(tid, sym, side),
+            )
+            _answer_callback(cb_id, "✅ Abierto")
+            return
+
+    # ── Activate signal (Fernando decide operar) ────────────────────────────
+    if action == "activate" and len(parts) >= 4:
+        try:
+            sid, sym, side = int(parts[1]), parts[2].upper(), parts[3].upper()
+        except (ValueError, IndexError):
+            _answer_callback(cb_id, "❌ Formato inválido")
+            return
+        sig = _PENDING_SIGNALS.pop(sid, None)
+        if not sig:
+            _answer_callback(cb_id, "⚠️ Señal expirada o ya procesada")
+            return
+        entry = sig["entry"]
+        tid = tracker.log_trade(
+            sym, side, entry, sig["tp1"], sig["tp2"], sig["sl"], msg_id,
+            version=sig["version"], rsi=sig["rsi"], score=sig["score"],
+            alert_type=sig["alert_type"], trigger_conditions=sig["trigger_conditions"],
+            is_manual=0,
+        )
+        tracker.append_event(tid, f"ACTIVATED via Telegram @ ${entry:.4f}")
+        # Wire episode_id from pending → episode_ids (for fill_outcome at close)
+        _ep = GLOBAL_CACHE.get("pending_ep_ids", {}).pop(sid, None)
+        if _ep:
+            GLOBAL_CACHE.setdefault("episode_ids", {})[tid] = _ep
+        import alert_manager as _am
+        _edit_msg(
+            f"✅ <b>ACTIVADO — {sym} {side}</b> (id {tid})\n"
+            f"Entrada: <code>${entry:,.4f}</code>\n"
+            f"🎯 TP1: ${sig['tp1']:,.4f} | TP2: ${sig['tp2']:,.4f}\n"
+            f"🛑 SL: ${sig['sl']:,.4f}",
+            kb=_am.get_management_keyboard(tid, sym, side),
+        )
+        _answer_callback(cb_id, f"✅ {sym} {side} activado")
+        return
+
+    # ── Skip signal (Fernando pasa, pero bot trackea outcome sim) ────────────
+    if action == "skip" and len(parts) >= 4:
+        try:
+            sid, sym, side = int(parts[1]), parts[2].upper(), parts[3].upper()
+        except (ValueError, IndexError):
+            _answer_callback(cb_id, "❌ Formato inválido")
+            return
+        sig = _PENDING_SIGNALS.pop(sid, None)
+        if sig:
+            tracker.log_simulated(
+                sym, side, sig["entry"], sig["tp1"], sig["tp2"], sig["sl"],
+                msg_id, version=sig["version"], rsi=sig["rsi"],
+                score=sig["score"], alert_type=sig["alert_type"],
+                trigger_conditions=sig["trigger_conditions"],
+                macro_regime=sig.get("macro_regime", ""),
+            )
+        _edit_msg(f"⏭️ <b>{sym} {side}</b> skiada. Bot trackea outcome en SIM.")
+        _answer_callback(cb_id, "⏭️ Skiada — SIM activo")
+        return
+
+    # ── Cerrar posición al precio actual ────────────────────────────────────
+    if action == "close_now" and len(parts) >= 4:
+        try:
+            trade_id, sym, side = int(parts[1]), parts[2].upper(), parts[3].upper()
+        except (ValueError, IndexError):
+            _answer_callback(cb_id, "❌ Formato inválido")
+            return
+        trade = tracker.get_trade_by_id(trade_id)
+        if not trade:
+            _answer_callback(cb_id, f"❌ Trade {trade_id} no encontrado")
+            return
+        p = prices.get(sym, 0.0)
+        if p <= 0:
+            _answer_callback(cb_id, f"⚠️ Sin precio para {sym}")
+            return
+        entry = trade["entry_price"] or 0.0
+        pnl_pct = ((p - entry) / entry * 100) if entry else 0.0
+        if side == "SHORT":
+            pnl_pct = -pnl_pct
+        status = "FULL_WON" if pnl_pct >= 0 else "LOST"
+        tracker.update_trade_status(trade_id, status)
+        tracker.append_event(trade_id, f"CLOSED @ ${p:.4f} ({pnl_pct:+.2f}%) via Telegram")
+        close_position(sym, side)
+        color = "🟢" if pnl_pct >= 0 else "🔴"
+        _edit_msg(
+            f"🏁 <b>CERRADO {sym} {side}</b> (id {trade_id})\n"
+            f"${entry:,.4f} → <code>${p:,.4f}</code>\n"
+            f"{color} PnL: <b>{pnl_pct:+.2f}%</b> | Estado: <code>{status}</code>"
+        )
+        _answer_callback(cb_id, f"Cerrado {pnl_pct:+.2f}%")
+        return
+
+    # ── P&L flotante por trade_id ────────────────────────────────────────────
+    if action == "pnl" and len(parts) >= 3:
+        try:
+            trade_id, sym = int(parts[1]), parts[2].upper()
+        except (ValueError, IndexError):
+            _answer_callback(cb_id, "❌ Formato inválido")
+            return
+        trade = tracker.get_trade_by_id(trade_id)
+        if not trade:
+            _answer_callback(cb_id, f"❌ Trade {trade_id} no encontrado")
+            return
+        p = prices.get(sym, 0.0)
+        entry = trade["entry_price"] or 0.0
+        pnl_pct = ((p - entry) / entry * 100) if entry else 0.0
+        if trade["type"] == "SHORT":
+            pnl_pct = -pnl_pct
+        color = "🟢" if pnl_pct > 0 else "🔴"
+        send_telegram(
+            f"{color} <b>{sym} {trade['type']}</b> (id {trade_id})\n"
+            f"Entrada: ${entry:,.4f} → Precio: <code>${p:,.4f}</code>\n"
+            f"PnL: <b>{pnl_pct:+.2f}%</b>",
+            reply_to=msg_id,
+        )
+        _answer_callback(cb_id, f"PnL: {pnl_pct:+.2f}%")
         return
 
     # ── Status de posición ───────────────────────────────────────────────────
@@ -262,10 +487,20 @@ def _handle_callback(callback: dict, prices: dict):
         return
 
     # ── TP/SL outcome ────────────────────────────────────────────────────────
+    # Formato nuevo (management keyboard): tp1:TRADE_ID:SYM:SIDE  → 4 parts
+    # Formato viejo (legacy alerts):       tp1:SYM:SIDE            → 3 parts
     if action in ("tp1", "tp2", "tp3", "sl") and len(parts) >= 3:
-        sym  = parts[1]
-        side = parts[2]
-        trade = tracker.get_last_open_trade(sym)
+        if len(parts) >= 4 and parts[1].isdigit():
+            # Nuevo formato: lookup preciso por trade_id
+            trade_id_int = int(parts[1])
+            sym  = parts[2].upper()
+            side = parts[3].upper()
+            trade = tracker.get_trade_by_id(trade_id_int)
+        else:
+            # Formato legacy: lookup por símbolo (last open)
+            sym  = parts[1].upper()
+            side = parts[2].upper()
+            trade = tracker.get_last_open_trade(sym)
 
         if not trade:
             _answer_callback(cb_id, f"No hay trade abierto en {sym}")

@@ -40,7 +40,13 @@ def init_db():
         ("macro_bias", "TEXT"),
         ("inst_score", "INTEGER"),
         ("alert_type", "TEXT DEFAULT 'unknown'"),
-        ("trigger_conditions", "TEXT DEFAULT NULL")
+        ("trigger_conditions", "TEXT DEFAULT NULL"),
+        ("is_manual", "INTEGER DEFAULT 0"),
+        ("is_sim", "INTEGER DEFAULT 0"),
+        ("be_moved", "INTEGER DEFAULT 0"),
+        ("partial_pct", "INTEGER DEFAULT 0"),
+        ("events_json", "TEXT DEFAULT NULL"),
+        ("note", "TEXT DEFAULT NULL"),
     ]
     for col, type_def in columns:
         try:
@@ -162,7 +168,7 @@ def get_backtest_days():
     conn.close()
     return rows
 
-def log_trade(symbol, type, entry, tp1, tp2, sl, msg_id, version="V1-TECH", rsi=0.0, bb="", atr=0.0, elliott="", score=0, ai_analysis="", macro_bias="", inst_score=0, alert_type="unknown", trigger_conditions=None):
+def log_trade(symbol, type, entry, tp1, tp2, sl, msg_id, version="V1-TECH", rsi=0.0, bb="", atr=0.0, elliott="", score=0, ai_analysis="", macro_bias="", inst_score=0, alert_type="unknown", trigger_conditions=None, is_manual=0, note=None):
     import json
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -171,23 +177,189 @@ def log_trade(symbol, type, entry, tp1, tp2, sl, msg_id, version="V1-TECH", rsi=
     c.execute('''
         INSERT INTO trades (
             symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, strategy_version,
-            rsi_entry, bb_status, atr, elliott_wave, conf_score, ai_analysis, macro_bias, inst_score, alert_type, trigger_conditions
+            rsi_entry, bb_status, atr, elliott_wave, conf_score, ai_analysis, macro_bias, inst_score, alert_type, trigger_conditions,
+            is_manual, note
         )
-        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now, version, rsi, bb, atr, elliott, score, ai_analysis, macro_bias, inst_score, alert_type, conditions_json))
+        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now, version, rsi, bb, atr, elliott, score, ai_analysis, macro_bias, inst_score, alert_type, conditions_json, int(is_manual), note))
     conn.commit()
     trade_id = c.lastrowid
     conn.close()
     return trade_id
+
+
+def update_trade_levels(trade_id: int, sl: float = None, tp1: float = None, tp2: float = None, entry: float = None):
+    """Ajusta niveles de un trade abierto (SL/TP/entry)."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    sets, vals = [], []
+    if sl is not None:
+        sets.append("sl_price = ?"); vals.append(sl)
+    if tp1 is not None:
+        sets.append("tp1_price = ?"); vals.append(tp1)
+    if tp2 is not None:
+        sets.append("tp2_price = ?"); vals.append(tp2)
+    if entry is not None:
+        sets.append("entry_price = ?"); vals.append(entry)
+    if sets:
+        vals.append(trade_id)
+        c.execute(f"UPDATE trades SET {', '.join(sets)} WHERE id = ?", vals)
+        conn.commit()
+    conn.close()
+
+
+def mark_be(trade_id: int):
+    """Marca be_moved=1 y mueve sl_price al entry_price."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE trades SET be_moved = 1, sl_price = entry_price WHERE id = ?", (trade_id,))
+    conn.commit()
+    conn.close()
+
+
+def mark_partial(trade_id: int, pct: int):
+    """Marca partial_pct y status PARTIAL_WON."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE trades SET partial_pct = ?, status = 'PARTIAL_WON' WHERE id = ?", (int(pct), trade_id))
+    conn.commit()
+    conn.close()
+
+
+def append_event(trade_id: int, event: str):
+    """Append event al events_json del trade."""
+    import json as _json
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT events_json FROM trades WHERE id = ?", (trade_id,))
+    row = c.fetchone()
+    events = []
+    if row and row[0]:
+        try:
+            events = _json.loads(row[0])
+        except Exception:
+            events = []
+    events.append({"time": datetime.now().isoformat(), "event": event})
+    c.execute("UPDATE trades SET events_json = ? WHERE id = ?", (_json.dumps(events), trade_id))
+    conn.commit()
+    conn.close()
+
+
+def get_trade_by_id(trade_id: int) -> dict | None:
+    """Recupera un trade por su ID primario."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price,
+               status, msg_id, open_time, is_manual, is_sim, be_moved, partial_pct, note
+        FROM trades WHERE id = ?
+    ''', (trade_id,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {
+        "id": row[0], "symbol": row[1], "type": row[2],
+        "entry_price": row[3], "tp1_price": row[4], "tp2_price": row[5], "sl_price": row[6],
+        "status": row[7], "msg_id": row[8], "open_time": row[9],
+        "is_manual": bool(row[10]), "is_sim": bool(row[11]),
+        "be_moved": bool(row[12]), "partial_pct": row[13] or 0, "note": row[14],
+    }
+
+
+def log_simulated(symbol, side, entry, tp1, tp2, sl, msg_id, version="V1-TECH",
+                  rsi=0.0, bb="", atr=0.0, score=0, alert_type="unknown",
+                  trigger_conditions=None, macro_regime="") -> int:
+    """
+    Loguea señal como simulación (is_sim=1, status='OPEN').
+    Usada cuando Fernando skipea una señal — el bot trackea si hubiera ganado.
+    Win rate sim = trades con is_sim=1 cerrados; win rate real = is_sim=0.
+    """
+    import json
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    note_str = f"SIM | regime:{macro_regime}" if macro_regime else "SIM"
+    conditions_json = json.dumps(trigger_conditions) if trigger_conditions else None
+    c.execute('''
+        INSERT INTO trades (
+            symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time,
+            strategy_version, rsi_entry, bb_status, atr, conf_score, alert_type, trigger_conditions,
+            is_manual, is_sim, note
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, ?)
+    ''', (symbol, side, entry, tp1, tp2, sl, msg_id, now,
+          version, rsi, bb, atr, score, alert_type, conditions_json, note_str))
+    conn.commit()
+    trade_id = c.lastrowid
+    conn.close()
+    return trade_id
+
+
+def get_open_manual_trades() -> list:
+    """Trades manuales abiertos (is_manual=1, status OPEN o PARTIAL_WON)."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, strategy_version,
+               rsi_entry, bb_status, atr, elliott_wave, conf_score, open_time, be_moved, partial_pct, note, events_json
+        FROM trades
+        WHERE is_manual = 1 AND status IN ('OPEN', 'PARTIAL_WON')
+        ORDER BY id DESC
+    ''')
+    rows = c.fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        out.append({
+            "id": r[0], "symbol": r[1], "type": r[2],
+            "entry_price": r[3], "tp1_price": r[4], "tp2_price": r[5], "sl_price": r[6],
+            "status": r[7], "msg_id": r[8], "version": r[9],
+            "rsi_entry": r[10], "bb_status": r[11], "atr": r[12], "elliott": r[13], "conf_score": r[14],
+            "open_time": r[15] or "", "be_moved": bool(r[16]), "partial_pct": r[17] or 0,
+            "note": r[18] or "", "events_json": r[19],
+        })
+    return out
+
+
+def get_open_trade_by_symbol(symbol: str, manual_only: bool = False):
+    """Trade abierto más reciente para un símbolo. manual_only=True filtra is_manual=1."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    if manual_only:
+        c.execute('''
+            SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, be_moved, partial_pct
+            FROM trades
+            WHERE symbol = ? AND is_manual = 1 AND status IN ('OPEN', 'PARTIAL_WON')
+            ORDER BY id DESC LIMIT 1
+        ''', (symbol.upper(),))
+    else:
+        c.execute('''
+            SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, be_moved, partial_pct
+            FROM trades
+            WHERE symbol = ? AND status IN ('OPEN', 'PARTIAL_WON')
+            ORDER BY id DESC LIMIT 1
+        ''', (symbol.upper(),))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {
+        "id": row[0], "symbol": row[1], "type": row[2],
+        "entry_price": row[3], "tp1_price": row[4], "tp2_price": row[5], "sl_price": row[6],
+        "status": row[7], "msg_id": row[8], "open_time": row[9] or "",
+        "be_moved": bool(row[10]), "partial_pct": row[11] or 0,
+    }
 
 def get_open_trades():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''
         SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, strategy_version,
-               rsi_entry, bb_status, atr, elliott_wave, conf_score, open_time
+               rsi_entry, bb_status, atr, elliott_wave, conf_score, open_time, is_manual, be_moved, partial_pct
         FROM trades
         WHERE status IN ('OPEN', 'PARTIAL_WON')
+        ORDER BY id DESC
     ''')
     trades = c.fetchall()
     conn.close()
@@ -199,7 +371,8 @@ def get_open_trades():
             "entry_price": t[3], "tp1_price": t[4], "tp2_price": t[5],
             "sl_price": t[6], "status": t[7], "msg_id": t[8], "version": t[9],
             "rsi_entry": t[10], "bb_status": t[11], "atr": t[12], "elliott": t[13], "conf_score": t[14],
-            "open_time": t[15] or ""
+            "open_time": t[15] or "",
+            "is_manual": bool(t[16]), "be_moved": bool(t[17]), "partial_pct": t[18] or 0,
         })
     return result
 

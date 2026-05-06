@@ -3,13 +3,21 @@ commodities_bot.py — Zenith Commodities Bot (Conservador)
 Instrumentos: Gold (GCM6 / GC=F) + Oil (CLK6 / CLM26.NYM)
 Timeframe: 1H (signal) + 15m (timing)
 Estrategia: EMA Cross + RSI + DXY Filter + ATR Confirmation
-Confluencia minima: 3/5
+Confluencia minima: 4/5
 
 Targets ATR (conservador):
   TP1 (50%): 2.0x ATR -> mover SL a BE
   TP2 (30%): 3.5x ATR
   TP3 (20%): 5.0x ATR
-  SL       : 1.5x ATR
+  SL       : 1.5x ATR (GOLD) | 2.5x ATR (OIL — news-driven volatility)
+
+Cambios May-2026:
+  - Fix RSI SHORT condition: rsi > 62 (era 45-65, zona bullish incorrecta)
+  - Post-rally filter OIL: si +15% en 10d, requiere RSI < 45 para LONG
+  - OPEC suppression: suprime señales OIL 24h antes/después reuniones OPEC
+  - SL más amplio en OIL: ATR_SL = 2.5x (era 1.5x)
+  - MIN_SL_PCT: SL mínimo 2.0% del precio para OIL (protección vs news spikes 1H)
+  - Signal keyboard (Activar/Skip) en lugar de log_trade inmediato
 """
 import time
 import os
@@ -34,22 +42,39 @@ INSTRUMENTS = {
     "OIL":  {"yf": "CLM26.NYM", "name": "Crude Jun-2026", "decimals": 2},
 }
 
-# --- ATR Multipliers (conservador) ---
-ATR_SL  = 1.5
+# --- ATR Multipliers (por instrumento) ---
 ATR_TP1 = 2.0
 ATR_TP2 = 3.5
 ATR_TP3 = 5.0
+ATR_SL_BY_KEY = {
+    "GOLD": 1.5,   # Gold: menos volátil en 1H
+    "OIL":  2.5,   # OIL: news spikes de $3-4 en una sola vela 1H (OPEC, geopolítica)
+}
 
 # --- Strategy thresholds ---
 MIN_CONFLUENCE     = 4       # Raised 3→4 (Apr-29: 3/5 generated too many false signals)
 MIN_ATR_PCT        = 0.003   # ATR > 0.3% del precio
+MIN_SL_PCT_OIL     = 0.020   # SL mínimo 2.0% del precio en OIL (protección vs news spikes)
 DXY_GOLD_LONG_MAX  = 103.0   # DXY < 103 favorece gold LONG
 DXY_GOLD_SHORT_MIN = 103.0   # DXY > 103 favorece gold SHORT (ignored if GOLD_BULL_LOCK active)
+
+# --- Post-rally filter (OIL) ---
+OIL_RALLY_DAYS     = 10      # ventana para medir rally
+OIL_RALLY_PCT      = 0.15    # si OIL sube >15% en 10d, endurecer filtro LONG
+OIL_RALLY_RSI_MAX  = 45.0    # RSI max para LONG en modo post-rally (normal: 55)
 
 # --- Gold bull market lock ---
 GOLD_BULL_THRESHOLD = 2500.0  # Gold > $2,500 = PHY alcista activo → LONG only, no shorts
                                # DXY/Gold correlation broke in 2026 (gold ATH despite DXY strength)
 SP500_VERDE_MIN     = 7000    # SP500 > this → no OIL SHORT (bull regime, oil upward bias)
+
+# --- OPEC Meeting suppression (OIL signals suprimidas ±24h) ---
+# Actualizar antes de cada reunión OPEC+. Formato: "YYYY-MM-DD"
+OPEC_MEETING_DATES = [
+    "2026-05-05",  # OPEC+ meeting May 2026 → dump post-decisión May 6
+    "2026-06-01",  # próxima reunión estimada
+    "2026-09-01",  # Q3 2026 (estimado)
+]
 
 # --- Cooldowns ---
 ALERT_COOLDOWN       = 3600       # 1h entre alertas del mismo instrumento
@@ -157,12 +182,21 @@ def _monitor_open_commodity(key: str, inst: dict):
         return
 
     try:
-        price = float(yf.Ticker(inst["yf"]).fast_info.last_price or 0)
+        raw = yf.Ticker(inst["yf"]).fast_info.last_price
+        price = float(raw or 0)
     except Exception as e:
-        logger.warning("    %s: no se pudo obtener precio para monitor (%s)", key, e)
+        logger.warning("    %s: monitor price fetch error: %s", key, e)
         return
     if not price:
-        return
+        # fast_info returns None for some futures tickers; fall back to history
+        try:
+            df_fb = _fetch_ohlcv(inst["yf"], interval="1h", period="2d")
+            price = float(df_fb["Close"].iloc[-1]) if not df_fb.empty else 0.0
+        except Exception as e:
+            logger.warning("    %s: monitor fallback price fetch error: %s", key, e)
+        if not price:
+            logger.warning("    %s: monitor skip — could not resolve price (fast_info=None, history empty)", key)
+            return
 
     dec = inst["decimals"]
     for t in open_trades:
@@ -265,6 +299,31 @@ def analyze_commodity(key: str, inst: dict):
         _last_status[key] = {"price": price, "rsi": rsi, "atr": atr, "signal": "ATR bajo", "time": datetime.now()}
         return
 
+    # --- OPEC suppression (OIL only) ---
+    if key == "OIL":
+        from datetime import date, timedelta
+        today_str = date.today().isoformat()
+        for meeting_date in OPEC_MEETING_DATES:
+            try:
+                md = date.fromisoformat(meeting_date)
+                if abs((date.today() - md).days) <= 1:
+                    logger.info("    OIL: OPEC meeting ±24h (%s) — señal suprimida", meeting_date)
+                    _last_status[key] = {"price": price, "rsi": round(rsi, 1), "atr": round(atr, 2),
+                                         "signal": f"SUPRIMIDA (OPEC {meeting_date})", "time": datetime.now()}
+                    return
+            except ValueError:
+                pass
+
+    # --- Post-rally filter (OIL LONG): si rally >15% en 10d, exigir RSI < 45 ---
+    post_rally_active = False
+    if key == "OIL" and len(df_1h) >= OIL_RALLY_DAYS * 24:
+        price_10d_ago = float(df_1h["Close"].iloc[-(OIL_RALLY_DAYS * 24)])
+        rally_10d = (price - price_10d_ago) / price_10d_ago if price_10d_ago > 0 else 0
+        if rally_10d > OIL_RALLY_PCT:
+            post_rally_active = True
+            logger.info("    OIL: post-rally activo (%.1f%% en %dd) — RSI max %.0f para LONG",
+                        rally_10d * 100, OIL_RALLY_DAYS, OIL_RALLY_RSI_MAX)
+
     # --- Confluence Scoring ---
     long_score = 0
     short_score = 0
@@ -276,9 +335,12 @@ def analyze_commodity(key: str, inst: dict):
         short_score += 1
 
     # 2. RSI
-    if 35 < rsi < 55:
+    # LONG: RSI en zona moderada-baja (no comprar overbought)
+    # SHORT: RSI overbought (> 62 = señal clara de sobrecompra)
+    rsi_long_max = OIL_RALLY_RSI_MAX if (key == "OIL" and post_rally_active) else 55.0
+    if 30 < rsi < rsi_long_max:
         long_score += 1
-    if 45 < rsi < 65:
+    if rsi > 62:
         short_score += 1
 
     # 3. Price vs EMA200
@@ -304,18 +366,18 @@ def analyze_commodity(key: str, inst: dict):
     long_score += 1
     short_score += 1
 
-    # --- Macro regime guards (applied BEFORE signal determination) ---
-    # Gold bull lock: correlation DXY/Gold broke in 2026. Gold at ATH = LONG only.
+    # --- Macro regime guards ---
+    # Gold bull lock
     if key == "GOLD" and price > GOLD_BULL_THRESHOLD:
-        short_score = 0  # kill any short signal while gold in bull market
+        short_score = 0
         logger.info("    GOLD: bull lock active (price $%.0f > $%.0f) — shorts suppressed", price, GOLD_BULL_THRESHOLD)
 
-    # SP500 VERDE regime: no oil shorts when equities in bull mode
+    # SP500 VERDE: no oil shorts in bull equities regime
     if key == "OIL":
         try:
             import yfinance as _yf
             spy_price = float(_yf.Ticker("SPY").fast_info.last_price or 0)
-            sp500_approx = spy_price * 10  # SPY ≈ SP500 / 10
+            sp500_approx = spy_price * 10
             if sp500_approx > SP500_VERDE_MIN:
                 short_score = 0
                 logger.info("    OIL: SP500 VERDE (%.0f > %d) — oil shorts suppressed", sp500_approx, SP500_VERDE_MIN)
@@ -351,7 +413,16 @@ def analyze_commodity(key: str, inst: dict):
         return
 
     # --- Build alert ---
-    sl_dist = atr * ATR_SL
+    atr_sl_mult = ATR_SL_BY_KEY.get(key, 1.5)
+    sl_dist = atr * atr_sl_mult
+
+    # Ensure minimum SL distance for OIL (news spikes can exceed 1H ATR in one candle)
+    if key == "OIL":
+        min_sl_dist = price * MIN_SL_PCT_OIL
+        if sl_dist < min_sl_dist:
+            logger.info("    OIL: SL ampliado ATR (%.2f) < MIN_SL_PCT (%.2f)", sl_dist, min_sl_dist)
+            sl_dist = min_sl_dist
+
     if side == "LONG":
         sl  = round(price - sl_dist, dec)
         tp1 = round(price + atr * ATR_TP1, dec)
@@ -389,13 +460,41 @@ def analyze_commodity(key: str, inst: dict):
         f"{datetime.now().strftime('%Y-%m-%d %H:%M')} UTC"
     )
 
-    send_telegram(msg)
+    # Wire signal keyboard (Activar / Skip) — mismo flujo que strategies.py
+    try:
+        from scalp_alert_bot import _store_pending
+        import alert_manager as _am
+        import requests as _req
+
+        _sid = _store_pending(key, side, price, tp1, tp2, sl, atr, rsi, score,
+                              "commodity_conservative", "COMMODITY", None,
+                              macro_regime=f"OIL_RALLY:{post_rally_active}" if key == "OIL" else "")
+        _kb = _am.get_signal_keyboard(_sid, key, side)
+
+        # Send with inline keyboard
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        r = _req.post(url, json={
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": msg,
+            "parse_mode": "HTML",
+            "reply_markup": _kb,
+        }, timeout=10)
+        mid = str(r.json().get("result", {}).get("message_id", "")) if r.ok else None
+        if not mid:
+            logger.warning("    %s: Telegram send failed, logging trade direct", key)
+            raise RuntimeError("send failed")
+    except Exception as _e:
+        # Fallback: log directamente si falla el import o el send
+        logger.warning("    %s: signal keyboard fallback (%s)", key, _e)
+        send_telegram(msg)
+        tracker.log_trade(key, side, price, tp1, tp2, sl, None,
+                          version="COMMODITY", rsi=rsi, bb="EMA_Cross",
+                          atr=atr, score=score, alert_type="commodity_conservative")
+
     _last_alert[key] = time.time()
     _last_direction[key] = (side, time.time())
-    tracker.log_trade(key, side, price, tp1, tp2, sl, None,
-                      version="COMMODITY", rsi=rsi, bb="EMA_Cross",
-                      atr=atr, score=score, alert_type="commodity_conservative")
-    logger.info("    %s: alerta enviada — %s @ $%s | Score %d/5", key, side, f"{price:,.{dec}f}", score)
+    logger.info("    %s: alerta enviada — %s @ $%s | Score %d/5 | post_rally=%s",
+                key, side, f"{price:,.{dec}f}", score, post_rally_active)
 
 
 def get_status_html() -> str:
