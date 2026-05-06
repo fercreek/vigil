@@ -1,115 +1,88 @@
-# _NEXT.md — Pickup point próxima sesión
-
-Última sesión: **2026-04-29** · bot v1.3.1
-Tag prod actual: **v1.3.1** (main = dev, ambos pushed)
-Bot: corriendo 24/7 en Railway · `https://web-production-75508.up.railway.app`
-
----
+# _NEXT.md — Scalp Bot / Zenith
+> Update: 2026-05-06 · Prev: CHANGELOG.md#v4.3
 
 ## ⚡ En proceso — retomar aquí
 
-### 1. Validar despliegue v1.3.1 en Railway (5 min)
-
-```bash
-railway logs --deployment 2>&1 | tail -40
-# Verificar:
-#   PHY ALERT solo aparece 1 vez cada 30 min (no spam)
-#   Sentinel: NO debe aparecer "JSON unparseable" — debe procesar con voces "—"
-#   "MANUAL POSITIONS MONITOR ACTIVADO" → /manual en Telegram responde
-```
+Nada abierto. Sesión cerrada limpia. Bot prod corriendo en Railway `v4.3.2`.
 
 ---
 
-### 2. Posiciones manuales activas (estado al cierre 2026-04-29)
+## 💡 Backlog (en orden de impacto)
 
-| Símbolo | Lado | Entry | Precio aprox | P&L | Acción |
-|---------|------|-------|-------------|-----|--------|
-| TAO | LONG (leverage) | $295.00 | ~$261 | -$345 unrealized / -$163 leverage | Hold si $250 aguanta |
-| ZEC | LONG spot | $358.00 | ~$334 | -$107 | Hold; ZEC best WR 29.5% |
-| DOGE | LONG spot | $0.10299 | ~$0.10948 | +$136 | **Mover SL a BE ya** → `/manual_be DOGE` |
+### A. `conf_score=5 → 0% WR` — investigar cuando muestra > 20 trades
+- Solo 7 trades con score=5 hoy — muestra insuficiente
+- Hipótesis: score 5 requiere Elliott "Onda 3" bonus → entra tarde, near peak
+- Acción cuando tengamos 20+ trades score=5: revisar `calculate_confluence_score()`
 
----
+### B. Pack 4 — PTS Crypto Triggers
+- BTC @ 79,917 + ETH @ 2,520 como triggers LONG one-way (metodología PTS)
+- Módulo `pts_crypto_triggers.py` o integrar en `strategies.py`
+- Comando: `/cryptoadd BTC LONG 79917 69919 93000,101000 85000`
 
-## 💡 Backlog — próximas mejoras (en orden de impacto)
+### C. OPEC Calendar — actualizar antes de próxima reunión
+- Próxima fecha estimada: `2026-06-01`
+- `commodities_bot.py::OPEC_MEETING_DATES` — actualizar manualmente
+- Considerar `/opec add YYYY-MM-DD` para evitar editar código
 
-### A. Conectar MANUAL_POSITIONS a Cuadrilla Zenith (~30 min)
-Leer `manual_positions.json` en `gemini_analyzer.get_ai_consensus()`.
-Prompt context: "Fernando tiene TAO LONG -$345, ZEC LONG -$107".
-Cuadrilla considera correlación al dar bias.
+### D. Economic Calendar generalizado
+- FOMC ya suprime cripto. OPEC ya suprime OIL.
+- Pendiente: CPI, NFP, earnings por símbolo
+- `ECONOMIC_CALENDAR_SUPPRESSIONS = {"CPI": [...], "NFP": [...]}` en config.py
 
-### B. Investigar conf_score invertido (~1h)
-- `conf_score 4` → 17.7% WR (79 trades)
-- `conf_score 5` → 0.0% WR (7 trades) ← peor
-Revisar `strategies.calculate_confluence_score()`. Hipótesis: score 5 = over-extended.
-Agregar logging de qué componentes se activan.
-
-### C. Pack 4 — PTS Crypto Triggers (~1h, zero risk)
-BTC@79,917 + ETH@2,520 como triggers LONG one-way.
-Módulo `pts_crypto_triggers.py` + `/cryptoadd BTC LONG 79917 69919 93000,101000 85000`
-
-### D. Pack 3 — Eco Mercado (opcional)
-`/eco SYM CANAL DIR NOTA` → `logs/external_signals.jsonl` → aparece en PANORAMA
+### E. SIM tracking — primeras semanas
+- `/winrate` ya muestra Real vs SIM comparison
+- Necesita ~2 semanas de skips para tener datos estadísticos
+- Target: >30 señales skiadas para evaluar gap
 
 ---
 
-## ✅ Completado esta sesión (2026-04-29)
+## ✅ Completado esta sesión (2026-05-06)
 
-### Fixes v1.3.0 (commodities + manual monitor)
-- `commodities_bot`: gold bull lock `>$2,500` + MIN_CONFLUENCE 3→4 + OIL SHORT kill en VERDE
-- `config`: MANUAL_POSITIONS (TAO/ZEC/DOGE) + FOMC Jun 17 + v4.4
-- `manual_positions_monitor.py`: nuevo thread, 30 min, recomendaciones LONG-oriented
-- `/manual*` comandos Telegram: tp/sl/be/off/add
+### v4.3.0 — Snappy UX + Alert Lifecycle
+- `_PENDING_SIGNALS` store + Activate/Skip en todas las señales V1-V5
+- `get_signal_keyboard` / `get_management_keyboard` en `alert_manager.py`
+- Storage unificado manual (`trades.db` is_manual=1, JSON eliminado)
+- `/open` picker 3-tap + `/pos` compact/full
+- Menu principal row 1: `[📂 /pos][➕ /open][🎯 Setup]`
+- Migrate script `scripts/migrate_manual_to_db.py`
+- `docs/SIGNAL_FLOW.md` — lifecycle completo
 
-### Bugfixes v1.3.1
-- **`strategies.py`**: PHY ALERT cooldown 30 min (`_phy_last_alert` dict) — SOL spam eliminado
-- **`voice_compactor.py`**: `_repair_partial()` en `parse_sentinel_json` — extrae bias/score/verdict por regex cuando Gemini trunca el JSON en mid-string. Testeado contra payload real de prod.
+### v4.3.1 — Stock alerts Activate/Skip
+- `stock_analyzer.py` ENTRY_ALERT → signal keyboard (Activate/Skip)
+- BE/TP/SL alerts → management keyboard si hay trade abierto
+- `activate` callback fetchea precio live (yfinance) para stocks al tap
 
----
+### v4.3.2 — is_sim filter + Win Rate Real vs SIM
+- `get_win_rate()` / `get_audit_metrics()` / `get_alert_stats()` filtran `is_sim=0`
+- `get_winrate_comparison()` — dict real vs SIM con gap pp y verdict
+- `/winrate` muestra sección "Real vs SIM (Activate/Skip)" al final
 
-## 🔒 Bloqueado / Decisiones pendientes
-
-1. **Volume mount Railway** — `manual_positions.json` no persiste entre redeploys
-   → Workaround: actualizar `config.MANUAL_POSITIONS` antes de cada deploy
-2. **Railway upgrade Hobby $5/mo** — revisar estado trial
-3. **GitHub branch protection** para `main` (3 min UI)
-4. **@ZenithDevBot** en @BotFather (dev bot)
-
----
-
-## Verificaciones al arrancar próxima sesión
-
-```bash
-cd /Users/fernandocastaneda/Documents/ideas/scalp_bot
-git pull origin dev
-railway logs --deployment 2>&1 | tail -30
-# Telegram: /manual  →  TAO/ZEC/DOGE con P&L vivos
-```
+### OIL Post-Mortem + Commodities fixes
+- OPEC suppression ±24h (`OPEC_MEETING_DATES`)
+- RSI SHORT fix: `45<rsi<65` (bullish zone) → `rsi>62` (overbought real)
+- SL per instrumento: GOLD=1.5x ATR, OIL=2.5x ATR + MIN_SL_PCT=2%
+- Post-rally filter: OIL +15% en 10d → RSI<45 para LONG
+- `docs/STRATEGY_AUDIT.md` — post-mortem documentado
 
 ---
 
-## Memo arquitectura v1.3.1
+## 🔒 Bloqueado / Pendiente decisión
 
-**Threads:**
-| Thread | Módulo | Ciclo |
-|--------|--------|-------|
-| scalp_bot | scalp_alert_bot.main | ~60s |
-| swing | swing_bot | 4H |
-| telegram | run_telegram_worker | polling |
-| stock | stock_analyzer.stock_watchdog | 15 min |
-| commodities | commodities_bot | 15 min |
-| manual_monitor | manual_positions_monitor | 30 min |
+1. **Volume mount Railway** — `trades.db` persiste entre deploys (ok en Railway con volumen)
+   → Sin volumen: DB se resetea en cada redeploy. Riesgo bajo (Railway rara vez redeploya sin push)
+2. **GitHub branch protection main** — 3 min UI, pendiente desde v1.x
+3. **@ZenithDevBot** — bot separado para dev (evitar conflicto getUpdates local vs prod)
 
-**Filtros activos:**
-- `V1_SHORT_ENABLED = False`
-- `TAO_TRADING_ENABLED = False`
-- `GOLD_BULL_THRESHOLD = 2500` (no GOLD SHORT)
-- `MIN_CONFLUENCE (commodities) = 4`
-- `PHY_ALERT_COOLDOWN = 1800s` (30 min — nuevo v1.3.1)
+---
 
-**Persistencia:**
-- `runtime_state.json` — paused/mode/verbose
-- `data/stock_watchlist.json` — PTS watchlist
-- `manual_positions.json` — posiciones manuales (⚠️ no persiste sin Railway volume mount)
-- `risk_state.json` — NO tocar
+## 📊 Estado del bot (cierre sesión)
 
-Tag prod: **v1.3.1** · main + dev sync
+| Métrica | Valor |
+|---------|-------|
+| Tag prod | `v4.3.2` |
+| Branch main | `bcc6bf4` |
+| WR real (90 trades) | 17.8% (16W / 74L) |
+| WR SIM | sin datos aún (0 skips) |
+| Trades OPEN | 0 |
+| OPEC próximo | 2026-06-01 (actualizar en code) |
+| Railway | UP — auto-deploy activo |
