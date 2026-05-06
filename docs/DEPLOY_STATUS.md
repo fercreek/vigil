@@ -1,6 +1,62 @@
 # DEPLOY STATUS — Scalp Bot / Zenith 24/7
 
-Estado vivo del deploy. Último update: **2026-04-22 cierre sesión**.
+Estado vivo del deploy. Último update: **2026-05-06**.
+
+---
+
+## 🚀 SESIÓN 2026-05-06 — Release v4.3 → PROD
+
+### Tag: `v4.3.0`
+
+**Commits merged a main:**
+- `42919c1` feat(v4.3): snappy UX + alert activate/skip + OIL postmortem fixes
+- `4340183` feat(watchlist): PTS Apr 29 — update entries + add UUUU/IONQ
+
+**Pre-deploy:** 6/6 checks verdes (py_compile + imports + requirements + 69 tests + .env + markers)
+
+### Qué entra a prod en este release
+
+| Área | Cambio | Impacto operativo |
+|------|--------|-------------------|
+| **Alert lifecycle** | Señales muestran `[✅ Activar] [⏭️ Skip]` en lugar de loguearse solas | Fernando controla qué trades entran a DB — win rate limpio |
+| **Management keyboard** | Post-apertura: `[TP1][TP2][TP3][SL][🔴 Cerrar@live][📊 P&L]` desde el mismo mensaje | Gestión completa sin escribir comandos |
+| **Storage unificado** | Trades manuales en `trades.db` (is_manual=1), JSON eliminado | `/pos` muestra todo en un lugar, sin estado fragmentado |
+| **`/open` picker** | 3 taps para abrir trade manual: símbolo → side → confirmar | Menos fricción en entradas manuales |
+| **`/pos` unified** | Compact (1 línea/trade) y full (SL/TP/BE/health) | Reemplaza `/positions /portfolio /manual /health` |
+| **Main menu** | Row 1: `[📂 /pos][➕ /open][🎯 Setup]` | Acciones más usadas al frente |
+| **OIL: OPEC suppression** | Suprime señales OIL ±24h de fechas OPEC configuradas | Evita entradas en eventos macro conocidos |
+| **OIL: RSI fix** | SHORT requiere RSI > 62 (antes: zona 45-65 bullish) | Menos señales SHORT falsas en OIL |
+| **OIL: SL 2.5x ATR** | Era 1.5x — no aguantaba spikes de noticias 1H | Reduce SL hits por volumen anómalo |
+| **OIL: post-rally filter** | Si +15% en 10d → RSI < 45 para LONG | Bloquea entradas overbought post-rally |
+| **Win rate SIM** | Skipped signals logueadas con is_sim=1 | Trackeable: WR real vs WR si hubieras operado todo |
+| **Watchlist PTS Apr29** | HOOD entry 70, COIN 178, IREN filled, +UUUU, +IONQ | Niveles actualizados según PTS |
+
+### Riesgos y mitigaciones
+
+| Riesgo | Mitigación |
+|--------|-----------|
+| `_PENDING_SIGNALS` en memoria — restart limpia pendientes | TTL 4h, las señales viejas expiran solas. Restart raro en Railway |
+| strategies.py no loguea en DB hasta Activate — episode_ids en pending_ep_ids | Transfer ocurre en callback activate. Si bot reinicia antes del tap: el episodio se pierde, trade no queda en DB. Aceptable — era el comportamiento deseado (no loguear si no activas) |
+| commodities_bot OPEC dates hardcoded | Documentado en código, actualizar manualmente antes de cada reunión OPEC. Próxima: `2026-06-01` |
+| `get_alert_inline_keyboard` legacy importado en strategies.py pero ya no se usa | Sin impacto — el import sigue, simplemente no se llama. Cleanup en v4.4 |
+
+### Post-deploy verify
+
+```bash
+# 1. Railway logs — bot arranca
+railway logs --deployment 2>&1 | tail -30
+# Buscar: "COMMODITIES BOT ACTIVADO", "MANUAL POSITIONS MONITOR ACTIVADO", threads OK
+
+# 2. Telegram — comando rápido
+/pos          # debe responder con posiciones o "Sin posiciones abiertas"
+/open         # debe mostrar picker de símbolos inline
+
+# 3. DB migration (si había JSON antiguo)
+# Solo necesario si manual_positions.json existía en prod (Railway)
+# railway run python3 scripts/migrate_manual_to_db.py
+```
+
+---
 
 Plan completo: `~/.claude/plans/si-revids-quae-nerceistamos-precious-grove.md`
 
