@@ -363,6 +363,26 @@ def _handle_callback(callback: dict, prices: dict):
         if not sig:
             _answer_callback(cb_id, "⚠️ Señal expirada o ya procesada")
             return
+
+        # Stocks: fetch precio LIVE al momento de activar (no el precio cuando sonó la alerta)
+        if sig.get("version") == "STOCK":
+            try:
+                import yfinance as _yf
+                live_p = float(_yf.Ticker(sym).fast_info.last_price or 0)
+                if live_p > 0:
+                    _atr = sig.get("atr", live_p * 0.02)
+                    sig["entry"] = live_p
+                    if side == "LONG":
+                        sig["sl"]  = round(live_p - _atr * 2.5, 4)
+                        sig["tp1"] = sig.get("tp1") or round(live_p + _atr * 2.0, 4)
+                        sig["tp2"] = sig.get("tp2") or round(live_p + _atr * 3.5, 4)
+                    else:
+                        sig["sl"]  = round(live_p + _atr * 2.5, 4)
+                        sig["tp1"] = sig.get("tp1") or round(live_p - _atr * 2.0, 4)
+                        sig["tp2"] = sig.get("tp2") or round(live_p - _atr * 3.5, 4)
+            except Exception as _ex:
+                print(f"WARN: stock live price {sym}: {_ex}")
+
         entry = sig["entry"]
         tid = tracker.log_trade(
             sym, side, entry, sig["tp1"], sig["tp2"], sig["sl"], msg_id,
