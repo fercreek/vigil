@@ -90,20 +90,32 @@ def set_bot_commands():
     """
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setMyCommands"
     commands = [
-        {"command": "pos",         "description": "Ver posiciones abiertas (manual + auto). Usa /pos full para detalle"},
+        # ── Posiciones (uso diario) ───────────────────────────────────────
+        {"command": "pos",         "description": "Ver posiciones abiertas. /pos full para detalle completo"},
         {"command": "open",        "description": "Abrir posición manual (picker inline)"},
         {"command": "check",       "description": "P&L + SL/TP recomendados por ATR de posiciones activas"},
-        {"command": "commodities", "description": "Estado Gold, Oil, Nat Gas, Silver, Copper (señal + niveles)"},
-        {"command": "winrate",     "description": "Win rate global + Real vs SIM (Activate/Skip tracking)"},
+        # ── Mercado ───────────────────────────────────────────────────────
+        {"command": "commodities", "description": "Estado Gold, Oil, Nat Gas, Silver, Copper"},
+        {"command": "status",      "description": "Precios en vivo + RSI + sentimiento AI (Mercado)"},
+        {"command": "macro",       "description": "Dominancia USDT + Macro Shield análisis"},
+        {"command": "funding",     "description": "Tasas de funding por símbolo (largo vs corto)"},
+        {"command": "regime",      "description": "Régimen de mercado detectado (trending/ranging/volatile)"},
+        # ── Performance ───────────────────────────────────────────────────
+        {"command": "winrate",     "description": "Win rate global + Real vs SIM (Activate/Skip)"},
         {"command": "pnl",         "description": "Profit & Loss del día actual"},
-        {"command": "audit",       "description": "Auditoría de rendimiento institucional"},
-        {"command": "status",      "description": "Resumen de precios e indicadores (Mercado)"},
-        {"command": "macro",       "description": "Análisis de Dom USDT y Sentimiento Macro"},
-        {"command": "intel",       "description": "Social Intel & News Feed"},
-        {"command": "budget",      "description": "Consumo de API y presupuesto IA"},
+        {"command": "audit",       "description": "Auditoría institucional (Profit Factor, SQN)"},
+        {"command": "agents",      "description": "Historial de aciertos de la Cuadrilla Zenith"},
+        # ── Gestión de posición ───────────────────────────────────────────
+        {"command": "manual_add",  "description": "Registrar posición manual: /manual_add SYM ENTRY [LONG]"},
         {"command": "manual_tp",   "description": "Tomar TP/parcial: /manual_tp SYM [pct]"},
-        {"command": "manual_sl",   "description": "Marcar SL: /manual_sl SYM"},
+        {"command": "manual_sl",   "description": "Marcar SL tocado: /manual_sl SYM"},
         {"command": "manual_be",   "description": "Mover SL a break even: /manual_be SYM"},
+        {"command": "manual_off",  "description": "Cerrar/desactivar posición manual: /manual_off SYM"},
+        # ── Admin ─────────────────────────────────────────────────────────
+        {"command": "budget",      "description": "Consumo de API de IA y presupuesto mensual"},
+        {"command": "circuit",     "description": "Estado del circuit breaker (pérdidas consecutivas)"},
+        {"command": "risk",        "description": "Resumen de riesgo actual (ATR, VIX, posición size)"},
+        {"command": "intel",       "description": "Social Intel & News Feed por símbolo"},
     ]
     
     try:

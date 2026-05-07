@@ -488,8 +488,7 @@ def check_user_queries(prices: dict):
 
                 elif text.startswith("/risk"):
                     import risk_manager
-                    # Obtener datos del primer símbolo activo para mostrar risk actual
-                    _sym = "TAO"
+                    _sym = "BTC"
                     _atr = prices.get(f"{_sym}_ATR", 0.0)
                     _price = prices.get(_sym, 0.0)
                     _vix = prices.get("VIX", 0.0)
@@ -504,20 +503,6 @@ def check_user_queries(prices: dict):
                     risk_manager.circuit_breaker.force_reset()
                     send_telegram(
                         "🔄 <b>Circuit Breaker reseteado manualmente.</b>\nEstado: NORMAL",
-                        keyboard=get_main_menu()
-                    )
-
-                elif "flow" in t or text.startswith("/flow"):
-                    send_telegram(
-                        "🔀 <b>FLUJO ZENITH</b>\n\n"
-                        "① APIs: Binance · yfinance · CoinGecko\n"
-                        "② Indicadores: RSI · BB · EMA200 · ATR\n"
-                        "③ Filtros: V1-TECH · V3 Reversal · V2-AI\n"
-                        "④ Score Confluencia: 0-6 pts\n"
-                        "⑤ Agentes: Claude Haiku + Gemini Flash (Bull/Bear/Quant/Macro)\n"
-                        "⑥ Alertas Telegram con inline buttons\n"
-                        "⑦ Tracker: trades + trigger_conditions en SQLite\n\n"
-                        "💰 <code>/budget</code>  📊 <code>/agents</code>",
                         keyboard=get_main_menu()
                     )
 
@@ -589,26 +574,6 @@ def check_user_queries(prices: dict):
                         keyboard=get_main_menu()
                     )
 
-                elif text.startswith("/leverage"):
-                    import risk_manager
-                    # Usar valores cached o defaults si no hay data live
-                    try:
-                        from scalp_alert_bot import _CACHE
-                        vix = _CACHE.get("VIX", {}).get("v", 0)
-                    except Exception:
-                        vix = 0
-                    send_telegram(
-                        risk_manager.get_leverage_html(
-                            vix=vix, atr_pct=2.0, regime="TRENDING_UP",
-                            trade_type="SWING"
-                        ),
-                        keyboard=get_main_menu()
-                    )
-
-                elif text.startswith("/portfolio"):
-                    # Alias → vista unificada full
-                    send_telegram(cmd_pos("full", prices), keyboard=get_main_menu())
-
                 elif text.lower().startswith("/wrong "):
                     raw = text.replace("/wrong ", "").strip().upper()
                     name_map = {"GENESIS": "CONSERVADOR", "EXODO": "SCALPER", "SHADOW": "SHADOW", "SALMOS": "SALMOS", "APOCALIPSIS": "APOCALIPSIS"}
@@ -622,14 +587,6 @@ def check_user_queries(prices: dict):
                 elif text.startswith("/check") or t == "🔍 check":
                     import manual_positions_monitor as _mpm
                     send_telegram(_mpm.cmd_check_positions(prices), keyboard=get_main_menu())
-
-                elif text.startswith("/positions") or "positions" in t or "posiciones" in t:
-                    # Alias → vista unificada compact
-                    send_telegram(cmd_pos("", prices), keyboard=get_main_menu())
-
-                elif text.startswith("/health") or "health" in t:
-                    # Alias → vista unificada full (incluye health block)
-                    send_telegram(cmd_pos("full", prices), keyboard=get_main_menu())
 
                 elif text.startswith("/commodities") or text.startswith("/gold") or text.startswith("/oil") or "commod" in t:
                     import commodities_bot as _cb
