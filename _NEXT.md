@@ -1,11 +1,11 @@
 # _NEXT.md — Scalp Bot / Zenith
-> Update: 2026-05-06 (sesión noche) · Prev: v4.3.2 `bcc6bf4`
+> Update: 2026-05-07 · Prev: `1628c15`
 
 ## ⚡ En proceso — retomar aquí
 
-Nada abierto. Bot prod `0400ceb` corriendo Railway.
+Bot prod `aaee63c` corriendo Railway.
 
-### 🔴 Acción urgente próxima sesión: registrar posiciones en bot
+### 🔴 Acción urgente: registrar posiciones en bot
 6 posiciones activas en Quantfy, ninguna en `trades.db` → `/check` no las ve:
 ```
 /manual_add TON 2.524 LONG
@@ -15,17 +15,14 @@ Nada abierto. Bot prod `0400ceb` corriendo Railway.
 /manual_add SIL 93.12 LONG
 /manual_add CLM6 98.78 LONG
 ```
-⚠️ CLM6 urgente: -$64 sin stop. Poner stop ~$93-94. Revisar si LONG es intencional vs config SHORT $95.95.
+⚠️ CLM6: revisar si aún está abierta y si aplica stop (precio actual ~$92.80, entrada $98.78 = -6%).
 
 ---
 
 ## 💡 Backlog (en orden de impacto)
 
-### A. Stops pendientes posiciones activas
-- CLM6: stop ~$93 (urgente, ya -$64)
-- HBAR: stop $0.085
-- TAO: stop ~$290
-- FIL: stop $1.00 o cierre (sin tesis clara)
+### A. OPEC Calendar — actualizar antes 2026-06-01
+- `commodities_bot.py::OPEC_MEETING_DATES` — próxima reunión `"2026-06-01"` ya está, confirmar fecha exacta
 
 ### B. `conf_score=5 → 0% WR` — investigar cuando > 20 trades
 - Solo 7 trades con score=5 — muestra insuficiente
@@ -36,94 +33,79 @@ Nada abierto. Bot prod `0400ceb` corriendo Railway.
 - BTC @ 79,917 + ETH @ 2,520 como triggers LONG (metodología PTS)
 - Módulo `pts_crypto_triggers.py` o integrar en `strategies.py`
 
-### D. OPEC Calendar — actualizar antes 2026-06-01
-- `commodities_bot.py::OPEC_MEETING_DATES` — actualizar manualmente
-
-### E. Economic Calendar generalizado
-- FOMC suprime cripto. OPEC suprime OIL.
+### D. Economic Calendar generalizado
+- FOMC suprime cripto, OPEC suprime OIL
 - Pendiente: CPI, NFP, earnings por símbolo
 
-### F. SIM tracking — primeras semanas
-- `/winrate` muestra Real vs SIM comparison
-- Necesita ~2 semanas de skips para datos estadísticos
+### E. SIM tracking — acumular datos
+- `/winrate` muestra Real vs SIM — necesita ~2 semanas de skips para estadística válida
+- Skipear señales activamente para alimentar el comparador
+
+### F. Volume mount Railway
+- `trades.db` sin volumen = reset en cada redeploy con cambio de slug
+- Configurar Railway Volume para persistencia garantizada
 
 ---
 
-## ✅ Completado esta sesión (2026-05-06 noche)
+## ✅ Completado esta sesión (2026-05-07)
 
-### TON/USDT monitoring (`36b4596`)
-- 9 touch points: SYMBOLS, MANUAL_SYMBOLS, V4_EMA_PROX_MAP, last_rsi
-- update_dynamic_levels, fetch_tickers, extracción Binance+CoinGecko
-- Loop indicadores 15m, sym_map aliases `ton`/`toncoin`
+### Diagnóstico Oil vs Gold alerts
+- Gold alerta porque LONG=4/5: EMA cross ✅, Price>EMA200 ✅, DXY<103 ✅, ATR ✅
+- Oil en empate 3/3 — EMA50<EMA200 + price<EMA200 → SHORT; RSI 30+DXY<104 → LONG
+- Oil correctamente en "sin señal" (indecisión). No era un bug.
 
-### 🔍 Check button (`bacafc9`)
-- Reemplaza "🎯 Setup" en row 1 del menú principal
-- `cmd_check_positions(prices)` en `manual_positions_monitor.py`
-- Por posición: P&L%, SL sugerido 2×ATR 4H, TP 3×/5×ATR
-- Flags BE (≥5%), parcial (≥8% con BE), drawdown (≤-10%)
-- Fallback yfinance para stocks/ETFs
-- Handler `/check` en dispatcher
+### Backtests (`backtester.py`)
+- V4 crypto: BTC 28.6% WR +6.3%, ZEC 23.1% -2.8%, ETH 12.5% -7.1%, TAO 27.3% +2.9%
+- Commodities (EMA/RSI/ATR 1H): GOLD 46.9% +16.7%, OIL 52.7% +40.2%
+- NG 53.5% +67.8% 🔥, SLV 61.5% +36.5% 🔥, HG 40.5% +25.5%
 
-### fix commodities GOLD (`0400ceb`)
-- `ATR_SL` undefined → `NameError` en cada ciclo GOLD
-- Fix: 3 ocurrencias R:R cálculo + label SL → `atr_sl_mult`
+### Commodities expansion (`c4a46e8`)
+- Agregar NG=F, SLV, HG=F a `INSTRUMENTS`
+- DXY routing: SLV→gold lógica, NG→neutral, HG→oil lógica
+- ATR_SL: NG=2.5x, MIN_SL_PCT_NG=3%
+- Silver bull lock via GOLD status cache
 
-### Análisis posiciones reales (screenshots Quantfy)
-- TON: +7.84% / +₮200, stop BE ✅ — mejor posición activa
-- SIL: +1.68% / +$5, stop+target ✅
-- TAO/FIL/HBAR: pérdidas menores, sin stops ⚠️
-- CLM6: peor — LONG $98.78, ahora $95.83, -$64 total, sin stop 🔴
+### TAO fix (`c4a46e8`)
+- Causa raíz: circuit breaker resetea en restart → 14 entradas TAO en 3 días (April 7-9)
+- Fix 1: cooldown 4H en DB tras 3 LOST consecutivos (DB-persisted, sobrevive restarts)
+- Fix 2: filtro 1D EMA200 — bloquea LONGs cuando tendencia diaria es BEAR
+- TAO re-habilitado con ambas protecciones
+- Simulación: habrían bloqueado 25/25 trades malos de April
+
+### Telegram menu refresh (`b327e18`)
+- Macro → ⛽ Commod (commodities 5 instrumentos, uso diario)
+- Intel TAO → 📊 WinRate (winrate accionable)
+- Signal keyboard: quitar 💰 Budget IA (ruido en momento de decisión)
+
+### Slash command cleanup (`aaee63c`)
+- Eliminados: /portfolio, /health, /positions (duplicados /pos), /flow (texto estático), /leverage (valores hardcoded)
+- Fix: /risk usaba ATR de TAO → ahora BTC
+- setMyCommands reorganizado por categoría con 23 comandos registrados
 
 ---
 
-## ✅ Completado sesiones anteriores (2026-05-06 mañana)
+## ✅ Completado sesiones anteriores (hasta 2026-05-06)
 
-### v4.3.0 — Snappy UX + Alert Lifecycle
-- `_PENDING_SIGNALS` store + Activate/Skip en todas las señales V1-V5
-- `get_signal_keyboard` / `get_management_keyboard` en `alert_manager.py`
-- Storage unificado manual (`trades.db` is_manual=1, JSON eliminado)
-- `/open` picker 3-tap + `/pos` compact/full
-- Menu principal row 1: `[📂 /pos][➕ /open][🎯 Setup]`
-- Migrate script `scripts/migrate_manual_to_db.py`
-- `docs/SIGNAL_FLOW.md` — lifecycle completo
-
-### v4.3.1 — Stock alerts Activate/Skip
-- `stock_analyzer.py` ENTRY_ALERT → signal keyboard (Activate/Skip)
-- BE/TP/SL alerts → management keyboard si hay trade abierto
-- `activate` callback fetchea precio live (yfinance) para stocks al tap
-
-### v4.3.2 — is_sim filter + Win Rate Real vs SIM
-- `get_win_rate()` / `get_audit_metrics()` / `get_alert_stats()` filtran `is_sim=0`
-- `get_winrate_comparison()` — dict real vs SIM con gap pp y verdict
-- `/winrate` muestra sección "Real vs SIM (Activate/Skip)" al final
-
-### OIL Post-Mortem + Commodities fixes
-- OPEC suppression ±24h (`OPEC_MEETING_DATES`)
-- RSI SHORT fix: `45<rsi<65` (bullish zone) → `rsi>62` (overbought real)
-- SL per instrumento: GOLD=1.5x ATR, OIL=2.5x ATR + MIN_SL_PCT=2%
-- Post-rally filter: OIL +15% en 10d → RSI<45 para LONG
-- `docs/STRATEGY_AUDIT.md` — post-mortem documentado
+Ver historial en git log — v4.3.x completo (Activate/Skip, manual positions, TON, /check, GOLD fix)
 
 ---
 
 ## 🔒 Bloqueado / Pendiente decisión
 
-1. **Volume mount Railway** — `trades.db` persiste entre deploys (ok en Railway con volumen)
-   → Sin volumen: DB se resetea en cada redeploy. Riesgo bajo (Railway rara vez redeploya sin push)
-2. **GitHub branch protection main** — 3 min UI, pendiente desde v1.x
+1. **Volume mount Railway** — sin volumen DB resetea en cada redeploy con slug change
+2. **GitHub branch protection main** — pendiente desde v1.x
 3. **@ZenithDevBot** — bot separado para dev (evitar conflicto getUpdates local vs prod)
 
 ---
 
-## 📊 Estado del bot (cierre sesión noche 2026-05-06)
+## 📊 Estado del bot (cierre sesión 2026-05-07)
 
 | Métrica | Valor |
 |---------|-------|
-| Branch main | `0400ceb` |
-| WR real (último audit) | 17.8% |
-| Posiciones manuales en DB | 0 (pendiente registrar) |
-| TON monitoring | ✅ activo |
-| /check button | ✅ activo |
-| GOLD commodities error | ✅ fixed |
-| OPEC próximo | 2026-06-01 (actualizar en code) |
+| Branch main | `aaee63c` |
+| WR real (último audit) | 17.8% (90 trades) |
+| Commodities activos | GOLD, OIL, NG, SLV, HG (5 instrumentos) |
+| TAO | ✅ re-habilitado con cooldown 4H + filtro 1D EMA200 |
+| Posiciones manuales en DB | 0 (pendiente registrar vía /manual_add) |
+| OPEC próximo | 2026-06-01 (ya en código) |
 | Railway | UP — auto-deploy activo |
