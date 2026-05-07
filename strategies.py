@@ -239,10 +239,19 @@ def check_strategies(prices: dict):
         funding_data = market_intel.get_funding_rates(_SYMBOLS)
     except Exception:
         funding_data = {}
+    # --- 1D EMA200 bias cache (computed once per cycle, all symbols) ---
+    _daily_bias: dict = {}
+    try:
+        for _s in _SYMBOLS:
+            _df1d = indicators.get_df(_s, "1d")
+            if _df1d is not None and len(_df1d) >= 200:
+                _ema200_1d = float(_df1d["close"].ewm(span=200, adjust=False).mean().iloc[-1])
+                _price_1d = float(_df1d["close"].iloc[-1])
+                _daily_bias[_s] = "BULL" if _price_1d > _ema200_1d else "BEAR"
+    except Exception as _e:
+        print(f"⚠️ [1D Bias] Error precalculando bias diario: {_e}")
+
     for sym in _SYMBOLS:
-        from config import TAO_TRADING_ENABLED
-        if sym == "TAO" and not TAO_TRADING_ENABLED:
-            continue  # TAO disabled: 0% WR in 28 trades — re-enable when fixed
         p = prices.get(sym, 0.0)
         rsi = prices.get(f"{sym}_RSI", 50.0)
 
@@ -272,6 +281,36 @@ def check_strategies(prices: dict):
             continue
         if phase == "LONG" and macro_status == "BEAR":
             continue
+
+        # Filtro 1D EMA200 — bloquea LONGs en tendencia bajista diaria
+        _bias_1d = _daily_bias.get(sym, "UNKNOWN")
+        if phase == "LONG" and _bias_1d == "BEAR":
+            print(f"⛔ [1D Filter] {sym}: precio bajo EMA200 diaria ({_bias_1d}) — LONG bloqueado")
+            continue
+
+        # Filtro streak de pérdidas por símbolo — cooldown 4H tras 3 LOST consecutivos
+        # Usa DB (no memoria) para sobrevivir reinicios del bot.
+        try:
+            import sqlite3 as _sqlite3
+            from datetime import datetime as _dt
+            _db_path = tracker.DB_FILE
+            _conn = _sqlite3.connect(_db_path)
+            _cur = _conn.cursor()
+            _cur.execute(
+                "SELECT close_time FROM trades WHERE symbol=? AND status='LOST' "
+                "AND (is_sim=0 OR is_sim IS NULL) ORDER BY id DESC LIMIT 3",
+                (sym,)
+            )
+            _losses = _cur.fetchall()
+            _conn.close()
+            if len(_losses) >= 3 and _losses[0][0]:
+                _last_dt = _dt.fromisoformat(str(_losses[0][0]))
+                _hours_since = (_dt.now() - _last_dt).total_seconds() / 3600
+                if _hours_since < 4:
+                    print(f"⛔ [LossStreak] {sym}: 3+ pérdidas recientes, última hace {_hours_since:.1f}h — cooldown 4H")
+                    continue
+        except Exception as _e:
+            print(f"⚠️ [LossStreak] {sym}: error checking streak: {_e}")
 
         # Contexto visual de indicadores
         bb_ctx = "🔝 Techo BB" if p >= bb_u * 0.99 else "🩸 Suelo BB" if p <= bb_l * 1.01 else "↕️ Rango"

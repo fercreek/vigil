@@ -140,7 +140,7 @@ ATR_MIN_SL_REVERSAL = 0.010  # SL mínimo para reversals (wider = less noise sto
 
 # --- STRATEGY KILL SWITCHES (basado en análisis win rate 76 trades) ---
 V1_SHORT_ENABLED     = False   # 0% WR en 16 trades — disabled Apr 2026
-TAO_TRADING_ENABLED  = False   # 0% WR en 28 trades — disabled Apr 2026
+TAO_TRADING_ENABLED  = True    # Re-enabled May-2026 con filtro 1D EMA200 en strategies.py
 
 # ── Confluence Score ──────────────────────────────────────────────────────────
 MIN_CONFLUENCE_SCORE = 4     # Score mínimo para disparar alerta

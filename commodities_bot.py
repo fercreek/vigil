@@ -1,6 +1,6 @@
 """
 commodities_bot.py — Zenith Commodities Bot (Conservador)
-Instrumentos: Gold (GCM6 / GC=F) + Oil (CLK6 / CLM26.NYM)
+Instrumentos: Gold (GC=F) + Oil (CLM26.NYM) + Nat Gas (NG=F) + Silver (SLV) + Copper (HG=F)
 Timeframe: 1H (signal) + 15m (timing)
 Estrategia: EMA Cross + RSI + DXY Filter + ATR Confirmation
 Confluencia minima: 4/5
@@ -9,9 +9,14 @@ Targets ATR (conservador):
   TP1 (50%): 2.0x ATR -> mover SL a BE
   TP2 (30%): 3.5x ATR
   TP3 (20%): 5.0x ATR
-  SL       : 1.5x ATR (GOLD) | 2.5x ATR (OIL — news-driven volatility)
+  SL       : 1.5x ATR (GOLD/SLV/HG) | 2.5x ATR (OIL/NG — news-driven volatility)
 
-Cambios May-2026:
+Cambios May-2026 v2:
+  - Expansión: Nat Gas (NG=F) WR 53.5%, Silver ETF (SLV) WR 61.5%, Copper (HG=F) WR 40.5%
+  - DXY routing por instrumento: SLV=gold lógica, NG=neutral, HG=oil lógica
+  - MIN_SL_PCT_NG: SL mínimo 3.0% para Nat Gas (spikes climáticos)
+
+Cambios May-2026 v1:
   - Fix RSI SHORT condition: rsi > 62 (era 45-65, zona bullish incorrecta)
   - Post-rally filter OIL: si +15% en 10d, requiere RSI < 45 para LONG
   - OPEC suppression: suprime señales OIL 24h antes/después reuniones OPEC
@@ -38,8 +43,23 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # --- Instruments ---
 INSTRUMENTS = {
-    "GOLD": {"yf": "GC=F",      "name": "Gold Jun-2026",  "decimals": 2},
-    "OIL":  {"yf": "CLM26.NYM", "name": "Crude Jun-2026", "decimals": 2},
+    "GOLD": {"yf": "GC=F",      "name": "Gold Jun-2026",       "decimals": 2},
+    "OIL":  {"yf": "CLM26.NYM", "name": "Crude Jun-2026",      "decimals": 2},
+    "NG":   {"yf": "NG=F",      "name": "Nat Gas Jun-2026",    "decimals": 3},
+    "SLV":  {"yf": "SLV",       "name": "Silver ETF",          "decimals": 2},
+    "HG":   {"yf": "HG=F",      "name": "Copper Jun-2026",     "decimals": 4},
+}
+
+# --- DXY routing por instrumento ---
+# "gold" = misma lógica que GOLD (DXY < 103 → LONG)
+# "oil"  = DXY < 104 → LONG (correlación más débil)
+# "none" = DXY no aplica (NG es temperatura/estacional, no DXY-driven)
+DXY_ROUTE = {
+    "GOLD": "gold",
+    "OIL":  "oil",
+    "NG":   "none",   # Nat Gas: seasonal, not DXY-driven
+    "SLV":  "gold",   # Silver follows gold/DXY inverse
+    "HG":   "oil",    # Copper: global growth proxy, DXY < 104
 }
 
 # --- ATR Multipliers (por instrumento) ---
@@ -49,14 +69,18 @@ ATR_TP3 = 5.0
 ATR_SL_BY_KEY = {
     "GOLD": 1.5,   # Gold: menos volátil en 1H
     "OIL":  2.5,   # OIL: news spikes de $3-4 en una sola vela 1H (OPEC, geopolítica)
+    "NG":   2.5,   # Nat Gas: weather/storage spikes extremos
+    "SLV":  1.5,   # Silver ETF: similar a gold
+    "HG":   1.5,   # Copper futures: moderado
 }
 
 # --- Strategy thresholds ---
 MIN_CONFLUENCE     = 4       # Raised 3→4 (Apr-29: 3/5 generated too many false signals)
 MIN_ATR_PCT        = 0.003   # ATR > 0.3% del precio
 MIN_SL_PCT_OIL     = 0.020   # SL mínimo 2.0% del precio en OIL (protección vs news spikes)
-DXY_GOLD_LONG_MAX  = 103.0   # DXY < 103 favorece gold LONG
-DXY_GOLD_SHORT_MIN = 103.0   # DXY > 103 favorece gold SHORT (ignored if GOLD_BULL_LOCK active)
+MIN_SL_PCT_NG      = 0.030   # SL mínimo 3.0% para Nat Gas (spikes climáticos de $0.30+)
+DXY_GOLD_LONG_MAX  = 103.0   # DXY < 103 favorece gold/silver LONG
+DXY_GOLD_SHORT_MIN = 103.0   # DXY > 103 favorece gold/silver SHORT (ignored if GOLD_BULL_LOCK active)
 
 # --- Post-rally filter (OIL) ---
 OIL_RALLY_DAYS     = 10      # ventana para medir rally
@@ -349,28 +373,39 @@ def analyze_commodity(key: str, inst: dict):
     else:
         short_score += 1
 
-    # 4. DXY Filter
-    if dxy > 0:
-        if key == "GOLD":
+    # 4. DXY Filter (routing por instrumento)
+    dxy_route = DXY_ROUTE.get(key, "oil")
+    if dxy > 0 and dxy_route != "none":
+        if dxy_route == "gold":
             if dxy < DXY_GOLD_LONG_MAX:
                 long_score += 1
             if dxy > DXY_GOLD_SHORT_MIN:
                 short_score += 1
-        else:  # OIL — DXY inverse correlation less strong
+        else:  # "oil" — DXY inverse correlation less strong (OIL, HG)
             if dxy < 104:
                 long_score += 1
             if dxy > 104:
                 short_score += 1
+    elif dxy_route == "none":
+        # NG: DXY neutral — distribute +1 to both so score stays balanced
+        long_score += 1
+        short_score += 1
 
     # 5. ATR confirmation (already passed min filter, counts as +1)
     long_score += 1
     short_score += 1
 
     # --- Macro regime guards ---
-    # Gold bull lock
+    # Gold bull lock: Gold > $2500 → no shorts (DXY correlation broke 2026)
     if key == "GOLD" and price > GOLD_BULL_THRESHOLD:
         short_score = 0
         logger.info("    GOLD: bull lock active (price $%.0f > $%.0f) — shorts suppressed", price, GOLD_BULL_THRESHOLD)
+    # Silver: check if gold is in bull lock using GOLD status cache
+    if key == "SLV":
+        gold_status = _last_status.get("GOLD", {})
+        if gold_status.get("price", 0) > GOLD_BULL_THRESHOLD:
+            short_score = 0
+            logger.info("    SLV: gold bull lock active — silver shorts suppressed")
 
     # SP500 VERDE: no oil shorts in bull equities regime
     if key == "OIL":
@@ -416,11 +451,16 @@ def analyze_commodity(key: str, inst: dict):
     atr_sl_mult = ATR_SL_BY_KEY.get(key, 1.5)
     sl_dist = atr * atr_sl_mult
 
-    # Ensure minimum SL distance for OIL (news spikes can exceed 1H ATR in one candle)
+    # Ensure minimum SL distance for volatile instruments (news/weather spikes exceed 1H ATR)
+    min_sl_pct = None
     if key == "OIL":
-        min_sl_dist = price * MIN_SL_PCT_OIL
+        min_sl_pct = MIN_SL_PCT_OIL
+    elif key == "NG":
+        min_sl_pct = MIN_SL_PCT_NG
+    if min_sl_pct:
+        min_sl_dist = price * min_sl_pct
         if sl_dist < min_sl_dist:
-            logger.info("    OIL: SL ampliado ATR (%.2f) < MIN_SL_PCT (%.2f)", sl_dist, min_sl_dist)
+            logger.info("    %s: SL ampliado ATR (%.4f) < MIN_SL_PCT (%.4f)", key, sl_dist, min_sl_dist)
             sl_dist = min_sl_dist
 
     if side == "LONG":
