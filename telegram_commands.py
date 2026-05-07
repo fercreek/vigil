@@ -631,7 +631,7 @@ def check_user_queries(prices: dict):
                     # Alias → vista unificada full (incluye health block)
                     send_telegram(cmd_pos("full", prices), keyboard=get_main_menu())
 
-                elif text.startswith("/commodities") or text.startswith("/gold") or text.startswith("/oil"):
+                elif text.startswith("/commodities") or text.startswith("/gold") or text.startswith("/oil") or "commod" in t:
                     import commodities_bot as _cb
                     send_telegram(_cb.get_status_html(), keyboard=get_main_menu())
 

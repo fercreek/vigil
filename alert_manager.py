@@ -71,8 +71,8 @@ def get_main_menu(symbol: str = "ZEC") -> dict:
     """
     keyboard = [
         [{"text": "📂 /pos"}, {"text": "➕ /open"}, {"text": "🔍 Check"}],
-        [{"text": "📊 Mercado"}, {"text": "🛡️ Macro"}, {"text": "🏦 PnL HOY"}],
-        [{"text": "🥷 Intel ZEC"}, {"text": "🏛️ Intel TAO"}, {"text": "🏛️ Audit"}]
+        [{"text": "📊 Mercado"}, {"text": "⛽ Commod"}, {"text": "🏦 PnL HOY"}],
+        [{"text": "🥷 Intel ZEC"}, {"text": "📊 WinRate"}, {"text": "🏛️ Audit"}]
     ]
 
     return {
@@ -90,18 +90,20 @@ def set_bot_commands():
     """
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setMyCommands"
     commands = [
-        {"command": "open",   "description": "Abrir posición manual (picker inline)"},
-        {"command": "pos",    "description": "Ver posiciones abiertas (manual + auto). Usa /pos full para detalle"},
-        {"command": "status", "description": "Resumen de precios e indicadores"},
-        {"command": "setup",  "description": "Escaneo de mercado por IA (ZEC/TAO/BTC)"},
-        {"command": "audit",  "description": "Auditoría de rendimiento institucional"},
-        {"command": "pnl",    "description": "Profit & Loss del día actual"},
-        {"command": "macro",  "description": "Análisis de Dom USDT y Sentimiento Macro"},
-        {"command": "intel",  "description": "Social Intel & News Feed"},
-        {"command": "budget", "description": "Consumo de API y presupuesto IA"},
-        {"command": "manual_tp", "description": "Tomar TP/parcial: /manual_tp SYM [pct]"},
-        {"command": "manual_sl", "description": "Marcar SL: /manual_sl SYM"},
-        {"command": "manual_be", "description": "Mover SL a break even: /manual_be SYM"},
+        {"command": "pos",         "description": "Ver posiciones abiertas (manual + auto). Usa /pos full para detalle"},
+        {"command": "open",        "description": "Abrir posición manual (picker inline)"},
+        {"command": "check",       "description": "P&L + SL/TP recomendados por ATR de posiciones activas"},
+        {"command": "commodities", "description": "Estado Gold, Oil, Nat Gas, Silver, Copper (señal + niveles)"},
+        {"command": "winrate",     "description": "Win rate global + Real vs SIM (Activate/Skip tracking)"},
+        {"command": "pnl",         "description": "Profit & Loss del día actual"},
+        {"command": "audit",       "description": "Auditoría de rendimiento institucional"},
+        {"command": "status",      "description": "Resumen de precios e indicadores (Mercado)"},
+        {"command": "macro",       "description": "Análisis de Dom USDT y Sentimiento Macro"},
+        {"command": "intel",       "description": "Social Intel & News Feed"},
+        {"command": "budget",      "description": "Consumo de API y presupuesto IA"},
+        {"command": "manual_tp",   "description": "Tomar TP/parcial: /manual_tp SYM [pct]"},
+        {"command": "manual_sl",   "description": "Marcar SL: /manual_sl SYM"},
+        {"command": "manual_be",   "description": "Mover SL a break even: /manual_be SYM"},
     ]
     
     try:
@@ -267,7 +269,6 @@ def get_signal_keyboard(sid: int, sym: str, side: str) -> dict:
             ],
             [
                 {"text": "📊 Ver niveles", "callback_data": f"status:{base}"},
-                {"text": "💰 Budget IA", "callback_data": "budget"},
             ],
         ]
     }
