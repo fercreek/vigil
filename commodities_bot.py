@@ -434,9 +434,9 @@ def analyze_commodity(key: str, inst: dict):
         tp2 = round(price - atr * ATR_TP2, dec)
         tp3 = round(price - atr * ATR_TP3, dec)
 
-    rr1 = round(ATR_TP1 / ATR_SL, 1)
-    rr2 = round(ATR_TP2 / ATR_SL, 1)
-    rr3 = round(ATR_TP3 / ATR_SL, 1)
+    rr1 = round(ATR_TP1 / atr_sl_mult, 1)
+    rr2 = round(ATR_TP2 / atr_sl_mult, 1)
+    rr3 = round(ATR_TP3 / atr_sl_mult, 1)
     side_icon = "LONG" if side == "LONG" else "SHORT"
     strength = "FUERTE" if score >= 4 else "VALIDA"
 
@@ -455,7 +455,7 @@ def analyze_commodity(key: str, inst: dict):
         f"  Mover SL a breakeven\n"
         f"TP2 (30%): <code>${tp2:,.{dec}f}</code>  R:R {rr2}:1\n"
         f"TP3 (20%): <code>${tp3:,.{dec}f}</code>  R:R {rr3}:1\n\n"
-        f"SL: <code>${sl:,.{dec}f}</code>  (ATR x {ATR_SL})\n\n"
+        f"SL: <code>${sl:,.{dec}f}</code>  (ATR x {atr_sl_mult})\n\n"
         f"<i>Bot conservador. Confluencia minima 3/5.</i>\n"
         f"{datetime.now().strftime('%Y-%m-%d %H:%M')} UTC"
     )
