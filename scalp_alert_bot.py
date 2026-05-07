@@ -44,7 +44,7 @@ GLOBAL_CACHE = {
         "macro_metrics": 0,
         "fail_count": 0
     },
-    "last_rsi": {"SOL": 50.0, "BTC": 50.0, "TAO": 50.0, "ZEC": 50.0},
+    "last_rsi": {"SOL": 50.0, "BTC": 50.0, "TAO": 50.0, "ZEC": 50.0, "TON": 50.0},
     "social_intel": {},  # {sym: {"score": 0.0, "last_update": 0}}
     "executor": None, # V5.0 Instance
     "shadow_messages": [], # V15.0 Real Shadow Intel
@@ -202,8 +202,9 @@ def update_dynamic_levels():
         "SOL": (binance_ex, "SOL/USDT"),
         "HBAR": (binance_ex, "HBAR/USDT"),
         "DOGE": (binance_ex, "DOGE/USDT"),
+        "TON":  (binance_ex, "TON/USDT"),
     }
-    
+
     for key, (exchange, sym) in symbols.items():
         try:
             ohlcv = exchange.fetch_ohlcv(sym, timeframe='1d', limit=2)
@@ -579,6 +580,7 @@ def _handle_user_question(text: str, prices: dict):
         "hbar": "HBAR/USDT", "hedera": "HBAR/USDT",
         "doge": "DOGE/USDT", "dogecoin": "DOGE/USDT",
         "eth": "ETH/USDT", "ethereum": "ETH/USDT",
+        "ton": "TON/USDT", "toncoin": "TON/USDT",
     }
     detected_sym = None
     for k, v in sym_map.items():
@@ -673,7 +675,7 @@ def get_prices() -> dict:
     
     # 1. ¿Necesitamos actualizar precios? (Optimizado: 1 sola llamada)
     if now - GLOBAL_CACHE["last_update"]["prices"] > TTL_PRICES:
-        symbols = ['ETH/USDT', 'BTC/USDT', 'TAO/USDT', 'ZEC/USDT', 'SOL/USDT', 'PAXG/USDT', 'HBAR/USDT', 'DOGE/USDT']
+        symbols = ['ETH/USDT', 'BTC/USDT', 'TAO/USDT', 'ZEC/USDT', 'SOL/USDT', 'PAXG/USDT', 'HBAR/USDT', 'DOGE/USDT', 'TON/USDT']
         try:
             # OPTIMIZACIÓN V3.2: fetch_tickers (Plural) es más eficiente que 4 llamadas separadas
             tickers = binance_ex.fetch_tickers(symbols)
@@ -686,7 +688,8 @@ def get_prices() -> dict:
             res["GOLD"] = tickers.get('PAXG/USDT', {}).get('last', res.get("GOLD"))
             res["HBAR"] = tickers.get('HBAR/USDT', {}).get('last', res.get("HBAR"))
             res["DOGE"] = tickers.get('DOGE/USDT', {}).get('last', res.get("DOGE"))
-            
+            res["TON"]  = tickers.get('TON/USDT',  {}).get('last', res.get("TON"))
+
             # Monitoreo de Carga (Opcional: X-MBX-USED-WEIGHT)
             weight = binance_ex.last_response_headers.get('X-MBX-USED-WEIGHT-1M', 'N/A')
             if weight != 'N/A' and int(weight) > 1000:
@@ -704,7 +707,7 @@ def get_prices() -> dict:
 
             try:
                 # Fallback a CoinGecko
-                ids = "ethereum,bittensor,bitcoin,pax-gold,zcash,hedera-hashgraph,dogecoin"
+                ids = "ethereum,bittensor,bitcoin,pax-gold,zcash,hedera-hashgraph,dogecoin,the-open-network"
                 url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd"
                 cg_r = requests.get(url, timeout=10).json()
                 res["ETH"] = cg_r.get("ethereum", {}).get("usd", res.get("ETH", 0.0))
@@ -715,6 +718,7 @@ def get_prices() -> dict:
                 res["GOLD"] = cg_r.get("pax-gold", {}).get("usd", res.get("GOLD", 0.0))
                 res["HBAR"] = cg_r.get("hedera-hashgraph", {}).get("usd", res.get("HBAR", 0.0))
                 res["DOGE"] = cg_r.get("dogecoin", {}).get("usd", res.get("DOGE", 0.0))
+                res["TON"]  = cg_r.get("the-open-network", {}).get("usd", res.get("TON", 0.0))
                 
                 GLOBAL_CACHE["prices"].update(res)
                 GLOBAL_CACHE["last_update"]["prices"] = now
@@ -814,7 +818,7 @@ def get_prices() -> dict:
     res["VIX"] = GLOBAL_CACHE["macro_metrics"].get("vix", 0.0)
 
     # 3. Datos Técnicos (TTL_INDICATORS para reducir carga)
-    for sym in ["TAO", "BTC", "ZEC", "SOL", "ETH", "HBAR", "DOGE"]:
+    for sym in ["TAO", "BTC", "ZEC", "SOL", "ETH", "HBAR", "DOGE", "TON"]:
         last_ind_update = GLOBAL_CACHE["last_update"]["indicators"].get(sym, 0)
         
         if now - last_ind_update > TTL_INDICATORS:

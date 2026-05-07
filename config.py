@@ -6,7 +6,7 @@ Importar en cualquier módulo con: from config import RSI_LONG_ENTRY, SYMBOLS, .
 """
 
 # ── Símbolos operados ─────────────────────────────────────────────────────────
-SYMBOLS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "HBAR", "DOGE"]
+SYMBOLS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "HBAR", "DOGE", "TON"]
 MACRO_WATCH = []  # Todos los símbolos ahora son operables
 
 # ── Watchlist estática de acciones (siempre monitoreada, independiente del reporte)
@@ -182,7 +182,7 @@ V4_MIN_CONFLUENCE    = 3       # Confluencia minima (vs 4 de V1)
 V4_ATR_SL_MULT       = 1.5    # SL mas ajustado: 1.5x ATR
 V4_COOLDOWN          = 600     # 10 min cooldown (vs 5 min de V1)
 # Per-symbol EMA proximity (altcoins need wider window due to higher ATR/price)
-V4_EMA_PROX_MAP = {"BTC": 1.02, "ETH": 1.025, "TAO": 1.03, "ZEC": 1.03}
+V4_EMA_PROX_MAP = {"BTC": 1.02, "ETH": 1.025, "TAO": 1.03, "ZEC": 1.03, "TON": 1.03}
 
 # ── V3 Reversal improvements ────────────────────────────────────────────────
 V3_MIN_CONFLUENCE    = 4       # Was 3 — too many false reversals
@@ -268,4 +268,4 @@ KILL_SALMOS_PROPHECY    = True    # Mata trigger_salmos_prophecy() en main loop
 # ── Manual Positions ─────────────────────────────────────────────────────────
 # Storage unificado en trades.db (flag is_manual=1). Sin seed hardcoded.
 # Lista de símbolos preferidos para el picker de /open (inline keyboard).
-MANUAL_SYMBOLS = ["TAO", "ZEC", "DOGE", "SOL", "BTC", "ETH"]
+MANUAL_SYMBOLS = ["TAO", "ZEC", "DOGE", "SOL", "BTC", "ETH", "TON"]
