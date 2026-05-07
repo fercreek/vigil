@@ -619,6 +619,10 @@ def check_user_queries(prices: dict):
                     else:
                         send_telegram("❌ Agente no válido. Usa: Genesis, Exodo, Shadow, Salmos, Apocalipsis")
 
+                elif text.startswith("/check") or t == "🔍 check":
+                    import manual_positions_monitor as _mpm
+                    send_telegram(_mpm.cmd_check_positions(prices), keyboard=get_main_menu())
+
                 elif text.startswith("/positions") or "positions" in t or "posiciones" in t:
                     # Alias → vista unificada compact
                     send_telegram(cmd_pos("", prices), keyboard=get_main_menu())

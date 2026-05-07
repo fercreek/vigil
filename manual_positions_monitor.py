@@ -11,6 +11,7 @@ Comandos Telegram (ver telegram_commands.py):
   /manual_sl SYM    — marcar SL hit / cerrar en pérdida
   /manual_be SYM    — anotar que se movió SL a break even
   /manual_off SYM   — desactivar monitoreo (cierra el trade sin marcar W/L)
+  /check            — check completo: P&L + SL/TP recomendados por ATR para cada posición
 """
 
 import time
@@ -233,6 +234,146 @@ def cmd_add(sym: str, entry: float, side: str = "LONG", note: str = "") -> str:
     )
     tracker.append_event(tid, f"ADDED @ ${entry:.4f} (default SL 2%)")
     return f"➕ <b>{sym} {side}</b> agregado @ <code>${entry:.4f}</code> (id {tid}, SL ${sl:.4f})"
+
+
+# ── /check — P&L + SL/TP recomendados por ATR ────────────────────────────────
+
+def _fetch_price_any(sym: str) -> float:
+    """Intenta Binance (crypto) y luego yfinance (stocks/ETFs)."""
+    try:
+        ticker = _binance.fetch_ticker(f"{sym.upper()}/USDT")
+        p = float(ticker.get("last", 0) or 0)
+        if p > 0:
+            return p
+    except Exception:
+        pass
+    try:
+        import yfinance as yf
+        hist = yf.Ticker(sym).history(period="2d")
+        if not hist.empty:
+            return float(hist["Close"].iloc[-1])
+    except Exception:
+        pass
+    return 0.0
+
+
+def _get_atr_any(sym: str, entry: float) -> float:
+    """ATR 4H via Binance indicators; fallback yfinance 14d; último fallback 3% entry."""
+    try:
+        import indicators as ind
+        vals = ind.get_indicators(sym.upper(), "4h")
+        atr = vals[5]
+        if atr and atr > 0:
+            return atr
+    except Exception:
+        pass
+    try:
+        import yfinance as yf
+        hist = yf.Ticker(sym).history(period="1mo")
+        if len(hist) >= 14:
+            tr = (hist["High"] - hist["Low"]).rolling(14).mean()
+            atr = float(tr.dropna().iloc[-1])
+            if atr > 0:
+                return atr
+    except Exception:
+        pass
+    return entry * 0.03
+
+
+def _price_fmt(p: float) -> str:
+    if p == 0:
+        return "N/A"
+    if p < 0.001:
+        return f"{p:.6f}"
+    if p < 0.1:
+        return f"{p:.5f}"
+    if p < 10:
+        return f"{p:.4f}"
+    if p < 1000:
+        return f"{p:.2f}"
+    return f"{p:,.2f}"
+
+
+def cmd_check_positions(prices: dict = None) -> str:
+    """
+    Check completo de posiciones abiertas: P&L, SL sugerido (2*ATR), TP sugerido (3/5*ATR).
+    Usa todos los trades abiertos (manual + auto) del tracker.
+    """
+    all_trades = tracker.get_open_trades()
+    if not all_trades:
+        return (
+            "📭 <b>Sin posiciones en el tracker.</b>\n\n"
+            "Agrega con: <code>/manual_add SYM ENTRY LONG</code>\n"
+            "Ej: <code>/manual_add TON 2.524 LONG</code>"
+        )
+
+    lines = [f"🔍 <b>CHECK DE POSICIONES</b> — {datetime.now().strftime('%H:%M')} UTC\n"]
+
+    for t in all_trades:
+        sym      = t["symbol"]
+        entry    = t.get("entry_price") or 0
+        side     = t.get("type", "LONG")
+        sl       = t.get("sl_price") or 0
+        tp1      = t.get("tp1_price") or 0
+        tp2      = t.get("tp2_price") or 0
+        be_moved = bool(t.get("be_moved", 0))
+        is_manual = bool(t.get("is_manual", 0))
+
+        if not entry:
+            continue
+
+        # Precio actual
+        price = 0.0
+        if prices:
+            price = float(prices.get(sym) or prices.get(f"{sym}_PRICE") or 0)
+        if price == 0:
+            price = _fetch_price_any(sym)
+
+        if price == 0:
+            lines.append(f"\n⚠️ <b>{sym}</b> — sin precio\n")
+            continue
+
+        pnl_pct = (price - entry) / entry * 100 if side == "LONG" else (entry - price) / entry * 100
+        pnl_sign = "+" if pnl_pct >= 0 else ""
+        pnl_emoji = "🟢" if pnl_pct >= 0 else "🔴"
+        tag = "🟡" if is_manual else "🤖"
+
+        atr = _get_atr_any(sym, entry)
+
+        lines.append(f"\n{tag} <b>{sym}</b> {side}")
+        lines.append(f"   Entrada: <code>{_price_fmt(entry)}</code>  →  Precio: <code>{_price_fmt(price)}</code>")
+        lines.append(f"   {pnl_emoji} P&L: <b>{pnl_sign}{pnl_pct:.2f}%</b>  (ATR 4H: {_price_fmt(atr)})")
+
+        # Stop loss
+        if not sl:
+            rec_sl = entry - 2 * atr if side == "LONG" else entry + 2 * atr
+            lines.append(f"   🛑 <b>SIN STOP</b> → sugerido <code>{_price_fmt(rec_sl)}</code> (2×ATR)")
+        else:
+            sl_dist_pct = abs(price - sl) / price * 100
+            lines.append(f"   🛑 Stop: <code>{_price_fmt(sl)}</code>  ({sl_dist_pct:.1f}% lejos)")
+
+        # Take profit
+        if not tp1:
+            rec_tp1 = entry + 3 * atr if side == "LONG" else entry - 3 * atr
+            rec_tp2 = entry + 5 * atr if side == "LONG" else entry - 5 * atr
+            lines.append(f"   🎯 <b>SIN TARGET</b> → T1: <code>{_price_fmt(rec_tp1)}</code>  T2: <code>{_price_fmt(rec_tp2)}</code>")
+        else:
+            tp_dist_pct = abs(tp1 - price) / price * 100
+            tp_str = f"T1: <code>{_price_fmt(tp1)}</code>  ({tp_dist_pct:.1f}% restante)"
+            if tp2:
+                tp_str += f"  T2: <code>{_price_fmt(tp2)}</code>"
+            lines.append(f"   🎯 {tp_str}")
+
+        # Acciones recomendadas
+        if pnl_pct >= 8 and be_moved:
+            lines.append(f"   💡 +{pnl_pct:.1f}% — considera parcial: <code>/manual_tp {sym} 50</code>")
+        elif pnl_pct >= 5 and not be_moved:
+            lines.append(f"   💡 +{pnl_pct:.1f}% — mover SL a BE: <code>/manual_be {sym}</code>")
+        elif pnl_pct <= -10:
+            lines.append(f"   ⚠️ -{abs(pnl_pct):.1f}% — drawdown importante. Valida tesis o cierra.")
+
+    lines.append(f"\n📋 <i>{len(all_trades)} posición(es). /manual_add SYM ENTRY para agregar.</i>")
+    return "\n".join(lines)
 
 
 # ── Main loop ─────────────────────────────────────────────────────────────────

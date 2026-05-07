@@ -70,7 +70,7 @@ def get_main_menu(symbol: str = "ZEC") -> dict:
     V14.1: Diseño compacto y descriptivo.
     """
     keyboard = [
-        [{"text": "📂 /pos"}, {"text": "➕ /open"}, {"text": "🎯 Setup"}],
+        [{"text": "📂 /pos"}, {"text": "➕ /open"}, {"text": "🔍 Check"}],
         [{"text": "📊 Mercado"}, {"text": "🛡️ Macro"}, {"text": "🏦 PnL HOY"}],
         [{"text": "🥷 Intel ZEC"}, {"text": "🏛️ Intel TAO"}, {"text": "🏛️ Audit"}]
     ]
