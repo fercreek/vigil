@@ -831,8 +831,8 @@ def get_prices() -> dict:
                 macro = indicators.get_macro_trend(sym)
                 
                 GLOBAL_CACHE["indicators"][sym] = {
-                    "rsi": vals[0], "bb_u": vals[1], "bb_l": vals[3], 
-                    "ema_200": vals[4], "atr": vals[5], "vol_sma": vals[6], 
+                    "rsi": vals[0], "bb_u": vals[1], "bb_l": vals[3],
+                    "ema_200": vals[4], "atr": vals[5], "vol_sma": vals[6],
                     "elliott": vals[7], "poc": vals[8], "macro": macro
                 }
                 GLOBAL_CACHE["last_update"]["indicators"][sym] = now
@@ -842,6 +842,14 @@ def get_prices() -> dict:
                         GLOBAL_CACHE["indicators"][sym]["rvol"] = indicators.calculate_rvol(_df_rvol, period=24)
                 except Exception:
                     pass
+
+                # Elliott Impulse dedicado a TAO/TON/ZEC (impulsos 1-2-3-4-5
+                # en TF 1h, donde la estructura tiene espacio para desarrollarse)
+                if sym in indicators.ELLIOTT_IMPULSE_SYMBOLS:
+                    try:
+                        GLOBAL_CACHE["indicators"][sym]["impulse"] = indicators.get_elliott_impulse(sym, timeframe='1h')
+                    except Exception:
+                        GLOBAL_CACHE["indicators"][sym]["impulse"] = indicators._empty_impulse("Error en cálculo")
 
                 # V15: Real Shadow Intel — Reportar POC al sidebar
                 if vals[8] > 0:
@@ -862,6 +870,8 @@ def get_prices() -> dict:
         res[f"{sym}_ELLIOTT"] = ind.get("elliott", "")
         res[f"{sym}_POC"] = ind.get("poc", 0.0)
         res[f"{sym}_RVOL"] = ind.get("rvol", 1.0)
+        if sym in indicators.ELLIOTT_IMPULSE_SYMBOLS:
+            res[f"{sym}_IMPULSE"] = ind.get("impulse") or indicators._empty_impulse("Sin datos")
 
     return res
 

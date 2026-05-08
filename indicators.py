@@ -219,6 +219,247 @@ def calculate_atr_trailing_stop(price, atr, side="LONG", multiplier=2.5):
     else:
         return round(price + (atr * multiplier), 2)
 
+# ─── Elliott Impulse Detector (TAO / TON / ZEC) ─────────────────────────────
+# Detector dedicado a alts volátiles que captura impulsos 1-2-3-4-5 con reglas
+# Elliott estrictas + ratios Fibonacci. Usado además del detector legacy
+# `detect_elliot_wave` para añadir confluencia en señales LONG/SHORT.
+
+ELLIOTT_IMPULSE_SYMBOLS = {"TAO", "TON", "ZEC"}
+
+
+def _zigzag_pivots(df, atr_pct_threshold=2.5):
+    """
+    ZigZag pivot detector escalado por ATR.
+    Devuelve lista de tuplas (idx, price, kind) con kind ∈ {'high','low'}.
+    `atr_pct_threshold` es el % mínimo que el precio debe moverse desde el último
+    pivot confirmado para registrar un nuevo pivot opuesto.
+    """
+    if df is None or len(df) < 30:
+        return []
+
+    highs = df['high'].values
+    lows = df['low'].values
+    threshold = atr_pct_threshold / 100.0
+    n = len(df)
+
+    pivots = []
+    direction = 0  # 0=indeterminado, 1=tracking high, -1=tracking low
+
+    max_idx, max_price = 0, float(highs[0])
+    min_idx, min_price = 0, float(lows[0])
+
+    for i in range(1, n):
+        h, l = float(highs[i]), float(lows[i])
+
+        if direction == 0:
+            if h > max_price:
+                max_price, max_idx = h, i
+            if l < min_price:
+                min_price, min_idx = l, i
+            # Reversa desde el máximo → empuja primero el extremo más antiguo
+            if max_price > 0 and (max_price - l) / max_price >= threshold:
+                if min_idx < max_idx:
+                    pivots.append((min_idx, min_price, 'low'))
+                pivots.append((max_idx, max_price, 'high'))
+                direction = -1
+                min_price, min_idx = l, i
+            elif min_price > 0 and (h - min_price) / min_price >= threshold:
+                if max_idx < min_idx:
+                    pivots.append((max_idx, max_price, 'high'))
+                pivots.append((min_idx, min_price, 'low'))
+                direction = 1
+                max_price, max_idx = h, i
+            continue
+
+        if direction == 1:
+            if h > max_price:
+                max_price, max_idx = h, i
+            if max_price > 0 and (max_price - l) / max_price >= threshold:
+                pivots.append((max_idx, max_price, 'high'))
+                direction = -1
+                min_price, min_idx = l, i
+        else:  # direction == -1
+            if l < min_price:
+                min_price, min_idx = l, i
+            if min_price > 0 and (h - min_price) / min_price >= threshold:
+                pivots.append((min_idx, min_price, 'low'))
+                direction = 1
+                max_price, max_idx = h, i
+
+    # Pivot tentativo final con el extremo en curso
+    if direction == 1:
+        pivots.append((max_idx, max_price, 'high'))
+    elif direction == -1:
+        pivots.append((min_idx, min_price, 'low'))
+
+    return pivots
+
+
+def _empty_impulse(reason="Sin patrón"):
+    return {
+        "phase": "no_pattern",
+        "side": None,
+        "score": 0,
+        "summary": f"🌊 {reason}",
+        "fib_target_127": 0.0,
+        "fib_target_161": 0.0,
+    }
+
+
+def _evaluate_impulse(prices, side="LONG"):
+    """
+    Evalúa 6 pivots [p0, p1, p2, p3, p4, p5] como impulso Elliott completo.
+    Aplica las 3 reglas duras + scoring por proximidad a ratios Fibonacci.
+    """
+    p0, p1, p2, p3, p4, p5 = prices
+    sign = 1 if side == "LONG" else -1
+
+    w1 = (p1 - p0) * sign  # impulso 1
+    w2 = (p1 - p2) * sign  # corrección 2
+    w3 = (p3 - p2) * sign  # impulso 3
+    w4 = (p3 - p4) * sign  # corrección 4
+    w5 = (p5 - p4) * sign  # impulso 5
+
+    if w1 <= 0 or w3 <= 0 or w5 <= 0:
+        return _empty_impulse("Patrón irregular (ondas no impulsivas)")
+
+    # Regla 1: Onda 2 no retrocede ≥100% de Onda 1
+    if w2 >= w1:
+        return _empty_impulse("Regla 1 violada (W2 ≥ W1)")
+
+    # Regla 3: Onda 4 no entra en territorio de Onda 1
+    if (side == "LONG" and p4 < p1) or (side == "SHORT" and p4 > p1):
+        return _empty_impulse("Regla 3 violada (W4 invade W1)")
+
+    # Regla 2: Onda 3 no es la más corta entre 1, 3, 5
+    if w3 < w1 and w3 < w5:
+        return _empty_impulse("Regla 2 violada (W3 más corta)")
+
+    score = 60  # base por cumplir las 3 reglas
+
+    w2_ratio = w2 / w1 if w1 > 0 else 0
+    if 0.382 <= w2_ratio <= 0.786:
+        score += 10
+
+    w3_ratio = w3 / w1 if w1 > 0 else 0
+    if 1.5 <= w3_ratio <= 1.8:
+        score += 15
+    elif 1.0 <= w3_ratio < 1.5:
+        score += 8
+
+    w4_ratio = w4 / w3 if w3 > 0 else 0
+    if 0.236 <= w4_ratio <= 0.5:
+        score += 10
+
+    w5_ratio = w5 / w1 if w1 > 0 else 0
+    if 0.8 <= w5_ratio <= 1.6:
+        score += 5
+
+    score = min(100, score)
+
+    fib127 = p4 + sign * w1 * 1.272
+    fib161 = p4 + sign * w1 * 1.618
+
+    phase = "wave_5_complete"
+    if w3_ratio >= 1.618 and w5_ratio >= 1.0:
+        phase = "wave_5_terminal"
+
+    arrow = "🚀" if side == "LONG" else "📉"
+    summary = (
+        f"🌊{arrow} Impulso 5-Ondas {side} · score {score}/100 · "
+        f"W3={w3_ratio:.2f}xW1 · W2={w2_ratio:.0%} · W4={w4_ratio:.0%}"
+    )
+
+    return {
+        "phase": phase,
+        "side": side,
+        "score": score,
+        "w2_ratio": round(w2_ratio, 3),
+        "w3_ratio": round(w3_ratio, 3),
+        "w4_ratio": round(w4_ratio, 3),
+        "w5_ratio": round(w5_ratio, 3),
+        "fib_target_127": round(fib127, 4),
+        "fib_target_161": round(fib161, 4),
+        "summary": summary,
+    }
+
+
+def detect_elliott_impulse(df, symbol=None):
+    """
+    Detector de impulsos de Elliott (1-2-3-4-5) optimizado para alts volátiles
+    como TAO, TON y ZEC. Aprovecha pivots ZigZag escalados por ATR para filtrar
+    ruido y aplica las 3 reglas duras de Elliott + ratios Fibonacci.
+
+    Devuelve dict con keys: phase, side, score (0-100), summary, fib_target_127,
+    fib_target_161 y ratios de cada onda. Si no detecta patrón válido, devuelve
+    `_empty_impulse(...)`.
+    """
+    try:
+        if df is None or len(df) < 60:
+            return _empty_impulse("Sin datos suficientes")
+
+        try:
+            atr_val = calculate_atr(df, period=14) or 0.0
+            last_close = float(df['close'].iloc[-1])
+            atr_pct = (atr_val / last_close * 100.0) if last_close > 0 else 2.5
+            zz_threshold = max(1.5, min(4.0, atr_pct * 0.8))
+        except Exception:
+            zz_threshold = 2.5
+
+        pivots = _zigzag_pivots(df, atr_pct_threshold=zz_threshold)
+        if len(pivots) < 6:
+            return _empty_impulse(f"Buscando estructura ({len(pivots)} pivots)")
+
+        last6 = pivots[-6:]
+        prices = [p[1] for p in last6]
+        kinds = [p[2] for p in last6]
+
+        if kinds == ['low', 'high', 'low', 'high', 'low', 'high']:
+            return _evaluate_impulse(prices, side="LONG")
+        if kinds == ['high', 'low', 'high', 'low', 'high', 'low']:
+            return _evaluate_impulse(prices, side="SHORT")
+
+        # Patrón parcial — onda 4 en curso (corrección antes de impulso 5)
+        last5 = pivots[-5:]
+        kinds5 = [p[2] for p in last5]
+        if kinds5 == ['low', 'high', 'low', 'high', 'low']:
+            return {
+                "phase": "wave_4_correction",
+                "side": "LONG",
+                "score": 50,
+                "summary": "🌊 Onda 4 alcista (preparando impulso 5)",
+                "fib_target_127": 0.0,
+                "fib_target_161": 0.0,
+            }
+        if kinds5 == ['high', 'low', 'high', 'low', 'high']:
+            return {
+                "phase": "wave_4_correction",
+                "side": "SHORT",
+                "score": 50,
+                "summary": "🌊 Onda 4 bajista (preparando impulso 5 short)",
+                "fib_target_127": 0.0,
+                "fib_target_161": 0.0,
+            }
+
+        return _empty_impulse("Sin patrón de impulso claro")
+    except Exception as e:
+        return _empty_impulse(f"Error: {e}")
+
+
+def get_elliott_impulse(symbol, timeframe='1h', limit=300):
+    """
+    Carga OHLCV y devuelve `detect_elliott_impulse(df)` para un símbolo crypto.
+    Pensado para invocarse solo en `ELLIOTT_IMPULSE_SYMBOLS` (TAO/TON/ZEC).
+    """
+    try:
+        df = get_df(symbol, timeframe=timeframe, limit=limit)
+        if df.empty:
+            return _empty_impulse("Sin datos OHLCV")
+        return detect_elliott_impulse(df, symbol=symbol)
+    except Exception as e:
+        return _empty_impulse(f"Error: {e}")
+
+
 def detect_elliot_wave(df):
     """
     Detecta de forma simplificada impulsos de Ondas de Elliott (1-2-3-4-5).
