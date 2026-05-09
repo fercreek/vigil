@@ -282,6 +282,16 @@ def stock_watchdog():
                         pass
                     return None
 
+                # Checks 2/3/4 solo si Fernando tiene trade abierto en DB para este ticker
+                _open_trade = None
+                try:
+                    import tracker as _trk
+                    _open_trade = _trk.get_last_open_trade(t)
+                except Exception:
+                    pass
+                if not _open_trade:
+                    continue  # referencia PTS — sin posición real, no alertar SL/BE/TP
+
                 # Check 2: BREAK EVEN
                 if be and entry and "BE_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p <= be) or (direction == "LONG" and p >= be):
