@@ -95,7 +95,8 @@ def set_bot_commands():
         {"command": "open",        "description": "Abrir posición manual (picker inline)"},
         {"command": "check",       "description": "P&L + SL/TP recomendados por ATR de posiciones activas"},
         # ── Mercado ───────────────────────────────────────────────────────
-        {"command": "commodities", "description": "Estado Gold, Oil, Nat Gas, Silver, Copper"},
+        {"command": "commodities",     "description": "Estado Gold, Oil, Nat Gas, Silver, Copper"},
+        {"command": "scalper_shorts",  "description": "Scalper SHORT agent: DOGE/FIL/TAO — estado + win rate"},
         {"command": "status",      "description": "Precios en vivo + RSI + sentimiento AI (Mercado)"},
         {"command": "macro",       "description": "Dominancia USDT + Macro Shield análisis"},
         {"command": "funding",     "description": "Tasas de funding por símbolo (largo vs corto)"},

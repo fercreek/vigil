@@ -608,6 +608,71 @@ XLE (Energy ETF) — SWING ALCISTA
 
 ---
 
+### 8i. PTS Update — Post-Earnings Terremoto + Reajuste Watchlist (8 Mayo 2026)
+
+Mensaje de Daniel Marin post-earnings season (semana del 5-8 mayo 2026). Mercado se rehace, coberturas funcionaron bien. RKLB +30% (+72% en options), llegó T1. Siguiente semana reentradas para MP e IREN.
+
+**Resumen de resultados earnings:**
+- **RKLB**: +26-30% 🚀 T1 alcanzado, sin reentrada aún
+- **COIN**: cobertura pasó de $1,100 → $1,700 (+$500), se recupera — válida reentrar
+- **CRWV**: cobertura funcionó, volvió a zona BE — nuevo PHY alcista
+- **UUUU**: subió fuerte post-earnings, llegó a BE y se devolvió — nueva entrada
+- **SOFI**: muy débil post-earnings, barrida — reentrada en 16.99
+- **IONQ**: quienes salieron pre-earnings ganaron — nueva entrada 50.05 (alza post-earnings)
+- **IREN**: quienes vendieron en QF ganaron, options siguen en ganancia — stop ganancia 57, no reentrada externa aún
+- **MP**: subió y se devolvió con fuerza — pueden tomar en 68, esperar análisis
+
+**Watchlist actualizado (08-May-2026):**
+
+| Símbolo | Status | Entry | Stop | BE | Target 1 | Target 2 |
+|---------|--------|-------|------|----|----------|----------|
+| HOOD | ✅ válida | 70-85 | 65.35 | 97.84 | 120 | 134 |
+| SOFI | 🔄 reentrada | 16.99 | 12.94 | 21 | 25 | 28 |
+| COIN | ✅ reentrar YA | 178-200 | 160.32 | 254 | 286 | 328 |
+| UUUU | 🔄 nueva | 22.72 | 18.50 | 25 | 28 | 31 |
+| IONQ | 🔄 nueva | 50.05 | 35.44 | 62 | 72 | 85 |
+| XLE | ✅ válida | 58.31 | 53.06 | 61 | 63 | 69 |
+| CRWV | 🆕 nueva | 121.82 | 91.79 | 140 | 160 | 187 |
+| OKLO | ⚠️ earnings mar | 73.91 | 50.26 | 84 | 101 | 137 |
+| SMR | 🆕 nueva | 12.67 | 9.54 | 15 | 17 | 22 |
+| RKLB | 🎯 T1 pasado | 74.90 | 91.0 (stop ganancia) | — | 100 | — |
+| IREN | ⏳ esperar | — | 57 (stop ganancia interno) | — | — | — |
+| MP | ⏳ esperar | — | — | — | — | — |
+
+**Nuevas operaciones detalladas:**
+
+```
+CRWV (CoreWeave) — SWING ALCISTA
+  Entry: 121.82 | Stop: 91.79 | BE: 140
+  Targets: 160 / 187 | GR: -3% (1 acción/$1k)
+  Options: BUY CALL 16-Oct-2026 Strike 125 | Riesgo: -$1,200 | Pot: $2,600-5,000
+  Empresa sólida, PHY alcista activo post-barrida earnings
+```
+
+```
+OKLO (nuclear SMR) — SWING ALCISTA
+  Entry: 73.91 | Stop: 50.26 | BE: 84
+  Targets: 101 / 137 / 161 | GR: -2.3% (1 acción/$1k)
+  Options: BUY CALL 20-Nov-2026 Strike 75 | Riesgo: -$1,250 | Pot: $1,800-6,500
+  ⚠️ EARNINGS MARTES: QF vender lun/mar, options reciben cobertura martes
+```
+
+```
+SMR (small modular reactor) — SWING ALCISTA
+  Entry: 12.67 | Stop: 9.54 | BE: 15
+  Targets: 17 / 19 / 22 | GR: -1.2% (4 acciones/$1k)
+  Options: BUY CALL 20-Nov-2026 Strike 13 | Riesgo: -$200 | Pot: $220-800
+  Pasó earnings. Sector nuclear despertando (junto con UUUU, OKLO)
+```
+
+**Implicaciones para el bot:**
+- `DEFENSIVE_SECTORS` expandir: `["CRWV", "OKLO", "SMR", "UUUU", "IONQ"]` — no filtrar con bias bajista
+- OKLO: ⚠️ tiene earnings martes — bot debe suprimir señales 24h antes/después (igual que FOMC logic)
+- Sector nuclear theme: UUUU + OKLO + SMR convergiendo — correlación alta, no acumular los 3 en misma sesión
+- SOFI débil — si bot detecta precio en 16.99 zona, alert válido para reentrada
+
+---
+
 ## Cómo Aplicar Estos Insights al Algoritmo
 
 ### Filtros a Implementar

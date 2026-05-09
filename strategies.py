@@ -19,7 +19,7 @@ from config import (
     V4_ATR_SL_MULT, V4_COOLDOWN, V4_EMA_PROX_MAP,
     RSI_SHORT_ENTRY, SHORT_MIN_CONFLUENCE, SHORT_REGIMES,
     SHORT_EMA_SLOPE_MIN, RVOL_MIN_ENTRY, RVOL_MIN_BTC, MIN_CONFLUENCE_SCORE,
-    FOMC_NEXT_MEETING,
+    FOMC_NEXT_MEETING, RSI_LONG_EXTREME,
 )
 
 
@@ -283,9 +283,10 @@ def check_strategies(prices: dict):
             continue
 
         # Filtro 1D EMA200 — bloquea LONGs en tendencia bajista diaria
+        # Excepción: RSI extremo (≤ RSI_LONG_EXTREME=30) permite V3-REVERSAL incluso en BEAR
         _bias_1d = _daily_bias.get(sym, "UNKNOWN")
-        if phase == "LONG" and _bias_1d == "BEAR":
-            print(f"⛔ [1D Filter] {sym}: precio bajo EMA200 diaria ({_bias_1d}) — LONG bloqueado")
+        if phase == "LONG" and _bias_1d == "BEAR" and rsi > RSI_LONG_EXTREME:
+            print(f"⛔ [1D Filter] {sym}: BEAR diaria + RSI {rsi:.1f} > {RSI_LONG_EXTREME} — LONG bloqueado")
             continue
 
         # Filtro streak de pérdidas por símbolo — cooldown 4H tras 3 LOST consecutivos

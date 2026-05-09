@@ -592,6 +592,10 @@ def check_user_queries(prices: dict):
                     import commodities_bot as _cb
                     send_telegram(_cb.get_status_html(), keyboard=get_main_menu())
 
+                elif text.startswith("/scalper_shorts") or text.startswith("/ss") or "scalper" in t:
+                    import scalper_shorts_bot as _ssb
+                    send_telegram(_ssb.get_status_html(), keyboard=get_main_menu())
+
                 elif text.startswith("/manual"):
                     import manual_positions_monitor as _mpm
                     parts = text.split()

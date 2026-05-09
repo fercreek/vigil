@@ -1,203 +1,337 @@
-# Zenith Trading Suite — Arquitectura del Sistema
+# Zenith Trading Suite — Arquitectura Completa
 
-> Generado 2026-04-07. Refleja el estado actual del código en producción.
+> Actualizado 2026-05-08. Estado real del código en producción (`main` branch).
 
 ---
 
-## Flujo Completo
+## 1. Vista General
 
 ```
-FUENTES DE DATOS (TTL variable)
-────────────────────────────────────────────────────────────
-Binance          CoinGecko      Yahoo Finance   CryptoPanic     Alternative.me
-(primario, 20s)  (fallback, 20s) (SPY/VIX/DXY,  (noticias,      (Fear & Greed,
-BTC ETH ZEC TAO               15min)          30min)          10min)
-SOL GOLD HBAR
-DOGE
-        │
-        ▼
-get_prices() → GLOBAL_CACHE
-────────────────────────────────────────────────────────────
-Precios · RSI · BB(U/L) · EMA200 · ATR · VOL_SMA
-USDT.D · BTC.D · Fear&Greed · VIX · DXY · SPY · MACRO_TREND
-Social Score (-1.0→+1.0) · PHY Bias · Funding Rates
-Elliott Wave label · POC (Point of Control)
-        │
-        │ cada 35s (CHECK_INTERVAL)
-        ├──────────────────────────────────────────┐
-        │                                          │
-        ▼                                          ▼
-check_strategies()                    monitor_open_trades()
-strategies.py                         trade_monitor.py
-────────────────                      ─────────────────────
-Símbolos: ZEC TAO ETH HBAR DOGE       Por cada trade abierto:
-                                        • PnL flotante
-4 estrategias en paralelo:              • Evalúa TP1 / TP2 / SL
-  V1-TECH  → RSI + BB + EMA200          • Trailing Stop ATR
-  V2-AI    → Gemini analiza             • Neural Learning al perder
-  V4-EMA   → Mean Reversion bounce       (trigger_shadow_post_mortem)
-  V5-MNTM  → RSI midline cross
-
-Filtros de entrada (todos deben pasar):
-  ✓ Circuit Breaker (max DD diario)
-  ✓ RSI threshold (45 std / 30 extreme)
-  ✓ Confluence Score ≥ 4
-  ✓ Market Regime (ADX, no CHOPPY)
-  ✓ PHY Bias (Head & Shoulders macro)
-  ✓ Social Score (sentimiento)
-  ✓ RVOL ≥ 1.0 (volumen relativo)
-  ✓ Funding Rate (no longs/shorts crowded)
-        │
-        ▼
-open_position() → tracker.py (SQLite)
-Entry · SL (ATR×2) · TP1 (2:1) · TP2 (3.5:1) · TP3 (7:1)
-Clasificación: RAPIDA o SWING
-        │
-        ▼
-alert() — alert_manager.py
-  key + cooldown → fired{} → evita duplicados cross-cycle
-  send_telegram() → límite 4096 chars
-  send_telegram_long() → chunking para reportes largos
-
-EVENTOS PROGRAMADOS
-────────────────────────────────────────────────────────────
-Cada 30min (07-01h):  Salmos Prophecy → VEREDICTO: LONG/SHORT/ESPERAR
-                      con ENTRY · SL (1.5×ATR) · TP1 (1:1.5R) · TP2 (1:2.5R)
-Cada 1h:              Panorama horario (Salmos + Scalper)
-                      Sentinel ZEC/TAO (skip si posición abierta)
-Cada 4h:              Altcoin Sentinel (BTC/ETH narrativa, solo si 🚨)
-En apertura/cierre NYSE: Market Pulse análisis
-
-HILOS EN PARALELO (main.py)
-────────────────────────────────────────────────────────────
-bot_thread      → scalp loop, 35s interval
-swing_thread    → 4H timeframe, ZEC TAO ETH
-telegram_worker → comandos Telegram, 5s interval
-stock_thread    → watchdog acciones US
-Flask           → dashboard web :8080 (hilo principal)
-
-GEMINI AI — PERSONAS Y FRECUENCIA
-────────────────────────────────────────────────────────────
-SCALPER              → Salmos Prophecy cada 30min
-CONSERVADOR/SALMOS   → Panorama horario
-4 agentes (Sentinel) → ZEC/TAO cada 1h (skip con posición)
-SOCIAL_SENTINEL      → Social Intel cada 30min por símbolo
-SHADOW               → Post-mortem en cada pérdida
-QA libre             → Preguntas Telegram bajo demanda
+┌─────────────────────────────────────────────────────────────────────┐
+│                        main.py (entry point)                        │
+│   Flask :8080  +  7 threads daemon con auto-restart + watchdog      │
+└────────────┬────────────────────────────────────────────────────────┘
+             │
+    ┌────────┴──────────┐
+    │  thread_health.py │  heartbeat watchdog, MAX_RESTARTS=5, backoff 5-30s
+    └────────┬──────────┘
+             │
+  ┌──────────┴──────────────────────────────────────────────────────────┐
+  │  HILOS ACTIVOS (7)                                                  │
+  ├─────────────────┬──────────────┬──────────────┬─────────────────── ┤
+  │  scalp_bot 35s  │  swing 4H    │  telegram 5s │  stock 5min        │
+  │  commodities 15m│  manual 30m  │  scalper_     │                    │
+  │                 │              │  shorts 15m   │                    │
+  └─────────────────┴──────────────┴──────────────┴────────────────────┘
 ```
 
 ---
 
-## Archivos Clave
+## 2. Threads Activos
 
-| Archivo | Responsabilidad | Líneas aprox |
-|---------|----------------|--------------|
-| `scalp_alert_bot.py` | Loop principal, precios, scheduled events | ~750 |
-| `strategies.py` | V1-V5, confluence score, filtros | ~500 |
-| `trade_monitor.py` | TP/SL tracking, trailing stop | ~130 |
-| `gemini_analyzer.py` | Todas las llamadas a Gemini AI | ~1050 |
-| `alert_manager.py` | Cooldown, send_telegram, chunking | ~200 |
-| `indicators.py` | RSI, BB, EMA200, ATR, RVOL, PHY | ~400 |
-| `social_analyzer.py` | Social intel, CryptoPanic, sentimiento | ~200 |
-| `risk_manager.py` | Circuit breaker, trailing stop manager | ~600 |
-| `tracker.py` | SQLite CRUD de trades | ~200 |
-| `telegram_commands.py` | Dispatcher de comandos Telegram | ~300 |
-| `config.py` | Todos los thresholds centralizados | ~110 |
-| `main.py` | Lanzador de hilos + Flask | ~70 |
+| Nombre | Archivo | Función | Intervalo |
+|--------|---------|---------|-----------|
+| `scalp_bot` | `scalp_alert_bot.py` | Loop principal crypto: V1/V2/V4/V5 strategies | 35s |
+| `swing` | `swing_bot.py` | Ichimoku Kumo 4H: ZEC, TAO, BTC, ETH, SOL | 4H |
+| `telegram` | `scalp_alert_bot.py` | Poll Telegram commands + inline callbacks | 5s |
+| `stock` | `stock_analyzer.py` | STOCK_WATCHLIST: nivel alerts, yfinance | 5min |
+| `commodities` | `commodities_bot.py` | GOLD, OIL, NG, SLV, HG — EMA/RSI/DXY 1H | 15min |
+| `manual_monitor` | `manual_positions_monitor.py` | P&L + SL/TP alerts en posiciones manuales | 30min |
+| `scalper_shorts` | `scalper_shorts_bot.py` | SHORT scalper: DOGE, FIL, TAO — RSI/BB/EMA/funding | 15min |
+| Flask | `app.py` | Dashboard web `/api/stats`, `/api/trades` | keep-alive |
 
 ---
 
-## Comparación vs Sistemas Reales de Agentes
+## 3. Estrategias de Trading
 
-### Lo que tenemos vs lo que tienen sistemas como AutoGPT, CrewAI, LangGraph, o sistemas de trading profesional (Hummingbot, Jesse, QuantConnect)
+### 3a. Crypto Scalp (scalp_alert_bot.py + strategies.py)
+
+**Símbolos:** ZEC, TAO, BTC, ETH, SOL, HBAR, DOGE, TON  
+**Exchange:** Binance Futures (ccxt)  
+**Timeframe:** 15m señal + 1H confirmación  
+
+| Estrategia | Lado | Condiciones clave | Confluencia mín | Estado |
+|-----------|------|------------------|-----------------|--------|
+| **V1-TECH** | LONG | RSI≤45, price>EMA200, BB touch, regime≠RANGING | 4/7 | ✅ activa |
+| **V1-SHORT** | SHORT | RSI≥55, price<EMA200, EMA declining | 3/7 | ❌ disabled (0% WR, 16 trades) |
+| **V3-REVERSAL** | LONG | RSI≤28 (TAO), price<EMA200, extreme oversold | 4/7 | ✅ activa |
+| **V4-EMA** | LONG | Price dentro 2% de EMA200, RSI 35-50 | 3/7 | ✅ activa |
+| **V5-MOMENTUM** | LONG | RSI cruza 50 desde abajo | 3/5 | ✅ activa |
+| **V2-AI** | LONG/SHORT | Gemini consensus: CONSERVADOR + SCALPER votan | 4-5 | ✅ activa |
+
+**Filtros globales aplicados a todas:**
+- Circuit breaker: 3+ pérdidas consecutivas → 4H cooldown (DB-persisted)
+- FOMC proximity: -24h antes de reunión → confluencia mínima +1
+- 1D EMA200 bias: bloquea LONGs si tendencia diaria es BEAR (TAO, configurable)
+- Hour blacklist: horas con 0% WR histórico bloqueadas
+- Funding rate contrarian: ±1 a confluencia según crowding
+
+### 3b. Swing (swing_bot.py)
+
+**Símbolos:** ZEC, TAO, BTC, ETH, SOL  
+**Timeframe:** 4H  
+**Método:** Ichimoku Kumo breakout + ATR targets  
+**SL:** 2.0×ATR | TP1: 2.5×ATR (50%) | TP2: 5.0×ATR | TP3: 8.0×ATR  
+**Cooldown:** 4H entre alertas | 24H para flipear dirección  
+
+### 3c. Commodities (commodities_bot.py)
+
+**Instrumentos:** GOLD (GC=F), OIL (CLM26.NYM), NG (NG=F), SLV, HG (HG=F)  
+**Exchange:** Yahoo Finance (yfinance)  
+**Timeframe:** 1H  
+**Método:** EMA9/21 cross + RSI + DXY filter + ATR confirmation  
+**Confluencia mín:** 4/5  
+**DB version tag:** `"COMMODITY"`  
+**Market hours guard:** CME Globex (cerrado Vie 17h–Dom 18h ET) + NYSE para SLV  
+
+Protecciones especiales:
+- OPEC suppression: suprime señales OIL ±24h de reuniones OPEC+
+- Post-rally filter OIL: si +15% en 10d → RSI max 45 para LONG
+- Gold bull lock: si GOLD > $2,500 → no SHORT (correlación DXY rota en 2026)
+- SP500 verde guard: si SP500 > 7,000 → no SHORT en OIL
+
+### 3d. Scalper Shorts (scalper_shorts_bot.py) — NUEVO May-2026
+
+**Instrumentos:** DOGE, FIL, TAO  
+**Exchange:** Binance Futures (ccxt perpetuos)  
+**Timeframe:** 1H  
+**Método:** RSI overbought + BB upper + EMA cross + funding contrarian  
+**Confluencia mín:** 4/5  
+**DB version tag:** `"SCALPER_SHORTS"`  
+
+| # | Condición | Threshold |
+|---|-----------|-----------|
+| 1 | RSI sobrecomprado | ≥ 65 |
+| 2 | Precio toca BB superior | ≥ 99% BB_upper |
+| 3 | Precio sobre EMA200 | price > EMA200 (distribución desde arriba) |
+| 4 | Cruce EMA bajista | EMA9 < EMA21 |
+| 5 | Funding longs crowded | rate > 0.03% |
+
+**Macro guard:** Si `price_1D < EMA200_1D` → bloquea (ya bajando, no scalp)  
+**ATR targets SHORT:** SL +2.0x | TP1 -1.5x | TP2 -3.0x | TP3 -5.0x  
+**Comando Telegram:** `/scalper_shorts`
+
+### 3e. Stock Watchlist (stock_analyzer.py + stock_watchlist.py)
+
+**Watchlist:** TSLA, NVDA, PLTR, SIL, GCM6, RKLB, XBI, HOOD, COIN, MP, SOFI, IREN, UUUU, IONQ, MSFT, XOM, MOO, CRCL, NKE, WEN, GDX, MSTR, UVXY  
+**Exchange:** Yahoo Finance (yfinance)  
+**Alertas:** Nivel reach alerts (precio cruza entry/SL/TP) — no entry autónoma  
+**Comando Telegram:** `/stocks`
 
 ---
 
-### ✅ Lo que SÍ tenemos bien implementado
+## 4. Agentes IA
 
-| Capacidad | Implementación actual |
-|-----------|----------------------|
-| Multi-estrategia | V1 (técnico) + V2 (AI) + V4 (EMA) + V5 (momentum) en paralelo |
-| Memoria de sesión | `GLOBAL_CACHE` persiste entre ciclos, `fired{}` evita spam |
-| Memoria persistente | `neural_memory` — lecciones de trades perdidos en disco |
-| Múltiples fuentes | Binance → CoinGecko → caché (3 niveles de fallback) |
-| Circuit breaker | Detiene trading si DD diario supera threshold |
-| Trailing stop | `TrailingStopManager` con ATR, persiste entre ciclos |
-| Post-mortem automático | `trigger_shadow_post_mortem` en cada pérdida |
-| Clasificación de trades | RAPIDA vs SWING según contexto macro |
+### Cuadrilla Zenith (gemini_analyzer.py)
+
+4 personajes con perspectivas distintas — votan en consenso por cada señal:
+
+| Agente | Libro bíblico | Sesgo | Rol |
+|--------|--------------|-------|-----|
+| **Genesis** | Génesis | Fundacional | Contexto macro histórico |
+| **Exodo** | Éxodo | Técnico | Análisis de indicadores |
+| **Salmos** | Salmos | Espiritual/emocional | Psicología de mercado |
+| **Apocalipsis** | Apocalipsis | Pesimista | Devil's advocate, riesgos |
+
+**Output:** Veredicto unificado → LONG / SHORT / ESPERAR  
+**Función:** `get_ai_consensus()` en `gemini_analyzer.py`
+
+### BitLobo Agent (bitlobo_agent.py)
+
+Análisis técnico por zonas de color (verde=soporte, rojo=resistencia).  
+- Input: imagen de chart vía Gemini Vision o datos de precio  
+- Output: opinión independiente que aparece como línea 🐺 en debates Zenith  
+- Memoria: JSON diario por persona (`memory/bitlobo_YYYY-MM-DD.json`)
+
+### Personas Gemini (gemini_analyzer.py)
+
+| Persona | Sesgo | Uso |
+|---------|-------|-----|
+| CONSERVADOR | Defensivo, largo plazo | Panorama horario |
+| SCALPER | Agresivo, intradía | Análisis de señales rápidas |
+
+Ambas votan en cada señal V2-AI. Daily memory JSON persiste entre reinicios.
+
+### Signal Coordinator (signal_coordinator.py)
+
+Deconflicta señales de múltiples fuentes (V1, V2, Salmos, TradingView):
+- Ventana 120s para detectar conflictos
+- Si hay acuerdo → envía inmediato
+- Si hay conflicto → favorece mayor confianza (≥0.8)
+- Si es solo una fuente → espera 120s, luego envía
+
+---
+
+## 5. Flujo Señal → DB
+
+```
+1. strategies.py detecta condiciones
+        ↓
+2. _store_pending(sym, side, price, tp1, tp2, sl, ...)
+   → _PENDING_SIGNALS[sid] (TTL 4h)
+        ↓
+3. Telegram alert con inline keyboard [✅ Activar] [⏭️ Skip]
+        ↓
+4a. ACTIVAR → tracker.log_trade(..., is_sim=0)
+    → trades.db: status=OPEN, version=V1-TECH|SCALPER_SHORTS|COMMODITY|...
+    → append_event(tid, "ACTIVATED via Telegram @ $price")
+        ↓
+4b. SKIP → tracker.log_simulated(..., is_sim=1)
+    → Para comparación Real vs SIM en /winrate
+        ↓
+5. monitor_open_trades() detecta TP/SL hits → update_trade_status()
+   → append_event("TP1 HIT @ $price")
+```
+
+---
+
+## 6. Win Rate Tracking por Agente
+
+Todos los trades van a `trades.db` tabla `trades`. Separación por `strategy_version`:
+
+| Agente | strategy_version | Consulta |
+|--------|-----------------|---------|
+| Crypto scalp V1 | `V1-TECH` | `tracker.get_win_rate("V1-TECH")` |
+| Commodities | `COMMODITY` | `tracker.get_win_rate("COMMODITY")` |
+| Scalper Shorts | `SCALPER_SHORTS` | `tracker.get_win_rate("SCALPER_SHORTS")` |
+| Swing | `SWING` | `tracker.get_win_rate("SWING")` |
+| Global | — | `tracker.get_win_rate()` (sin filtro) |
+
+**Funciones clave en tracker.py:**
+- `get_win_rate(version=None)` → wins, losses, total, wr%
+- `get_winrate_comparison()` → Real vs SIM (Activate vs Skip)
+- `get_win_rate_by_alert_type()` → breakdown por alert_type + symbol
+- `get_audit_metrics()` → Profit Factor, SQN, Sortino
+
+**Comando Telegram:** `/winrate`
+
+---
+
+## 7. Módulos por Categoría
+
+### Core loop
+- `scalp_alert_bot.py` — loop principal, get_prices(), GLOBAL_CACHE, scheduled events
+- `main.py` — lanzador de threads + Flask
+
+### Estrategias
+- `strategies.py` — V1-V5 logic, confluence score, regime guards, cooldowns
+- `swing_bot.py` — Ichimoku 4H para ZEC/TAO/BTC/ETH/SOL
+- `commodities_bot.py` — GOLD/OIL/NG/SLV/HG via yfinance
+- `scalper_shorts_bot.py` — SHORT scalper DOGE/FIL/TAO via ccxt
+- `stock_analyzer.py` + `stock_watchlist.py` — STOCK_WATCHLIST alerts
+
+### IA
+- `gemini_analyzer.py` — Cuadrilla Zenith, Gemini API, panorama horario, V2-AI
+- `bitlobo_agent.py` — BitLobo zone analysis + Gemini Vision
+- `analysis_science.py` — backtesting científico frame-by-frame
+- `backtester.py` — replay histórico, comisiones, métricas
+
+### Señales
+- `signal_coordinator.py` — deconflicto multi-fuente, ventana 120s
+- `episode_memory.py` — memoria episódica AI + auto-fill de outcomes
+
+### Telegram
+- `telegram_commands.py` — dispatcher de comandos, 40+ handlers
+- `alert_manager.py` — send_telegram, set_bot_commands, main menu
+
+### Datos
+- `tracker.py` — SQLite CRUD: trades, backtest_sessions, append_event
+- `indicators.py` — RSI, BB, EMA, ATR, ADX, RVOL, Elliott, Fibonacci, Ichimoku, POC
+- `indicators_swing.py` — indicadores extendidos para swing
+- `market_intel.py` — funding rates, liquidation levels, regime detection
+- `social_analyzer.py` — social sentiment, Reddit, LunarCrush
+
+### Riesgo
+- `risk_manager.py` — circuit breaker, position sizing, loss streak cooldown
+- `manual_positions_monitor.py` — P&L + recs para posiciones manuales (/check)
+- `trade_monitor.py` — TP/SL auto-detection por precio
+
+### Monitoreo
+- `thread_health.py` — heartbeat watchdog, auto-restart, MAX_RESTARTS=5
+- `metrics.py` — Sharpe, Sortino, MaxDD, SQN, Profit Factor
+- `ai_budget.py` — Gemini/Claude spend tracking, cap $10/mes
+- `voice_compactor.py` — compactar reportes Sentinel, deduplication
+- `scan_status.py` — historial de /scan requests
+
+### Config / Seguridad
+- `config.py` — todos los thresholds: RSI, EMA, BB, FOMC, SYMBOLS, STOCK_WATCHLIST
+- `runtime_state.py` — persist paused state entre reinicios
+- `webhook_security.py` — HMAC-SHA256 auth para TradingView webhooks
+- `logger_core.py` — centralized logging
+
+### Dashboard
+- `app.py` — Flask: `/api/stats`, `/api/trades`, `/api/metrics`, `/api/backtest`, `/api/winrate`
+
+---
+
+## 8. Config: Parámetros Clave
+
+```python
+# config.py — valores actuales en producción (May-2026)
+
+SYMBOLS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "HBAR", "DOGE", "TON"]
+
+# RSI thresholds
+RSI_LONG_ENTRY    = 45.0
+RSI_SHORT_ENTRY   = 55.0  # V1-SHORT (disabled)
+RSI_LONG_EXTREME  = 30.0  # V3 reversal
+RSI_LONG_TAO_EXTREME = 28.0
+
+# Estrategia flags
+V1_SHORT_ENABLED  = False   # 0% WR en 16 trades — disabled Apr-2026
+TAO_TRADING_ENABLED = True  # Re-enabled May-2026 con cooldown 4H + 1D EMA200
+
+# FOMC suppression
+FOMC_NEXT_MEETING = "2026-06-17"
+
+# Circuit breaker
+TAO_LOSS_STREAK_COOLDOWN = True  # 3 lost → 4H pause (DB-persisted)
+
+# Macro context (hawkish hold)
+RATE_BIAS = "HAWKISH_HOLD"
+OIL_INFLATION_THRESHOLD = 85.0
+
+# AI budget
+AI_BUDGET_MAX_MONTHLY = 10.0  # USD
+
+# Commodities
+OPEC_MEETING_DATES = ["2026-05-05", "2026-06-01", "2026-09-01"]
+GOLD_BULL_THRESHOLD = 2500.0
+SP500_VERDE_MIN = 7000
+
+# Scalper Shorts (scalper_shorts_bot.py)
+# RSI_SHORT_ENTRY = 65.0 (más estricto que V1-SHORT)
+# MIN_CONFLUENCE  = 4/5
+# FUNDING_THRESHOLD = 0.0003
+```
+
+---
+
+## 9. Comparación con Sistemas de Agentes Reales
+
+### ✅ Implementado bien
+
+| Capacidad | Implementación |
+|-----------|---------------|
+| Multi-estrategia | V1/V3/V4/V5 crypto + Swing + Commodities + Scalper Shorts |
+| Memoria de sesión | `GLOBAL_CACHE` persiste entre ciclos |
+| Memoria persistente | Daily JSON por persona IA |
+| Múltiples fuentes | Binance → CoinGecko → cache (3 niveles fallback) |
+| Circuit breaker | 3+ pérdidas → 4H cooldown, DB-persisted (sobrevive restart) |
+| Signal Coordinator | Deconflicto 4 fuentes en ventana 120s |
+| Win rate por agente | `strategy_version` tag en trades.db |
+| Real vs SIM tracking | `is_sim` flag — Activate vs Skip comparison |
 | Control de presupuesto AI | `ai_budget.py` cap $10/mes |
-| Multi-hilo | 5 hilos independientes sin bloqueos críticos |
-| Cooldown de alertas | Key único por trade/evento, evita duplicados |
+| Market hours guards | Commodities: CME Globex + NYSE schedule |
+| Backtester | `backtester.py` + `analysis_science.py` |
 
----
+### ❌ Gaps vs sistemas profesionales
 
-### ❌ Lo que nos falta vs sistemas de agentes reales
-
-#### 1. **Memoria Episódica Estructurada**
-**Qué tienen:** LangGraph, MemGPT — almacenan cada decisión con contexto completo, recuperables semánticamente.
-**Qué tenemos:** `neural_memory` es una lista plana de strings. No hay búsqueda semántica ni recuperación por contexto.
-**Impacto:** El bot no puede responder "¿en qué condiciones ZEC falló antes?" con precisión.
-**Fix sugerido:** SQLite con embeddings o JSON estructurado: `{symbol, setup, outcome, conditions, timestamp}`.
-
-#### 2. **Razonamiento en Cadena (Chain-of-Thought persistente)**
-**Qué tienen:** CrewAI, LangGraph — cada agente documenta su razonamiento paso a paso. El siguiente agente lo lee antes de actuar.
-**Qué tenemos:** Cada llamada a Gemini es stateless. Salmos no sabe qué dijo el Sentinel hace 1 hora.
-**Impacto:** Los 4 agentes del Sentinel no se coordinan realmente — cada uno responde desde cero.
-**Fix sugerido:** Pasar el último reporte del Sentinel como contexto al siguiente. `last_sentinel_context[sym]` en caché.
-
-#### 3. **Bucle de Evaluación / Self-Critique**
-**Qué tienen:** AutoGPT, sistemas de trading profesional — después de cada señal, un agente evalúa si la señal anterior fue correcta y ajusta parámetros.
-**Qué tenemos:** Post-mortem existe pero solo en pérdidas. No hay evaluación de señales ignoradas que habrían ganado.
-**Impacto:** El sistema no aprende de oportunidades perdidas, solo de errores.
-**Fix sugerido:** Loggear todas las señales (disparadas o filtradas) con precio de entrada hipotético, evaluar resultado 4h después.
-
-#### 4. **Orquestador Explícito**
-**Qué tienen:** CrewAI, LangGraph — un agente "manager" coordina qué agente actúa, en qué orden, y con qué contexto.
-**Qué tenemos:** Hilos independientes sin coordinación explícita. La Profecía de Salmos puede dispararse mientras el Sentinel acaba de decir "ESPERAR".
-**Impacto:** Señales contradictorias en el mismo minuto sin resolución.
-**Fix sugerido:** Un `SignalCoordinator` que consolide outputs de todos los agentes antes de enviar a Telegram.
-
-#### 5. **Herramientas Externas (Tool Use real)**
-**Qué tienen:** GPT-4 function calling, Claude tool_use — el modelo decide cuándo llamar a qué herramienta.
-**Qué tenemos:** El prompt le dice al modelo qué datos tiene. El modelo no puede pedir más datos dinámicamente.
-**Impacto:** Si Gemini necesita el orderbook para validar una señal, no puede pedirlo.
-**Fix sugerido:** Migrar las llamadas críticas a Claude con tool_use. El modelo pide `get_orderbook(ZEC)` si lo necesita.
-
-#### 6. **Gestión de Riesgo de Portafolio Real**
-**Qué tienen:** Jesse, QuantConnect — position sizing dinámico basado en correlaciones entre activos, Kelly Criterion, VaR.
-**Qué tenemos:** `RISK_PER_TRADE_PCT = 0.01` fijo. No hay correlación entre ZEC y TAO al dimensionar.
-**Impacto:** Si ZEC y TAO están altamente correlacionados, dos posiciones simultáneas duplican el riesgo real.
-**Fix sugerido:** Matriz de correlación simple (30 días) antes de abrir segunda posición.
-
-#### 7. **Backtesting en Vivo (Paper Trading Loop)**
-**Qué tienen:** Hummingbot, QuantConnect — modo paper trading que valida estrategias con datos reales sin capital.
-**Qué tenemos:** `docs/SIMULATION_GUIDE.md` existe pero no hay loop automático de validación continua.
-**Impacto:** Cambios en thresholds (como RSI 45→48) se van directo a producción sin validación.
-**Fix sugerido:** Shadow mode: cada señal real se duplica en un tracker paralelo "paper" y se evalúa automáticamente.
-
-#### 8. **Webhooks TradingView como Trigger**
-**Qué tienen:** Sistemas profesionales — TradingView envía webhook al bot cuando se cumple condición en chart.
-**Qué tenemos:** El Pine Script de Zenith Suite V17 existe pero no está conectado al bot Python.
-**Impacto:** El análisis visual de TradingView y el bot Python son islas separadas.
-**Fix sugerido:** Endpoint Flask `/webhook/tradingview` que recibe alertas del Pine Script y las procesa como señal adicional.
-
-#### 9. **Explicabilidad de Señales**
-**Qué tienen:** Sistemas institucionales — cada señal incluye qué filtro fue decisivo, cuáles fallaron por poco.
-**Qué tenemos:** La alerta dice el score final pero no "el RSI casi no pasó (46.2 vs umbral 45)".
-**Impacto:** No puedes ajustar thresholds con datos — no sabes qué tan cerca estuvieron las señales filtradas.
-**Fix sugerido:** Loggear `near_miss` cuando confluence = 3 (un filtro debajo del mínimo).
-
----
-
-### Priorización sugerida (impacto / esfuerzo)
-
-| Prioridad | Item | Esfuerzo | Impacto |
-|-----------|------|----------|---------|
-| 🔴 Alta | Webhook TradingView | Bajo (1 endpoint Flask) | Alto — cierra el loop visual/algorítmico |
-| 🔴 Alta | Memoria episódica estructurada | Medio | Alto — el bot aprende de verdad |
-| 🟡 Media | Shadow mode / paper trading | Medio | Alto — validación sin riesgo |
-| 🟡 Media | SignalCoordinator | Medio | Medio — elimina contradicciones |
-| 🟡 Media | Near-miss logging | Bajo | Medio — datos para tuning |
-| 🟢 Baja | Chain-of-thought entre agentes | Alto | Medio — mejora coherencia |
-| 🟢 Baja | Correlación de portafolio | Alto | Medio — solo si tienes 3+ posiciones |
-| 🟢 Baja | Tool use con Claude | Alto | Bajo en corto plazo |
+| Gap | Impacto | Fix sugerido |
+|-----|---------|-------------|
+| Memoria episódica estructurada | Bot no aprende semánticamente de setups pasados | SQLite con condiciones + outcome JSON |
+| Backtesting automático continuo | Cambios de threshold van directo a prod | Shadow mode: duplicar señales en paper tracker |
+| Tool use dinámico (Claude API) | Gemini no puede pedir orderbook cuando lo necesita | Migrar V2-AI a Claude con tool_use |
+| Correlación de portafolio | 2 posiciones correlacionadas = riesgo doble | Matriz correlación 30d pre-entry |
+| Near-miss logging | No sabes qué señales casi se dispararon | Log cuando confluence = MIN-1 |
+| TradingView webhook activo | Pine Script y bot Python son islas | Endpoint `/webhook/tradingview` Flask |

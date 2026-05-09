@@ -35,14 +35,10 @@ STOCK_WATCHLIST = [
      "entry": 4838.80, "stop_loss": 4476.47, "take_profit_1": 5563.46, "break_even": 5201.13,
      "context": "⚠️ Niveles pre-mercado. Oro Jun-2026. PHY alcista activo. DXY débil = setup largo."},
 
-    {"ticker": "CLK6",  "yf_ticker": "CLM26.NYM",  "direction": "SHORT",
-     "entry": 95.95,  "stop_loss": 115.04, "take_profit_1": 57.78,  "break_even": 76.86,
-     "context": "⚠️ Niveles pre-mercado. Crudo Jun-2026. Monitorear soporte $60 y noticias OPEP+."},
-
     # ── PTS Reports Apr 13-15 2026 ───────────────────────────────────────────
     {"ticker": "RKLB",  "yf_ticker": "RKLB",  "direction": "LONG",
-     "entry": 74.90,  "stop_loss": 63.35,  "take_profit_1": 91.0,  "take_profit_2": 100.0, "break_even": 83.0,
-     "context": "PTS 13-Abr-2026. Rocket Lab OPERACIÓN RÁPIDA. Si SP500 se mantiene arriba puede llegar rápido a targets. GR -1.1%. 1 acción/$1k."},
+     "entry": 74.90,  "stop_loss": 91.0,  "take_profit_1": 100.0, "take_profit_2": None, "break_even": 83.0,
+     "context": "PTS 08-May-2026. RKLB +30% post-earnings — T1 ($91) superado!! Stop movido a T1. Quienes están dentro siguen con stop en ganancia. Sin reentrada por ahora. GR original -1.1%. 1 acción/$1k."},
 
     {"ticker": "XBI",   "yf_ticker": "XBI",   "direction": "LONG",
      "entry": 133.0,  "stop_loss": 119.09, "take_profit_1": 150.0, "take_profit_2": 174.0, "break_even": 143.0,
@@ -58,28 +54,37 @@ STOCK_WATCHLIST = [
 
     {"ticker": "MP",    "yf_ticker": "MP",    "direction": "LONG",
      "entry": 63.28,  "stop_loss": 48.11,  "take_profit_1": 79.0,  "take_profit_2": 89.0,  "break_even": 73.0,
-     "context": "PTS 15-Abr-2026. MP Materials SWING ALCISTA. Rare earth materials. Enorme rango de consolidación. GR -1.5%. 1 acción/$1k."},
+     "context": "PTS 08-May-2026. MP Materials. Quienes vendieron pre-earnings ganaron. Subió fuerte y se devolvió con fuerza. Pueden tomar ganancias en 68 y esperar. Pendiente reentrada próxima semana — esperar resolución del rango actual. GR original -1.5%."},
 
     {"ticker": "SOFI",  "yf_ticker": "SOFI",  "direction": "LONG",
-     "entry": 19.29,  "stop_loss": 15.60,  "take_profit_1": 25.0,  "take_profit_2": 28.0,  "break_even": 21.0,
-     "context": "PTS 15-Abr-2026. SoFi Technologies SWING ALCISTA. Posible formación de suelo tras fuertes caídas. GR -1.2%. 3 acciones/$1k."},
+     "entry": 16.99,  "stop_loss": 12.94,  "take_profit_1": 25.0,  "take_profit_2": 28.0,  "break_even": 21.0,
+     "context": "PTS 08-May-2026. SOFI REENTRADA post-earnings. Muy débil tras earnings, esperando recuperación. Entrar si alcanza 16.99 (barrida post-earnings). GR -1%. 2 acciones/$1k. Options: BUY CALL 18-Sep-2026 Strike 22 (riesgo ~$80, pot $350-550)."},
 
-    {"ticker": "SPY",   "yf_ticker": "SPY",   "direction": "SHORT",
-     "entry": 673.0,  "stop_loss": 700.0,  "take_profit_1": 632.0, "take_profit_2": 600.0, "break_even": 659.0,
-     "context": "PTS 15-Abr-2026. SP500 vigilancia bajista. Alerta si SP500 pierde 6,832 (SPY ~683) — prepararse. Entrada en SPY ~673 (SP500 6,728). Mientras no active, dejar tranquilo."},
+    # ── PTS Post-earnings May 8 2026 ─────────────────────────────────────────
+    {"ticker": "CRWV",  "yf_ticker": "CRWV",  "direction": "LONG",
+     "entry": 121.82, "stop_loss": 91.79,  "take_profit_1": 160.0, "take_profit_2": 187.0, "break_even": 140.0,
+     "context": "PTS 08-May-2026. CoreWeave SWING ALCISTA. Cayó con earnings, cobertura protegió, volvió a BE. PHY alcista activo. Si sostiene ZR corto plazo se recupera. GR -3%. 1 acción/$1k. Options: BUY CALL 16-Oct-2026 Strike 125 (riesgo ~$1,200, pot $2,600-5,000)."},
+
+    {"ticker": "OKLO",  "yf_ticker": "OKLO",  "direction": "LONG",
+     "entry": 73.91,  "stop_loss": 50.26,  "take_profit_1": 101.0, "take_profit_2": 137.0, "take_profit_3": 161.0, "break_even": 84.0,
+     "context": "PTS 08-May-2026. OKLO (nuclear SMR). ⚠️ EARNINGS MARTES — QF debe vender Lun/Mar, options reciben cobertura martes. Entry válida post-earnings. GR -2.3%. 1 acción/$1k. Options: BUY CALL 20-Nov-2026 Strike 75 (riesgo ~$1,250, pot $1,800-6,500)."},
+
+    {"ticker": "SMR",   "yf_ticker": "SMR",   "direction": "LONG",
+     "entry": 12.67,  "stop_loss": 9.54,   "take_profit_1": 17.0, "take_profit_2": 19.0, "take_profit_3": 22.0, "break_even": 15.0,
+     "context": "PTS 08-May-2026. SMR (nuclear small modular reactor). Nueva — pasó earnings. Sector nuclear despertando. GR -1.2%. 4 acciones/$1k. Options: BUY CALL 20-Nov-2026 Strike 13 (riesgo ~$200, pot $220-800)."},
 
     # ── Mencionadas en PTS — niveles pendientes ───────────────────────────────
     {"ticker": "IREN",  "yf_ticker": "IREN",  "direction": "LONG",
-     "entry": 45.22,  "stop_loss": 35.78,  "take_profit_1": 67.0, "take_profit_2": 77.0, "take_profit_3": 89.0, "break_even": 59.0,
-     "context": "PTS 29-Abr-2026. Iris Energy (bitcoin mining/data centers) SWING ALCISTA. Re-entry bajado de 52.38. Esperar recuperación a 45.22. GR -1%. 1 acción/$1k. Options: BUY CALL 18-Sep-2026 Strike 55."},
+     "entry": 45.22,  "stop_loss": 57.0,  "take_profit_1": 67.0, "take_profit_2": 77.0, "take_profit_3": 89.0, "break_even": 59.0,
+     "context": "PTS 08-May-2026. IREN — quienes están dentro: stop de ganancia en 57. Quienes salieron pre-earnings ganaron. Sin reentrada externa aún — esperar resolución del rango (BR.A). Próximos días PTS enviará reentrada. Options dentro siguen en ganancia."},
 
     {"ticker": "UUUU",  "yf_ticker": "UUUU",  "direction": "LONG",
-     "entry": 21.14,  "stop_loss": 18.50,  "take_profit_1": 28.0, "take_profit_2": 31.0, "take_profit_3": 35.0, "break_even": 25.36,
-     "context": "PTS 29-Abr-2026. Energy Fuels (uranium/nuclear) SWING ALCISTA. Entrar si recupera 21.14. Sector nuclear despertando. GR -1%. 3 acciones/$1k. Options: BUY CALL 16-Oct-2026 Strike 22 (riesgo ~$200, pot $400-950). Solo brokers de options (no QF)."},
+     "entry": 22.72,  "stop_loss": 18.50,  "take_profit_1": 28.0, "take_profit_2": 31.0, "take_profit_3": 35.0, "break_even": 25.0,
+     "context": "PTS 08-May-2026. Energy Fuels (uranium/nuclear). Nueva entrada post-earnings (subió fuerte, llegó a BE y se devolvió). Entry 22.72, BE 25. GR -1%. 3 acciones/$1k. Options: BUY CALL 16-Oct-2026 Strike 22 (riesgo ~$200, pot $400-950)."},
 
     {"ticker": "IONQ",  "yf_ticker": "IONQ",  "direction": "LONG",
-     "entry": 42.45,  "stop_loss": 35.44,  "take_profit_1": 62.0, "take_profit_2": 72.0, "break_even": 50.0,
-     "context": "PTS 29-Abr-2026. IonQ (quantum computing) SWING ALCISTA. Entry bajado a 42.45 (era 45.30). Sector cuántico despertando. GR -2%. 2 acciones/$1k. Options: BUY CALL 16-Oct-2026 Strike 50 (riesgo ~$480, pot $1,100-1,500)."},
+     "entry": 50.05,  "stop_loss": 35.44,  "take_profit_1": 72.0, "take_profit_2": 85.0, "break_even": 62.0,
+     "context": "PTS 08-May-2026. IonQ (quantum computing). Nueva entrada post-earnings (quienes salieron pre-earnings ganaron). Entry 50.05. GR -1.5%. 1 acción/$1k. Options: BUY CALL 16-Oct-2026 Strike 55 (riesgo ~$480, pot $1,100-1,500)."},
 
     {"ticker": "MSFT",  "yf_ticker": "MSFT",  "direction": "LONG",
      "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,

@@ -30,6 +30,7 @@ import math
 import pandas as pd
 import yfinance as yf
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 from dotenv import load_dotenv
 from logger_core import logger
@@ -108,6 +109,29 @@ CHECK_INTERVAL       = 900        # 15 min entre ciclos
 _last_alert: dict = {}
 _last_direction: dict = {}  # {key: (side, timestamp)}
 _last_status: dict = {}     # for /commodities command
+
+_ET = ZoneInfo("America/New_York")
+
+
+def _is_commodity_open(key: str) -> bool:
+    """CME Globex futuros: Dom 18:00–Vie 17:00 ET (break diario 17:00-18:00 ET).
+    SLV (ETF): NYSE hours Lun-Vie 9:30-16:00 ET."""
+    now = datetime.now(_ET)
+    wd = now.weekday()  # 0=Mon … 6=Sun
+    h, m = now.hour, now.minute
+
+    if key == "SLV":
+        if wd >= 5:
+            return False
+        return (h == 9 and m >= 30) or (10 <= h < 16)
+
+    # CME Globex futures (GOLD, OIL, NG, HG)
+    if wd == 5:          # Saturday: always closed
+        return False
+    if wd == 6:          # Sunday: opens 18:00 ET
+        return h >= 18
+    # Mon-Fri: closed 17:00-18:00 ET (daily settlement break)
+    return h != 17
 
 
 # --- Telegram ---
@@ -240,7 +264,7 @@ def _monitor_open_commodity(key: str, inst: dict):
                     f"Precio: <code>${price:,.{dec}f}</code> ≤ SL <code>${sl:,.{dec}f}</code>\n"
                     f"💸 PnL: <b>{pnl_pct:+.2f}%</b>"
                 )
-                logger.info("    %s LOST (SL hit) @ %.{dec}f", key, price)
+                logger.info("    %s LOST (SL hit) @ %s", key, f"{price:.{dec}f}")
             elif tp2 and price >= tp2:
                 tracker.update_trade_status(t["id"], "FULL_WON")
                 send_telegram(
@@ -292,6 +316,11 @@ def analyze_commodity(key: str, inst: dict):
     yf_ticker = inst["yf"]
     dec = inst["decimals"]
     logger.info("  Commodities: analizando %s (%s)...", key, yf_ticker)
+
+    # Market hours guard
+    if not _is_commodity_open(key):
+        logger.info("    %s: mercado cerrado (horario CME/NYSE), omitiendo", key)
+        return
 
     # Position guard
     if _has_open_commodity(key):
