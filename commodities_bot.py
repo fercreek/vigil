@@ -103,6 +103,7 @@ OPEC_MEETING_DATES = [
 
 # --- Cooldowns ---
 ALERT_COOLDOWN       = 3600       # 1h entre alertas del mismo instrumento
+POST_LOST_COOLDOWN   = 3600 * 8   # 8h cooldown tras un LOST en el mismo instrumento
 DIRECTION_FLIP_CD    = 3600 * 12  # 12h antes de flipear direccion
 CHECK_INTERVAL       = 900        # 15 min entre ciclos
 
@@ -222,6 +223,48 @@ def _has_open_commodity(key: str) -> bool:
     return False
 
 
+def _in_post_lost_cooldown(key: str) -> bool:
+    """True si el último trade COMMODITY de este símbolo fue LOST hace < 8h.
+    Persiste en DB → sobrevive restarts del bot."""
+    try:
+        import sqlite3
+        from datetime import datetime as _dt
+        conn = sqlite3.connect(tracker.DB_FILE)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT close_time, status FROM trades "
+            "WHERE symbol=? AND strategy_version='COMMODITY' "
+            "AND (is_sim=0 OR is_sim IS NULL) "
+            "AND status='LOST' ORDER BY id DESC LIMIT 1",
+            (key,)
+        )
+        row = cur.fetchone()
+        conn.close()
+        if not row or not row[0]:
+            return False
+        last_dt = _dt.fromisoformat(str(row[0]))
+        elapsed = (_dt.utcnow() - last_dt).total_seconds()
+        return elapsed < POST_LOST_COOLDOWN
+    except Exception as e:
+        logger.warning("Post-LOST cooldown check %s error: %s", key, e)
+        return False
+
+
+def _daily_trend_bias(yf_ticker: str) -> str:
+    """Devuelve 'BULL' / 'BEAR' / 'UNKNOWN' según precio_1D vs EMA200_1D.
+    Para GOLD/SLV: bloquea LONG si BEAR (evita re-entries en pullbacks bajistas)."""
+    try:
+        df_1d = _fetch_ohlcv(yf_ticker, interval="1d", period="365d")
+        if df_1d.empty or len(df_1d) < 201:
+            return "UNKNOWN"
+        price_1d = float(df_1d["Close"].iloc[-1])
+        ema200_1d = _calc_ema(df_1d["Close"], 200)
+        return "BULL" if price_1d > ema200_1d else "BEAR"
+    except Exception as e:
+        logger.warning("Daily trend bias %s error: %s", yf_ticker, e)
+        return "UNKNOWN"
+
+
 def _monitor_open_commodity(key: str, inst: dict):
     """Check SL/TP on open COMMODITY trades using the correct futures price."""
     open_trades = [t for t in tracker.get_open_trades()
@@ -330,6 +373,11 @@ def analyze_commodity(key: str, inst: dict):
     # Cooldown
     if _in_cooldown(key):
         logger.info("    %s: en cooldown, omitiendo", key)
+        return
+
+    # Post-LOST cooldown — 8h tras un trade LOST en el mismo símbolo
+    if _in_post_lost_cooldown(key):
+        logger.info("    %s: post-LOST cooldown 8h activo, omitiendo", key)
         return
 
     # Fetch 1H data
@@ -470,6 +518,15 @@ def analyze_commodity(key: str, inst: dict):
     if not side:
         logger.info("    %s: sin confluencia (L:%d S:%d)", key, long_score, short_score)
         return
+
+    # 1D trend filter — bloquea LONG en GOLD/SLV si tendencia diaria es BEAR
+    # (Causa de 6 GOLD LOSSES Apr 15-22: re-entries en pullback bajista)
+    if side == "LONG" and key in ("GOLD", "SLV"):
+        bias_1d = _daily_trend_bias(yf_ticker)
+        if bias_1d == "BEAR":
+            logger.info("    %s: 1D bias BEAR — LONG bloqueado (anti-pullback)", key)
+            _last_status[key] = {**status_info, "signal": f"LONG bloqueado (1D BEAR)"}
+            return
 
     # Direction flip guard
     if not _can_flip(key, side):

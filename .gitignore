@@ -27,3 +27,4 @@ __pycache__/
 .replit
 last_update_id.txt
 phase.txt
+.claude/worktrees/
