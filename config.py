@@ -145,6 +145,9 @@ ATR_MIN_SL_REVERSAL = 0.010  # SL mínimo para reversals (wider = less noise sto
 
 # --- STRATEGY KILL SWITCHES (basado en análisis win rate 76 trades) ---
 V1_SHORT_ENABLED     = False   # 0% WR en 16 trades — disabled Apr 2026
+V1_LONG_ENABLED      = False   # 15.4% WR / -34.1% PnL en backtest 365d → disabled May 2026
+V4_BLOCKLIST         = ["ETH"] # ETH V4 -7.1% PnL en backtest — excluir
+V5_ENABLED           = False   # 0 trades en backtest 365d → bug o filtro muy restrictivo, deshabilitado
 TAO_TRADING_ENABLED  = True    # Re-enabled May-2026 con filtro 1D EMA200 en strategies.py
 
 # ── Confluence Score ──────────────────────────────────────────────────────────

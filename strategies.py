@@ -20,6 +20,7 @@ from config import (
     RSI_SHORT_ENTRY, SHORT_MIN_CONFLUENCE, SHORT_REGIMES,
     SHORT_EMA_SLOPE_MIN, RVOL_MIN_ENTRY, RVOL_MIN_BTC, MIN_CONFLUENCE_SCORE,
     FOMC_NEXT_MEETING, RSI_LONG_EXTREME,
+    V1_LONG_ENABLED, V4_BLOCKLIST, V5_ENABLED,
 )
 
 
@@ -504,8 +505,9 @@ def check_strategies(prices: dict):
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V1: Long V1 (Trend Alcista + RSI 45 + RSI Rising)
         # v2.1: BB touch ahora es bonus en confluencia, no hard gate
+        # May-2026: V1_LONG_ENABLED kill switch (15.4% WR / -34% backtest)
         # ═══════════════════════════════════════════════════════════════════
-        elif phase == "LONG" and p > ema_200 and regime in ("TRENDING_UP", "VOLATILE"):
+        elif V1_LONG_ENABLED and phase == "LONG" and p > ema_200 and regime in ("TRENDING_UP", "VOLATILE"):
             entry_rsi = 49.0 if sym == "ZEC" else 47.0  # was 45/48 — widen net during ranging
             if rsi <= entry_rsi:
                 if rsi < prev_rsi:
@@ -643,7 +645,7 @@ def check_strategies(prices: dict):
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V4: EMA 200 BOUNCE (MEAN REVERSION)
         # ═══════════════════════════════════════════════════════════════════
-        elif phase == "LONG" and not _fomc_suppressed and p > ema_200 * V4_EMA_PROXIMITY_MIN and p <= ema_200 * V4_EMA_PROX_MAP.get(sym, V4_EMA_PROXIMITY_MAX) and regime == "TRENDING_UP":
+        elif phase == "LONG" and sym not in V4_BLOCKLIST and not _fomc_suppressed and p > ema_200 * V4_EMA_PROXIMITY_MIN and p <= ema_200 * V4_EMA_PROX_MAP.get(sym, V4_EMA_PROXIMITY_MAX) and regime == "TRENDING_UP":
             rsi_high = V4_RSI_HIGH_ZEC if sym == "ZEC" else V4_RSI_HIGH
             if V4_RSI_LOW <= rsi <= rsi_high and rsi > prev_rsi:
                 if is_position_open(sym, "LONG"):
@@ -766,7 +768,7 @@ def check_strategies(prices: dict):
         # Confluencia mínima: 3 (vs 4 de V1). Cooldown: 20 min.
         # ═══════════════════════════════════════════════════════════════════
         from config import V5_MOMENTUM_MIN_CONF, V5_MOMENTUM_COOLDOWN, V5_MOMENTUM_RVOL_MIN
-        if (phase == "LONG" and p > ema_200 and not _fomc_suppressed and
+        if (V5_ENABLED and phase == "LONG" and p > ema_200 and not _fomc_suppressed and
                 regime != "RANGING" and
                 prev_rsi < 50.0 <= rsi):
             if is_position_open(sym, "LONG"):
