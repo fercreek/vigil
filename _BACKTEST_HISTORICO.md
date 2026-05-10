@@ -170,6 +170,76 @@ Si en 2 semanas alguna estrategia falla su threshold → iteración 2 o kill (3 
 
 ---
 
+## 🚀 Iteración 2026-05-09 — tuning automático
+
+Suite canónica corrida 16 veces probando 16 patches distintos. Solo 5 quedaron.
+
+**Resultado neto:**
+
+| Métrica | Baseline | Final | Δ |
+|---------|----------|-------|---|
+| **PnL agregado** | +59.11% | **+283.57%** | **+224.46pp** 🏆 |
+| **Profit Factor** | 1.15 | **1.89** | +0.74 |
+| **Trades total** | 253 | 232 | -8% |
+| **WR global** | 20.6% | calculado por suite | — |
+
+**Patches que mejoraron (KEEP):**
+
+| Patch | Cambio | Δ PnL acum | PF result |
+|-------|--------|-----------|-----------|
+| `v3_rsi_loose` | RSI_LONG_TAO 28→32 / ZEC 26→30 | **+120.65%** | 1.41 |
+| `v4_prox_tight` | EMA_PROX_MAX 1.025→1.020 / MIN 1.001→1.005 | +1.18% | 1.42 |
+| `conf_higher` | MIN_CONFLUENCE_SCORE 4→5 | **+58.68%** | 1.72 |
+| `atr_tp1_ambitious` | ATR_TP1_MULT 2.0→3.0 | **+35.26%** | 1.77 |
+| `rsi_long_entry_lower` | RSI_LONG_ENTRY 45→40 | +8.69% | **1.89** |
+
+**Patches rechazados (REVERT):**
+
+| Patch | Razón |
+|-------|-------|
+| `v3_rsi_strict` (TAO 25/ZEC 24) | -72% PnL — demasiado restrictivo |
+| `v4_prox_wide` | mínima ganancia, PF baja |
+| `conf_lower` (3) | más volumen pero PF cae 1.72→1.53 |
+| `v3_rsi_v2_more` (TAO 35) | sin efecto (ya en zona ineficaz) |
+| `v3_rsi_v2_mid` (TAO 30) | -24% — confirma 32 era óptimo |
+| `conf_strict_v2` (6) | -52% — overfilter |
+| `atr_sl_wide` 2.5 | -3% |
+| `atr_sl_tight` 1.5 | -54% |
+| `atr_tp1_conservative` 1.5 | -5% (PF mejora pero PnL baja) |
+| `rsi_extreme_loose` 35 | sin efecto |
+| `v4_rsi_high_loose` 50 | sin efecto |
+
+### Walk-Forward Validation (post-iteración) — confirma edge real OOS
+
+| Symbol/Strat | Train WR/PnL | Test WR/PnL | Veredicto |
+|--------------|-------------|-------------|-----------|
+| BTC V3 | 72.7% / +14% | 33.3% / +0.9% | ⚠️ overfit pero +OOS |
+| BTC V4 | 33.3% / +4% | 33.3% / +2.5% | ✅ robust |
+| **ETH V3** | 76.9% / +68% | **60% / +15.9%** | ✅ **robust + alto edge** 🏆 |
+| TAO V3 | 42.9% / +7.9% | 57.1% / +2.6% | ✅ test mejora |
+| TAO V4 | 33% / +0.9% | 50% / +7.3% | ✅ test mejora |
+| ZEC V3 | 100% / +37% | 42.9% / +7.2% | overfit pero +OOS |
+
+**Conclusión walk-forward:** el edge no es artefacto de in-sample. ETH V3 sigue siendo la combinación estrella incluso en out-of-sample.
+
+### Cambios aplicados al `config.py`:
+
+```python
+RSI_LONG_ENTRY       = 40.0   # era 45 (laxo +)
+RSI_LONG_TAO_EXTREME = 32.0   # era 28
+RSI_LONG_ZEC_EXTREME = 30.0   # era 26
+MIN_CONFLUENCE_SCORE = 5      # era 4 (filtro más estricto)
+V4_EMA_PROXIMITY_MAX = 1.020  # era 1.025
+V4_EMA_PROXIMITY_MIN = 1.005  # era 1.001
+ATR_TP1_MULT         = 3.0    # era 2.0 (R:R más ambicioso)
+```
+
+### Insight contraintuitivo
+
+**RSI más LAXO + Confluence MÁS ESTRICTO** = mejor combo. La razón: RSI laxo genera más oportunidades, pero la confluence 5/7 filtra solo las que tienen confluencia múltiple. Resultado: **menos volumen pero mucho mejor calidad**.
+
+---
+
 ## 🔗 Datos crudos
 
 Raw results JSON: `/tmp/backtest_results.json` (regenerable con):

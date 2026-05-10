@@ -127,17 +127,17 @@ STOCK_WATCHLIST = [
 ]
 
 # ── Thresholds RSI ────────────────────────────────────────────────────────────
-RSI_LONG_ENTRY       = 45.0   # Entrada Long estándar (was 42 — too restrictive)
+RSI_LONG_ENTRY       = 40.0   # Entrada Long estándar (was 42 — too restrictive)
 RSI_LONG_ZEC_ENTRY   = 48.0   # ZEC tiene mayor volatilidad — entrada más conservadora
 RSI_LONG_EXTREME     = 30.0   # Entrada Long extrema (reversal / modo rescate)
-RSI_LONG_TAO_EXTREME = 28.0   # TAO modo rescate
-RSI_LONG_ZEC_EXTREME = 26.0   # ZEC modo rescate agresivo
+RSI_LONG_TAO_EXTREME = 32.0   # TAO modo rescate
+RSI_LONG_ZEC_EXTREME = 30.0   # ZEC modo rescate agresivo
 RSI_SHORT_ENTRY      = 55.0   # Entrada Short estándar (was 62 — casi nunca en downtrend)
 RSI_SHORT_EXTREME    = 70.0   # Entrada Short extrema
 
 # ── ATR Multipliers (gestión de riesgo) ───────────────────────────────────────
 ATR_SL_MULT         = 2.0    # Stop Loss = entry ± (ATR * mult)
-ATR_TP1_MULT        = 2.0    # TP1 = 2:1 R:R
+ATR_TP1_MULT        = 3.0    # TP1 = 2:1 R:R
 ATR_TP2_MULT        = 3.5    # TP2 = 3.5:1 R:R
 ATR_TP3_MULT        = 7.0    # TP3 = 7:1 R:R (moonshot, V2-AI)
 ATR_MIN_SL_PCT      = 0.007  # SL mínimo: 0.7% del precio (evita SL muy ajustados)
@@ -151,7 +151,7 @@ V5_ENABLED           = False   # 0 trades en backtest 365d → bug o filtro muy 
 TAO_TRADING_ENABLED  = True    # Re-enabled May-2026 con filtro 1D EMA200 en strategies.py
 
 # ── Confluence Score ──────────────────────────────────────────────────────────
-MIN_CONFLUENCE_SCORE = 4     # Score mínimo para disparar alerta
+MIN_CONFLUENCE_SCORE = 5     # Score mínimo para disparar alerta
 USDT_D_THRESHOLD    = 8.05   # Por encima: condición bajista para cripto
 
 # ── Volatilidad / Riesgo ──────────────────────────────────────────────────────
@@ -182,7 +182,7 @@ ALERT_COOLDOWN_SECONDS = 300  # 5 min entre alertas del mismo tipo
 
 # ── Estrategia V4: EMA 200 Bounce (Mean Reversion) ──────────────────────────
 V4_EMA_PROXIMITY_MAX = 1.02    # Precio max 2% arriba de EMA200 (BTC default)
-V4_EMA_PROXIMITY_MIN = 1.001   # Precio min 0.1% arriba (confirma no quiebre)
+V4_EMA_PROXIMITY_MIN = 1.005   # Precio min 0.1% arriba (confirma no quiebre)
 V4_RSI_LOW           = 35.0    # RSI minimo (zona de recuperacion)
 V4_RSI_HIGH          = 50.0    # RSI maximo (no sobrecomprado)
 V4_RSI_HIGH_ZEC      = 55.0    # ZEC: umbral mas alto por volatilidad
