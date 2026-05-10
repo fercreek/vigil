@@ -40,3 +40,12 @@ Métricas: PnL agregado · trades · PF global. KEEP = aplica al config. REVERT 
 | v4_atr_sl_wide | `{'V4_ATR_SL_MULT': 2.0}` | +361.01% → +361.01% (+0.00) | 246 → 246 (+0.0%) | PF 1.95 → 1.95 | ❌ REVERT |
 | v4_rsi_low_lower | `{'V4_RSI_LOW': 30.0}` | +361.01% → +359.71% (-1.30) | 246 → 254 (+3.3%) | PF 1.95 → 1.92 | ❌ REVERT |
 | v4_rsi_low_higher | `{'V4_RSI_LOW': 40.0}` | +361.01% → +295.55% (-65.46) | 246 → 242 (-1.6%) | PF 1.95 → 1.8 | ❌ REVERT |
+| tao_rsi_28 | `{'RSI_REVERSAL_BY_SYMBOL.TAO': 28.0}` | +361.01% → +407.89% (+46.88) | 246 → 238 (-3.3%) | PF 1.95 → 2.13 | ✅ KEEP |
+| tao_rsi_25 | `{'RSI_REVERSAL_BY_SYMBOL.TAO': 25.0}` | +407.89% → +384.37% (-23.52) | 238 → 225 (-5.5%) | PF 2.13 → 2.14 | ❌ REVERT |
+| tao_rsi_30 | `{'RSI_REVERSAL_BY_SYMBOL.TAO': 30.0}` | +407.89% → +361.01% (-46.88) | 238 → 246 (+3.4%) | PF 2.13 → 1.95 | ❌ REVERT |
+| eth_rsi_35 | `{'RSI_REVERSAL_BY_SYMBOL.ETH': 35.0}` | +407.89% → +407.89% (+0.00) | 238 → 238 (+0.0%) | PF 2.13 → 2.13 | ❌ REVERT |
+| eth_rsi_30 | `{'RSI_REVERSAL_BY_SYMBOL.ETH': 30.0}` | +407.89% → +407.89% (+0.00) | 238 → 238 (+0.0%) | PF 2.13 → 2.13 | ❌ REVERT |
+| btc_rsi_28 | `{'RSI_REVERSAL_BY_SYMBOL.BTC': 28.0}` | +407.89% → +393.58% (-14.31) | 238 → 225 (-5.5%) | PF 2.13 → 2.11 | ❌ REVERT |
+| btc_rsi_35 | `{'RSI_REVERSAL_BY_SYMBOL.BTC': 35.0}` | +407.89% → +407.89% (+0.00) | 238 → 238 (+0.0%) | PF 2.13 → 2.13 | ❌ REVERT |
+| zec_rsi_33 | `{'RSI_REVERSAL_BY_SYMBOL.ZEC': 33.0}` | +407.89% → +407.89% (+0.00) | 238 → 238 (+0.0%) | PF 2.13 → 2.13 | ❌ REVERT |
+| zec_rsi_27 | `{'RSI_REVERSAL_BY_SYMBOL.ZEC': 27.0}` | +407.89% → +389.04% (-18.85) | 238 → 233 (-2.1%) | PF 2.13 → 2.08 | ❌ REVERT |

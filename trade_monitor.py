@@ -177,7 +177,7 @@ def monitor_open_trades(prices: dict):
               f"🪙 {upd['symbol']} {upd['side']}\n"
               f"🛑 SL: ${upd['old_sl']:,.2f} → <b>${upd['new_sl']:,.2f}</b>\n"
               f"📊 Precio: ${upd['current_price']:,.2f} | ATR: {upd['atr']:.2f}",
-              version="RISK", cooldown=300)
+              version="RISK", cooldown=900)  # 15min cooldown (era 5min — Audit Telegram redujo spam)
 
     # Cleanup trailing tracking para trades cerrados
     open_ids = {t["id"] for t in open_trades}

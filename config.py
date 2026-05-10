@@ -130,8 +130,18 @@ STOCK_WATCHLIST = [
 RSI_LONG_ENTRY       = 40.0   # Entrada Long estándar (was 42 — too restrictive)
 RSI_LONG_ZEC_ENTRY   = 48.0   # ZEC tiene mayor volatilidad — entrada más conservadora
 RSI_LONG_EXTREME     = 30.0   # Entrada Long extrema (reversal / modo rescate)
-RSI_LONG_TAO_EXTREME = 32.0   # TAO modo rescate
-RSI_LONG_ZEC_EXTREME = 30.0   # ZEC modo rescate agresivo
+RSI_LONG_TAO_EXTREME = 32.0   # TAO modo rescate (legacy, ahora dict abajo)
+RSI_LONG_ZEC_EXTREME = 30.0   # ZEC modo rescate agresivo (legacy)
+
+# Per-symbol RSI threshold para V3-REVERSAL (sincronizado strategies.py + backtester.py)
+# Si símbolo no está aquí → usa RSI_LONG_EXTREME (default 30)
+RSI_REVERSAL_BY_SYMBOL = {
+    "TAO": 28.0,    # tunable per-symbol (TAO V3 OOS NEGATIVO walk-fwd con 32 — candidato revertir 28)
+    "ZEC": 30.0,    # ZEC V3 ✅ alto edge OOS (+21%)
+    "ETH": 32.0,    # ETH V3 ✅ campeón OOS (+15.9%)
+    "BTC": 32.0,    # BTC V3 marginal positivo OOS
+}
+
 RSI_SHORT_ENTRY      = 55.0   # Entrada Short estándar (was 62 — casi nunca en downtrend)
 RSI_SHORT_EXTREME    = 70.0   # Entrada Short extrema
 

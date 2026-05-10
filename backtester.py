@@ -232,7 +232,9 @@ class Backtester:
 
         sym = self.symbol or "UNKNOWN"
         rsi_thresh = RSI_LONG_ZEC_ENTRY if sym == "ZEC" else RSI_LONG_ENTRY
-        reversal_rsi = RSI_LONG_ZEC_EXTREME if sym == "ZEC" else RSI_LONG_TAO_EXTREME
+        # Per-symbol RSI dict — sincronizado con strategies.py
+        from config import RSI_REVERSAL_BY_SYMBOL, RSI_LONG_EXTREME as _RLE
+        reversal_rsi = RSI_REVERSAL_BY_SYMBOL.get(sym, _RLE)
 
         trades = []
         active = None

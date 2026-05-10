@@ -463,7 +463,9 @@ def check_strategies(prices: dict):
         # ESTRATEGIA V3: REVERSAL / INTRADIA (AGRESIVA)
         # ═══════════════════════════════════════════════════════════════════
         if phase == "LONG" and p < ema_200 and regime in ("VOLATILE", "TRENDING_DOWN") and not _fomc_suppressed:
-            reversal_rsi = 28.0 if sym == "TAO" else 26.0
+            # Per-symbol RSI threshold via config (sincronizado con backtester)
+            from config import RSI_REVERSAL_BY_SYMBOL
+            reversal_rsi = RSI_REVERSAL_BY_SYMBOL.get(sym, RSI_LONG_EXTREME)
             if rsi <= reversal_rsi:
                 register_signal_event(sym.replace("/USDT", ""), prices)
                 side = "LONG"

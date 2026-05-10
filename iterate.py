@@ -24,24 +24,42 @@ BASELINE_PATH = "/tmp/baseline.json"
 
 
 def patch_config(patches: dict, dry_run=False):
-    """patches = {"RSI_LONG_TAO_EXTREME": 25, ...}. Retorna dict de valores originales."""
+    """patches = {"RSI_LONG_TAO_EXTREME": 25, ...} or {"DICT.KEY": value}.
+
+    Soporta:
+    - Variables simples: KEY = value
+    - Dict entries: DICT.KEY → modifica DICT["KEY"] in place
+    """
     with open(CONFIG_PATH, "r") as f:
         content = f.read()
 
     originals = {}
     for key, new_val in patches.items():
-        # Match "VAR_NAME = <something>" preservando comentarios al final
-        pattern = rf"^({re.escape(key)}\s*=\s*)([^\s#]+)(\s*#.*)?$"
-        m = re.search(pattern, content, flags=re.MULTILINE)
-        if not m:
-            print(f"  ⚠️  {key} no encontrado en config.py — skip")
-            continue
-        prefix = m.group(1)
-        old_val = m.group(2).strip()
-        suffix = m.group(3) or ""
-        originals[key] = old_val
-        new_str = f"{prefix}{new_val}{suffix}"
-        content = re.sub(pattern, new_str, content, count=1, flags=re.MULTILINE)
+        # Caso especial: DICT.KEY → busca KEY: value dentro del dict
+        if "." in key:
+            dict_name, dict_key = key.split(".", 1)
+            # Match "    "TAO": 32.0," dentro de cualquier dict (tolerante a espacios)
+            pattern = rf'(\"{re.escape(dict_key)}\"\s*:\s*)([0-9.]+)(\s*,?)'
+            m = re.search(pattern, content)
+            if not m:
+                print(f"  ⚠️  {key} no encontrado en dict — skip")
+                continue
+            old_val = m.group(2)
+            originals[key] = old_val
+            new_str = f'"{dict_key}": {new_val}{m.group(3)}'
+            content = re.sub(pattern, new_str, content, count=1)
+        else:
+            pattern = rf"^({re.escape(key)}\s*=\s*)([^\s#]+)(\s*#.*)?$"
+            m = re.search(pattern, content, flags=re.MULTILINE)
+            if not m:
+                print(f"  ⚠️  {key} no encontrado en config.py — skip")
+                continue
+            prefix = m.group(1)
+            old_val = m.group(2).strip()
+            suffix = m.group(3) or ""
+            originals[key] = old_val
+            new_str = f"{prefix}{new_val}{suffix}"
+            content = re.sub(pattern, new_str, content, count=1, flags=re.MULTILINE)
 
     if not dry_run:
         with open(CONFIG_PATH, "w") as f:
@@ -142,36 +160,21 @@ if __name__ == "__main__":
 
     # Lista de iteraciones a probar (cada una se evalúa, keep/revert)
     iters = [
-        # ── Ronda 3: params nunca tocados ───────────────────────────────────────
-        # Ahora TP1=3.0 — re-probar SL combos
-        ("sl_2.5_with_tp3",    {"ATR_SL_MULT": 2.5}),
-        ("sl_1.8_with_tp3",    {"ATR_SL_MULT": 1.8}),
-        # TP2 / TP3 ajustes
-        ("tp2_extended",       {"ATR_TP2_MULT": 5.0}),
-        ("tp3_moonshot",       {"ATR_TP3_MULT": 10.0}),
-        ("tp2_conservative",   {"ATR_TP2_MULT": 2.5}),
-        # Min SL pct: protege de SL muy ajustados
-        ("min_sl_pct_higher",  {"ATR_MIN_SL_PCT": 0.012}),
-        ("min_sl_pct_lower",   {"ATR_MIN_SL_PCT": 0.005}),
-        # RVOL filters
-        ("rvol_strict",        {"RVOL_MIN_ENTRY": 1.3}),
-        ("rvol_loose",         {"RVOL_MIN_ENTRY": 0.8}),
-        ("rvol_btc_higher",    {"RVOL_MIN_BTC": 1.0}),
-        # ADX regime
-        ("adx_strict",         {"ADX_TRENDING_THRESHOLD": 25}),
-        ("adx_loose",          {"ADX_TRENDING_THRESHOLD": 15}),
-        # BB ranging detection
-        ("bb_ranging_wider",   {"BB_WIDTH_RANGING_PCT": 0.025}),
-        ("bb_ranging_tighter", {"BB_WIDTH_RANGING_PCT": 0.010}),
-        # V3 holding bars (timeout)
-        ("v3_max_bars_short",  {"V3_MAX_HOLDING_BARS": 24}),
-        ("v3_max_bars_long",   {"V3_MAX_HOLDING_BARS": 96}),
-        # V4 specific SL
-        ("v4_atr_sl_tight",    {"V4_ATR_SL_MULT": 1.0}),
-        ("v4_atr_sl_wide",     {"V4_ATR_SL_MULT": 2.0}),
-        # V4 RSI low (currently 35)
-        ("v4_rsi_low_lower",   {"V4_RSI_LOW": 30.0}),
-        ("v4_rsi_low_higher",  {"V4_RSI_LOW": 40.0}),
+        # ── Ronda 4: per-symbol RSI tuning ──────────────────────────────────────
+        # TAO V3 OOS NEGATIVO con 32 — probar valores más estrictos
+        ("tao_rsi_28",       {"RSI_REVERSAL_BY_SYMBOL.TAO": 28.0}),
+        ("tao_rsi_25",       {"RSI_REVERSAL_BY_SYMBOL.TAO": 25.0}),
+        ("tao_rsi_30",       {"RSI_REVERSAL_BY_SYMBOL.TAO": 30.0}),
+        # ETH V3 ✅ campeón — probar más laxo (más oportunidades)
+        ("eth_rsi_35",       {"RSI_REVERSAL_BY_SYMBOL.ETH": 35.0}),
+        ("eth_rsi_30",       {"RSI_REVERSAL_BY_SYMBOL.ETH": 30.0}),
+        # BTC marginal — probar más estricto
+        ("btc_rsi_28",       {"RSI_REVERSAL_BY_SYMBOL.BTC": 28.0}),
+        ("btc_rsi_35",       {"RSI_REVERSAL_BY_SYMBOL.BTC": 35.0}),
+        # ZEC alto edge — probar más laxo y más estricto
+        ("zec_rsi_33",       {"RSI_REVERSAL_BY_SYMBOL.ZEC": 33.0}),
+        ("zec_rsi_27",       {"RSI_REVERSAL_BY_SYMBOL.ZEC": 27.0}),
+        # Ronda 3 archivada — ver _ITERATION_LOG.md
     ]
 
     current_baseline = baseline

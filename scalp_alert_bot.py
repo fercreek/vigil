@@ -1101,19 +1101,10 @@ def main():
                         send_telegram(msg)
                         print(f"✅ Sentinel {_sym}: enviado · {_bias} {_score}/5")
                 
-                # --- ALTCOIN SENTINEL (Cada 4 Horas) ---
-                if now - last_sentinel_time > 14400: # 4 horas
-                    last_sentinel_time = now
-                    print("📡 Sentinel de Altcoins: Escaneando mercado secundario (BTC/ETH)...")
-                    # Escaneamos narrativa para el resto, solo alertamos si es RELEVANTE (🚨)
-                    import social_analyzer as _sa
-                    reports = _sa.check_altcoin_narratives(["BTC", "ETH"])
-                    for r in reports:
-                        msg = (f"🛡️ <b>ALTCOIN SENTINEL ALERT</b> 🚨\n\n"
-                               f"{r}\n\n"
-                               f"💡 <i>Setup detectado fuera del foco principal ZEC/TAO.</i>")
-                        send_telegram(msg)
-                    
+                # --- ALTCOIN SENTINEL: REMOVED 2026-05-09 ---
+                # Audit Telegram: ruido sin acción accionable. Duplicaba info de PANORAMA.
+                # Si querés narrativas BTC/ETH, usar /intel <SYM> en Telegram (handler activo).
+
         except Exception as e:
             from logger_core import logger as _logger
             _logger.error("❌ Main Loop Error: %s", e, exc_info=True)
