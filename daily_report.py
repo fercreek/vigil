@@ -46,33 +46,84 @@ def _send_telegram(msg: str):
 
 
 def _wr_window(hours: int) -> dict:
-    """Calcula WR de los últimos N horas. Retorna dict con counts + WR."""
+    """WR + PnL + Profit Factor + Expectancy de últimos N horas (real, no-sim).
+
+    PnL aprox: usa entry/sl/tp1 para estimar % por trade según result.
+      FULL_WON / WON: +(tp1-entry)/entry
+      PARTIAL_*:      +50% del path entry→tp1 (mover SL a BE captura mitad)
+      LOST:           -(entry-sl)/entry  (signo según side)
+    """
     cutoff = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)).isoformat()
     try:
         conn = sqlite3.connect(tracker.DB_FILE)
         cur = conn.cursor()
         cur.execute("""
-            SELECT
-                SUM(CASE WHEN status IN ('FULL_WON','PARTIAL_WON','PARTIAL_CLOSED','WON') THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN status='LOST' THEN 1 ELSE 0 END) as losses,
-                SUM(CASE WHEN status='OPEN' THEN 1 ELSE 0 END) as open_n,
-                COUNT(*) as total
+            SELECT type, status, entry_price, sl_price, tp1_price
             FROM trades
             WHERE (is_sim=0 OR is_sim IS NULL)
               AND open_time >= ?
         """, (cutoff,))
-        wins, losses, open_n, total = cur.fetchone()
+        rows = cur.fetchall()
         conn.close()
-        wins = wins or 0
-        losses = losses or 0
-        open_n = open_n or 0
-        total = total or 0
+
+        wins = losses = open_n = 0
+        gross_profit = 0.0  # suma % de winners
+        gross_loss   = 0.0  # suma % absoluto de losers
+        win_pnls   = []
+        loss_pnls  = []
+
+        for side, status, entry, sl, tp1 in rows:
+            entry = float(entry or 0)
+            sl    = float(sl or 0)
+            tp1   = float(tp1 or 0)
+            if entry <= 0:
+                continue
+            sign = 1 if side == "LONG" else -1
+
+            if status == "OPEN":
+                open_n += 1
+                continue
+            if status in ("FULL_WON", "WON"):
+                pnl = sign * (tp1 - entry) / entry * 100 if tp1 > 0 else 0
+                wins += 1
+                gross_profit += pnl
+                win_pnls.append(pnl)
+            elif status in ("PARTIAL_WON", "PARTIAL_CLOSED"):
+                # Mitad del path al tp1 (parcial) — aprox conservadora
+                pnl = sign * (tp1 - entry) / entry * 100 * 0.5 if tp1 > 0 else 0
+                wins += 1
+                gross_profit += pnl
+                win_pnls.append(pnl)
+            elif status == "LOST":
+                pnl = sign * (sl - entry) / entry * 100 if sl > 0 else 0
+                # sign × (sl-entry)/entry: LONG con sl<entry → negativo; SHORT con sl>entry → negativo
+                losses += 1
+                gross_loss += abs(pnl)
+                loss_pnls.append(pnl)
+
         closed = wins + losses
         wr = (wins / closed * 100) if closed > 0 else 0.0
-        return {"wins": wins, "losses": losses, "open": open_n, "total": total, "closed": closed, "wr": wr}
+        pnl_total = gross_profit - gross_loss
+        avg_win  = (sum(win_pnls) / len(win_pnls)) if win_pnls else 0.0
+        avg_loss = (sum(loss_pnls) / len(loss_pnls)) if loss_pnls else 0.0  # negativo
+        # Profit Factor = gross_profit / gross_loss (>1 = profitable)
+        pf = (gross_profit / gross_loss) if gross_loss > 0 else (float("inf") if gross_profit > 0 else 0.0)
+        # Expectancy = (WR × avg_win) + (LR × avg_loss)
+        wr_dec = wr / 100
+        expectancy = (wr_dec * avg_win) + ((1 - wr_dec) * avg_loss) if closed > 0 else 0.0
+
+        return {
+            "wins": wins, "losses": losses, "open": open_n, "total": len(rows),
+            "closed": closed, "wr": wr,
+            "pnl_total": pnl_total,
+            "avg_win": avg_win, "avg_loss": avg_loss,
+            "pf": pf, "expectancy": expectancy,
+        }
     except Exception as e:
         logger.error("WR window error: %s", e)
-        return {"wins": 0, "losses": 0, "open": 0, "total": 0, "closed": 0, "wr": 0.0}
+        return {"wins": 0, "losses": 0, "open": 0, "total": 0, "closed": 0,
+                "wr": 0.0, "pnl_total": 0.0, "avg_win": 0.0, "avg_loss": 0.0,
+                "pf": 0.0, "expectancy": 0.0}
 
 
 def _skip_count_24h() -> int:
@@ -164,6 +215,18 @@ def build_daily_report() -> str:
 
     today = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M UTC")
 
+    # Veredicto de profitability basado en Profit Factor
+    def _verdict(pf: float, n: int) -> str:
+        if n < 5:        return "📊 muestra insuficiente"
+        if pf >= 2.0:    return "🟢 profitable (PF ≥ 2)"
+        if pf >= 1.5:    return "🟢 profitable (PF ≥ 1.5)"
+        if pf >= 1.0:    return "🟡 break-even (PF ≥ 1)"
+        return "🔴 perdedor (PF < 1)"
+
+    def _fmt_pf(pf: float) -> str:
+        if pf == float("inf"): return "∞"
+        return f"{pf:.2f}"
+
     return (
         f"📊 <b>REPORTE DIARIO ZENITH</b>\n"
         f"<code>{today}</code>\n"
@@ -173,6 +236,13 @@ def build_daily_report() -> str:
         f"  7d:   <b>{w7d['wr']:.1f}%</b> ({w7d['wins']}W / {w7d['losses']}L)  {trend}\n"
         f"  30d:  <b>{w30d['wr']:.1f}%</b> ({w30d['wins']}W / {w30d['losses']}L)\n"
         f"  Baseline ({BASELINE_LABEL}): {BASELINE_WR}%\n"
+        f"\n<b>📈 Profitability 7d</b>  ←  métrica real\n"
+        f"  PnL acumulado:  <b>{w7d['pnl_total']:+.2f}%</b>\n"
+        f"  Profit Factor:  <b>{_fmt_pf(w7d['pf'])}</b>  {_verdict(w7d['pf'], w7d['closed'])}\n"
+        f"  Expectancy:     <b>{w7d['expectancy']:+.2f}%</b> por trade\n"
+        f"  Avg Win:  +{w7d['avg_win']:.2f}%  |  Avg Loss: {w7d['avg_loss']:.2f}%\n"
+        f"\n<b>📊 Profitability 30d</b>\n"
+        f"  PnL: {w30d['pnl_total']:+.2f}%  |  PF: {_fmt_pf(w30d['pf'])}  |  Exp: {w30d['expectancy']:+.2f}%\n"
         f"\n<b>Actividad 24h</b>\n"
         f"  Activados:  {w24['total']}\n"
         f"  Skipeados:  {skips_24h}\n"
@@ -184,7 +254,7 @@ def build_daily_report() -> str:
         f"  Circuit breaker: {_circuit_status()}\n"
         f"  Costo IA mes:    {_ai_budget_summary()}\n"
         f"━━━━━━━━━━━━━━━━━━\n"
-        f"<i>/winrate · /pos · /budget para detalle</i>"
+        f"<i>PF &gt; 1 = ganando · WR alone es ruido · /winrate /pos /budget</i>"
     )
 
 

@@ -35,7 +35,8 @@ def calculate_sharpe(returns, risk_free=0.0, periods_per_year=365):
     if std_r == 0:
         return 0.0
     rf_per_trade = risk_free / periods_per_year if periods_per_year > 0 else 0.0
-    return float((mean_r - rf_per_trade) / std_r * math.sqrt(min(len(returns), periods_per_year)))
+    # Fix: usar sqrt(N) sin clamp a periods_per_year (era inflate cuando N < 365)
+    return float((mean_r - rf_per_trade) / std_r * math.sqrt(len(returns)))
 
 
 def calculate_sortino(returns, risk_free=0.0, periods_per_year=365):
@@ -55,7 +56,8 @@ def calculate_sortino(returns, risk_free=0.0, periods_per_year=365):
     if downside_std == 0:
         return float('inf') if mean_r > 0 else 0.0
     rf_per_trade = risk_free / periods_per_year if periods_per_year > 0 else 0.0
-    return float((mean_r - rf_per_trade) / downside_std * math.sqrt(min(len(returns), periods_per_year)))
+    # Fix: usar sqrt(N) sin clamp (mismo bug que Sharpe)
+    return float((mean_r - rf_per_trade) / downside_std * math.sqrt(len(returns)))
 
 
 def calculate_max_drawdown(equity_curve):

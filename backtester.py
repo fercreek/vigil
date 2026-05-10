@@ -518,3 +518,77 @@ class Backtester:
             f"Total Return: {report['total_return_pct']:+.2f}%",
         ]
         return "\n".join(lines)
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CLI — corrida rápida de walk-forward + multi-estrategia
+# ═══════════════════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="Backtester + Walk-Forward Validator")
+    parser.add_argument("--symbols", nargs="+", default=["BTC", "ETH", "TAO", "ZEC"],
+                        help="Símbolos a testear")
+    parser.add_argument("--strategies", nargs="+", default=["V1", "V3", "V4", "V5"],
+                        help="Estrategias")
+    parser.add_argument("--mode", choices=["run", "walk_forward", "both"], default="both",
+                        help="run: backtest simple | walk_forward: validation | both")
+    parser.add_argument("--train_pct", type=float, default=0.7,
+                        help="Walk-forward train pct (default 0.7)")
+    args = parser.parse_args()
+
+    print(f"\n{'='*78}")
+    print(f"BACKTESTER — symbols={args.symbols} strategies={args.strategies} mode={args.mode}")
+    print(f"{'='*78}\n")
+
+    for sym in args.symbols:
+        bt = Backtester()
+        try:
+            bt.load_data(sym)
+        except Exception as e:
+            print(f"{sym} load_data error: {e}")
+            continue
+
+        for strat in args.strategies:
+            print(f"\n--- {sym} / {strat} ---")
+            if args.mode in ("run", "both"):
+                try:
+                    trades = bt.run(strategy=strat)
+                    n = len(trades)
+                    if n == 0:
+                        print(f"  run: 0 trades")
+                    else:
+                        wins = sum(1 for t in trades if t["result"] in
+                                   ("FULL_WON", "WIN_FULL", "PARTIAL_WON", "WIN_PARTIAL"))
+                        loss = sum(1 for t in trades if t["result"] == "LOST")
+                        pnl = sum(t["pnl_pct"] for t in trades)
+                        wr = (wins / n * 100) if n > 0 else 0
+                        print(f"  run: {n} trades  WR={wr:.1f}%  PnL={pnl:+.1f}%")
+                except Exception as e:
+                    print(f"  run ERROR: {e}")
+
+            if args.mode in ("walk_forward", "both"):
+                try:
+                    wf = bt.walk_forward(strategy=strat, train_pct=args.train_pct)
+                    if "error" in wf:
+                        print(f"  walk_forward: {wf['error']}")
+                    else:
+                        train = wf.get("in_sample", {})
+                        test  = wf.get("out_of_sample", {})
+                        deg_dict = wf.get("degradation_pct", {})
+                        deg_wr = deg_dict.get("win_rate", 0)
+                        train_wr = train.get("win_rate", 0)
+                        test_wr  = test.get("win_rate", 0)
+                        train_pnl = train.get("total_return_pct", 0)
+                        test_pnl  = test.get("total_return_pct", 0)
+                        verdict = ("✅ robust" if abs(deg_wr) < 30
+                                   else "⚠️ overfit" if deg_wr < -30
+                                   else "?? variable")
+                        print(f"  walk_fwd: train WR={train_wr:.1f}% PnL={train_pnl:+.1f}% | "
+                              f"test WR={test_wr:.1f}% PnL={test_pnl:+.1f}% | "
+                              f"deg_WR={deg_wr:+.1f}% {verdict}")
+                except Exception as e:
+                    print(f"  walk_forward ERROR: {e}")
