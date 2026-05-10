@@ -1,7 +1,8 @@
 # _GUIDE — Cómo funciona el bot (manual operacional)
 
 > Para Fernando. Sin código. Lenguaje plano.
-> Última actualización: 2026-05-09
+> Última actualización: 2026-05-09 (validado contra código por 5 auditores)
+> Cobertura validada: 100% threads, 100% filtros, 88% comandos, 100% schema, 100% flujo señal→trade
 
 ---
 
@@ -30,7 +31,7 @@ Pensalo como **7 trabajadores** distintos cada uno haciendo su tarea:
 | **swing** | Busca entradas Ichimoku 4H (long/short) | 4 horas | ZEC, TAO, BTC, ETH, SOL |
 | **commodities** | Busca entradas en metales/energía | 15 min | GOLD, OIL, NG, SLV, HG |
 | **scalper_shorts** | Busca SHORTs scalper (NUEVO) | 15 min | DOGE, FIL, TAO |
-| **stock** | Watchdog acciones US — alerta cuando precio toca entry de la lista PTS | 5 min | TSLA, NVDA, COIN, HOOD, etc. |
+| **stock** | Watchdog acciones US — alerta cuando precio toca entry de la lista PTS | 15 min | TSLA, NVDA, COIN, HOOD, etc. |
 | **manual_monitor** | Revisa P&L de tus posiciones manuales (`/manual_add`) | 30 min | Las que tengas abiertas |
 | **telegram** | Escucha tus comandos `/comando` | 5 segundos | — |
 
@@ -44,7 +45,7 @@ Todos tienen **auto-restart**: si se cae uno, se reinicia solo. Watchdog vigila 
 
 | Estrategia | Cuándo dispara | Win rate histórico |
 |-----------|----------------|-------------------|
-| **V1-LONG** | RSI ≤ 45 + precio sobre EMA200 + BB touch | 27% (49 trades antiguos) |
+| **V1-LONG** | RSI ≤ 45 (ZEC: ≤48) + precio sobre EMA200 + BB touch (bonus, no requerido) | 27% (49 trades antiguos) |
 | **V3-REVERSAL** | RSI extremo (≤ 26-28) + precio bajo EMA200 — modo rescate | sin data reciente |
 | **V4-EMA** | Precio dentro 2% de EMA200 + RSI 35-50 | sin data reciente |
 | **V5-MOMENTUM** | RSI cruza 50 desde abajo | sin data reciente |
@@ -57,7 +58,8 @@ Todos tienen **auto-restart**: si se cae uno, se reinicia solo. Watchdog vigila 
 Estrategia: **Ichimoku Kumo breakout**.
 - Cuando precio rompe el "kumo" 4H al alza → LONG
 - Cuando rompe abajo → SHORT
-- TP escalonado (50% en TP1, 30% TP2, 20% TP3)
+- **Niveles ATR-based:** SL = 2×ATR, TP1 = 2.5×ATR, TP2 = 5×ATR, TP3 = 8×ATR
+- **Distribución de cierre sugerida:** 50% en TP1, 30% TP2, 20% TP3
 
 **Histórico real:** 76 trades, **17.1% WR**. La gran mayoría perdedores. La causa fue el bug de TAO Apr 12-14 (ya parchado).
 
@@ -186,8 +188,13 @@ Si SL hit:
 - `/budget` — gasto IA (Gemini + Claude)
 - `/circuit` — estado circuit breaker
 - `/risk` — resumen de riesgo (ATR, VIX, position size)
-- `/pause` / `/resume` — pausar bot
-- `/logs [N]` — últimas N líneas del log
+- `/audit` — auditoría institucional (Profit Factor, SQN)
+- `/agents` — historial de aciertos de la Cuadrilla Zenith
+- `/intel` — Social Intel & News Feed por símbolo
+- `/pause` / `/resume` — pausar bot (no en setMyCommands pero handler existe)
+- `/logs [N]` — últimas N líneas del log (no en setMyCommands)
+- `/stocks` — estado watchlist acciones (no en setMyCommands)
+- `/bitlobo` — análisis BitLobo (no en setMyCommands)
 
 ---
 
@@ -239,7 +246,7 @@ Tabla `trades` — cada fila = un trade activado o señal skipeada:
 | `entry_price` | Precio al que entraste |
 | `sl_price` | Stop loss |
 | `tp1_price`, `tp2_price` | Targets |
-| `status` | OPEN, FULL_WON, PARTIAL_WON, LOST, etc. |
+| `status` | OPEN, FULL_WON, PARTIAL_WON, PARTIAL_CLOSED, LOST |
 | `strategy_version` | V1-TECH, SWING, COMMODITY, SCALPER_SHORTS, MANUAL |
 | `alert_type` | v1_long, v3_reversal, swing_institutional, commodity_conservative, scalper_short_v1, manual_long |
 | `conf_score` | 0-7 — qué tan fuerte fue la señal |
@@ -247,7 +254,18 @@ Tabla `trades` — cada fila = un trade activado o señal skipeada:
 | `is_manual` | 1 = abierto vía /open, 0 = automático |
 | `open_time`, `close_time` | Timestamps |
 
-Tabla `signal_episodes` — memoria de aprendizaje IA. 31/39 sin outcome = bug pendiente (ver `_BACKLOG.md`).
+**Campos técnicos adicionales (audit/IA):**
+- `msg_id` — ID del mensaje Telegram (para reply/update)
+- `rsi_entry`, `bb_status`, `atr`, `elliott_wave` — snapshot indicadores en entry
+- `ai_analysis`, `macro_bias`, `inst_score` — contexto IA
+- `trigger_conditions` — JSON de condiciones que dispararon (⚠️ 0/91 pobladas — bug)
+- `events_json` — historial timestamps de eventos (TP/SL/BE) (⚠️ 0/91 pobladas)
+- `be_moved`, `partial_pct` — flags de gestión
+
+**Tablas relacionadas:**
+- `signal_episodes` — memoria de aprendizaje IA. 31/39 sin outcome (bug, ver `_BACKLOG.md`)
+- `backtest_sessions` — resultados de backtests históricos
+- `ai_calls` — **NO existe en producción** (función `ai_budget.init_db()` definida pero nunca llamada al startup)
 
 ---
 
@@ -272,8 +290,8 @@ Análisis por zonas (verde=soporte, rojo=resistencia). Aparece como línea 🐺 
 
 ### Costo IA
 - Gemini Flash: gratis
-- Claude Haiku: pago, cap $10/mes (config `ai_budget.py`)
-- **Real:** la tabla `ai_calls` no se inicializa → no hay tracking real (ver `_BACKLOG.md`)
+- Claude Haiku: pago, cap $10/mes (config `ai_budget.py:26` `MAX_MONTHLY_USD`)
+- **Estado real:** `ai_budget.py` tiene `init_db()` con tabla `ai_calls` definida, **pero nunca se invoca al startup** del bot. La tabla no existe en `trades.db` actual → tracking de costo IA no funciona en prod (ver `_BACKLOG.md` D2)
 
 ---
 
