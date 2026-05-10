@@ -20,7 +20,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Ruta de la misma BD que tracker para no dispersar archivos
-DB_FILE = os.getenv("TRACKER_DB", "data/trades.db")
+# Default era data/trades.db pero el bot real usa trades.db en raíz → fix mismatch
+try:
+    from tracker import DB_FILE as _TRACKER_DB
+    DB_FILE = os.getenv("TRACKER_DB", _TRACKER_DB)
+except ImportError:
+    DB_FILE = os.getenv("TRACKER_DB", "trades.db")
 
 # ─── Límites ──────────────────────────────────────────────────────────────────
 MAX_MONTHLY_USD      = float(os.getenv("AI_MAX_MONTHLY_USD", "10.0"))

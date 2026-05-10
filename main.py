@@ -81,6 +81,10 @@ def run_flask():
 if __name__ == "__main__":
     print("🚀 --- INICIANDO SISTEMA HÍBRIDO (V2.0 DUAL ENGINE + WATCHDOG) ---")
 
+    # 0. Init tablas auxiliares (ai_calls para tracking de costo IA)
+    import ai_budget
+    ai_budget.init_db()
+
     # 1. Registro de Comandos (Telegram UI)
     import alert_manager
     alert_manager.set_bot_commands()
