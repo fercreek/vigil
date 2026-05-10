@@ -53,78 +53,45 @@ def monitor_open_trades(prices: dict):
         if abs(pnl_pct) > 1.0:
             print(f"📈 [Trade Monitor] {sym} {tipo}: {pnl_pct:+.2f}% | RVOL: {rvol} | TSL: {tsl}")
 
-        if tipo == "SHORT":
-            if curr_p >= t["sl_price"]:
-                tracker.update_trade_status(t["id"], "LOST")
-                lesson = gemini_analyzer.trigger_shadow_post_mortem(sym, curr_p, "LOST", rsi, "Post-Mortem SL (Short)")
-                if lesson:
-                    send_telegram(f"🧠 <b>NEURAL LEARNING (V4.0)</b>\n<i>{lesson}</i>", reply_to=reply)
-                msg = (f"🔴 <b>STOP LOSS TOCADO (POST-MORTEM)</b>\n\n"
-                       f"🪙 {sym} SHORT\n"
-                       f"💸 PnL: <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
-                       f"📊 <b>Contexto de Cierre:</b>\n"
-                       f"• RSI: {(t.get('rsi_entry') or 50.0):.1f} (Inicio) → {(rsi or 0.0):.1f} (Actual)\n"
-                       f"• Bollinger: {bb_ctx}\n"
-                       f"• Motivo: El precio superó el techo proyectado.")
-                alert(f"t_{t['id']}_l", msg, version=t["version"], reply_to=reply)
-                gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
-                circuit_breaker.record_outcome(is_win=False, pnl_pct=-abs(pnl_pct))
-            elif t["tp2_price"] > 0 and curr_p <= t["tp2_price"]:
-                tracker.update_trade_status(t["id"], "FULL_WON")
-                msg = (f"🟢 <b>TP2 ALCANZADO (STRIKE!)</b>\n\n"
-                       f"🪙 {sym} SHORT\n"
-                       f"💰 PnL: <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
-                       f"📊 <b>Resumen:</b>\n"
-                       f"• RSI Entrada: {(t.get('rsi_entry') or 50.0):.1f}\n"
-                       f"• RSI Cierre: {(rsi or 0.0):.1f}\n"
-                       f"✨ El indicador predijo el retroceso correctamente.")
-                alert(f"t_{t['id']}_w", msg, version=t["version"], reply_to=reply)
-                gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
-                circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct))
-            elif t["tp1_price"] > 0 and curr_p <= t["tp1_price"] and t["status"] == "OPEN":
-                tracker.update_trade_status(t["id"], "PARTIAL_WON")
-                new_sl = round(t["entry_price"] * 0.999, 2)
-                tracker.update_sl(t["id"], new_sl)
-                alert(f"t_{t['id']}_p", f"🟡 <b>TP1 ASEGURADO</b>\nTrailing BE (0.1%) Activado. Riesgo eliminado.", version=t["version"], reply_to=reply)
-                circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct) * 0.5)
-        elif tipo == "LONG":
-            if curr_p <= t["sl_price"]:
-                tracker.update_trade_status(t["id"], "LOST")
-                _ep_id = GLOBAL_CACHE.get("episode_ids", {}).pop(t["id"], None)
-                if _ep_id: _em.fill_outcome(_ep_id, "LOSS", -abs(pnl_pct))
-                lesson = gemini_analyzer.trigger_shadow_post_mortem(sym, curr_p, "LOST", rsi, "Post-Mortem SL (Long)")
-                if lesson:
-                    send_telegram(f"🧠 <b>NEURAL LEARNING (V4.0)</b>\n<i>{lesson}</i>", reply_to=reply)
-                msg = (f"🔴 <b>STOP LOSS TOCADO (POST-MORTEM)</b>\n\n"
-                       f"🪙 {sym} LONG\n"
-                       f"💸 PnL: <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
-                       f"📊 <b>Contexto de Cierre:</b>\n"
-                       f"• RSI: {(t.get('rsi_entry') or 50.0):.1f} (Inicio) → {(rsi or 0.0):.1f} (Actual)\n"
-                       f"• Bollinger: {bb_ctx}\n"
-                       f"• Motivo: Soporte perforado, el impulso falló.")
-                alert(f"t_{t['id']}_l", msg, version=t["version"], reply_to=reply)
-                gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
-                circuit_breaker.record_outcome(is_win=False, pnl_pct=-abs(pnl_pct))
-            elif t["tp2_price"] > 0 and curr_p >= t["tp2_price"]:
-                tracker.update_trade_status(t["id"], "FULL_WON")
-                _ep_id = GLOBAL_CACHE.get("episode_ids", {}).pop(t["id"], None)
-                if _ep_id: _em.fill_outcome(_ep_id, "WIN", abs(pnl_pct))
-                msg = (f"🟢 <b>TP2 ALCANZADO (STRIKE!)</b>\n\n"
-                       f"🪙 {sym} LONG\n"
-                       f"💰 PnL: <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
-                       f"📊 <b>Resumen:</b>\n"
-                       f"• RSI Entrada: {(t.get('rsi_entry') or 50.0):.1f}\n"
-                       f"• RSI Cierre: {(rsi or 0.0):.1f}\n"
-                       f"✨ Rebote técnico capturado con éxito.")
-                alert(f"t_{t['id']}_w", msg, version=t["version"], reply_to=reply)
-                gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
-                circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct))
-            elif t["tp1_price"] > 0 and curr_p >= t["tp1_price"] and t["status"] == "OPEN":
-                tracker.update_trade_status(t["id"], "PARTIAL_WON")
-                new_sl = round(t["entry_price"] * 1.001, 2)
-                tracker.update_sl(t["id"], new_sl)
-                alert(f"t_{t['id']}_p", f"🚀 <b>TP1 ASEGURADO</b>\nTrailing BE (0.1%) Activado. Fondos protegidos.", version=t["version"], reply_to=reply)
-                circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct) * 0.5)
+        # Templates consolidados (ronda 5 Telegram cleanup)
+        # Antes: 8 mensajes distintos (4×SHORT + 4×LONG con texto único c/u)
+        # Ahora: 3 templates universales (SL / TP1 / TP2) que usan side dinámico
+        is_sl = (tipo == "SHORT" and curr_p >= t["sl_price"]) or \
+                (tipo == "LONG"  and curr_p <= t["sl_price"])
+        is_tp2 = t["tp2_price"] > 0 and (
+            (tipo == "SHORT" and curr_p <= t["tp2_price"]) or
+            (tipo == "LONG"  and curr_p >= t["tp2_price"]))
+        is_tp1 = t["tp1_price"] > 0 and t["status"] == "OPEN" and (
+            (tipo == "SHORT" and curr_p <= t["tp1_price"]) or
+            (tipo == "LONG"  and curr_p >= t["tp1_price"]))
+
+        if is_sl:
+            tracker.update_trade_status(t["id"], "LOST")
+            _ep_id = GLOBAL_CACHE.get("episode_ids", {}).pop(t["id"], None)
+            if _ep_id: _em.fill_outcome(_ep_id, "LOSS", -abs(pnl_pct))
+            msg = (f"🔴 <b>SL HIT</b>: {sym} {tipo} · <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
+                   f"Entry ${t['entry_price']:.4f} → Now ${curr_p:.4f}")
+            alert(f"t_{t['id']}_l", msg, version=t["version"], reply_to=reply)
+            gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
+            circuit_breaker.record_outcome(is_win=False, pnl_pct=-abs(pnl_pct))
+        elif is_tp2:
+            tracker.update_trade_status(t["id"], "FULL_WON")
+            _ep_id = GLOBAL_CACHE.get("episode_ids", {}).pop(t["id"], None)
+            if _ep_id: _em.fill_outcome(_ep_id, "WIN", abs(pnl_pct))
+            msg = (f"🟢 <b>TP2 HIT</b>: {sym} {tipo} · <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
+                   f"Entry ${t['entry_price']:.4f} → Now ${curr_p:.4f}")
+            alert(f"t_{t['id']}_w", msg, version=t["version"], reply_to=reply)
+            gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
+            circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct))
+        elif is_tp1:
+            tracker.update_trade_status(t["id"], "PARTIAL_WON")
+            be_offset = 0.999 if tipo == "SHORT" else 1.001
+            new_sl = round(t["entry_price"] * be_offset, 6)
+            tracker.update_sl(t["id"], new_sl)
+            alert(f"t_{t['id']}_p",
+                  f"🟡 <b>TP1 HIT</b>: {sym} {tipo} · BE asegurado",
+                  version=t["version"], reply_to=reply)
+            circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct) * 0.5)
 
     # ── Time-Based Exit (SWING only) ───────────────────────────────────
     # Data shows losing SWING trades stay open ~40h; winners close in ~19h.

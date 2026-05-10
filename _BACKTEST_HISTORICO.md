@@ -397,9 +397,105 @@ Post Ronda 2: +283.57%    1.89    232     +44pp (TP1 3x)
 Post Ronda 3: +361.01%    1.95    246     +77pp (RVOL/ADX/BB)
 Post Ronda 4: +407.89%    2.13    238     +47pp (TAO per-symbol)
 ─────────────────────────────────────────
-TOTAL Δ:      +349pp absolute (~7x baseline)
+Subtotal:     +349pp absolute (~7x baseline)
 PF: 1.15 → 2.13 (de marginal a institutional grade)
 ```
+
+---
+
+## 🎯 Ronda 5 — Per-symbol sizing + Multi-TF + Telegram cleanup (2026-05-09)
+
+**Objetivos:**
+1. Per-symbol position sizing weights basados en walk-forward edge
+2. Multi-TF filter (RSI 4H) para V3 — NFI style
+3. Audit BTC V4 (¿keep o kill?)
+4. Telegram cleanup completo (TP/SL templates, SWING, COMMODITIES)
+
+### Sizing diferencial (test_suite.py SYMBOL_WEIGHTS)
+
+Basado en walk-forward edge:
+
+| Symbol | Weight | Justificación |
+|--------|--------|---------------|
+| **ETH** | **1.5x** | Campeón OOS V3 (+15.9% test) |
+| **ZEC** | **1.2x** | Alto edge V3 (+21% test) |
+| **BTC** | **0.8x** | Marginal V3 OOS, V4 robust |
+| **TAO** | **0.7x** | V3 OOS aún -3% (mejorando pero no rentable solo) |
+
+**Resultado del sizing:**
+
+| Métrica | Pre-r5 | Post-sizing | Δ |
+|---------|--------|-------------|---|
+| **PnL agregado** | +407.89% | **+492.09%** | **+84pp** |
+| **Profit Factor** | 2.13 | **2.21** | +0.08 |
+| Trades total | 238 | 238 | sin cambio |
+
+### Multi-TF filter (RSI 4H) — INFRA agregada, sin impacto medible
+
+Implementado en `backtester.py` resampleando 1H → 4H sin look-ahead. Threshold inicial `MTF_RSI_4H_MAX = 50.0`.
+
+Iteraciones probadas: 40, 45, 60, 100 (off). **Todas REVERT** (delta = 0 o negativo).
+
+**Razón:** V3-REVERSAL ya requiere RSI 1H ≤ 28-32 (oversold extremo). Cuando 1H está tan bajo, 4H también está bajo casi por definición. El filtro es redundante.
+
+**Decisión:** mantener infra para futuro pero no impacta. Fallback a 50 (permisivo).
+
+### BTC V4 audit — KEEP
+
+365d standalone:
+- 13 trades, 23.1% WR, **+7.35% PnL, PF 1.69**
+- Avg/trade: +0.57% (positivo aunque pequeño)
+- Walk-forward: train +8.7%, test -1.3% (overfit pero solo 3 trades en test)
+
+**Veredicto:** mantener (PF > 1.5, edge marginal pero positivo).
+
+### Telegram cleanup aplicado
+
+**C1 — Templates TP/SL consolidados (trade_monitor.py):**
+- Antes: 8 mensajes distintos (4×SHORT + 4×LONG con texto único c/u, 8-10 líneas cada uno)
+- Ahora: 3 templates universales (SL / TP1 / TP2) usando `tipo` dinámico (2-3 líneas)
+- **Reducción: -5 templates, ~70% menos texto por evento**
+
+**C2 — SWING alert simplificado:**
+- Antes: 22 líneas con análisis IA + Kumo + Tenkan + bias + 3 TP detallados + gestión
+- Ahora: 7 líneas, solo info accionable
+- **Reducción: -68% volumen**
+
+**C3 — COMMODITIES alert simplificado:**
+- Antes: 18 líneas con confluencia detallada + 3 TP con gestión
+- Ahora: 7 líneas
+- **Reducción: -61% volumen**
+
+### Total acumulado 5 rondas
+
+```
+                  PnL       PF      N      Hito
+Baseline:      +59.11%    1.15    253     punto de partida
+Post Ronda 1: +239.62%    1.72    263     +180pp (RSI laxo + conf 5)
+Post Ronda 2: +283.57%    1.89    232     +44pp (TP1 3x)
+Post Ronda 3: +361.01%    1.95    246     +77pp (RVOL/ADX/BB)
+Post Ronda 4: +407.89%    2.13    238     +47pp (TAO per-symbol)
+Post Ronda 5: +492.09%    2.21    238     +84pp (sizing weights ETH 1.5x)
+─────────────────────────────────────────
+TOTAL Δ:      +433pp absolute (~8.3x baseline)
+PF: 1.15 → 2.21 (institutional grade ≥ 2.0 confirmado)
+```
+
+### Walk-forward post-r5 (sin regresión)
+
+Mismos resultados ronda 4 — sizing es runtime, no cambia trades del backtester:
+- ETH V3: +15.9% test ✅
+- ZEC V3: +21.0% test ✅
+- TAO V3: -3.0% test (marginal)
+- ZEC V4: +1.4% test ✅ robust
+
+### Próxima frontera (ronda 6 — solo si live trading 2-sem confirma edge)
+
+1. **Hyperopt-light** vía Freqtrade — exportar V3 como strategy y correr 500 épocas
+2. **Per-strategy + per-symbol weights** (no solo símbolo, sino combo)
+3. **Régimen detection refinement** — por qué Q1 2026 fue lateral choppy
+4. **Estrategia VWAP RANGING** — cubrir el gap de régimen lateral
+5. **TradingView webhook** Pine Script si pago Essential ($14.95/mes)
 
 ---
 

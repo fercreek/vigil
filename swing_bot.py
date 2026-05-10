@@ -136,28 +136,15 @@ def build_alert(symbol: str, side: str, price: float, atr: float,
     # Truncar análisis IA a 600 chars limpio
     analysis_short = analysis[:600].rsplit(" ", 1)[0] + "..." if len(analysis) > 600 else analysis
 
+    # Template simplificado (ronda 5 Telegram cleanup) — 9 líneas, sin redundancia
     msg = (
-        f"🏛️ <b>ZENITH INSTITUTIONAL ALERT ({symbol})</b>\n\n"
-        f"🌌 <b>ESTRATEGIA</b>: Swing Trend Follower (4H)\n"
-        f"📊 <b>BIAS SEMANAL (IA)</b>: {ai_bias} ({side})\n"
-        f"☁️ <b>KUMO STATUS</b>: {kumo_status}\n"
-        f"   Nube: ${kumo_bot:,.2f} — ${kumo_top:,.2f}\n"
-        f"📐 <b>Tenkan/Kijun</b>: {tk_icon}\n\n"
-        f"💡 <b>RACIONAL INSTITUCIONAL:</b>\n"
-        f"{analysis_short}\n\n"
-        f"{'─' * 30}\n"
-        f"🪙 <b>Entrada {side_icon}</b>: <code>${price:,.2f}</code>\n"
-        f"📏 <b>ATR (14p)</b>: <code>${atr:,.2f}</code>\n\n"
-        f"🎯 <b>TP1 (50% posición)</b>: <code>${tp1:,.2f}</code>  +{tp1_pct}%  R:R {rr1}:1\n"
-        f"   └ Al alcanzar: mover SL a breakeven\n"
-        f"🎯 <b>TP2 (30% posición)</b>: <code>${tp2:,.2f}</code>  +{tp2_pct}%  R:R {rr2}:1\n"
-        f"   └ Al alcanzar: tomar parcial, dejar runner\n"
-        f"🎯 <b>TP3 (20% runner)</b>: <code>${tp3:,.2f}</code>  +{tp3_pct}%  R:R {rr3}:1\n"
-        f"   └ Objetivo macro — dejar correr con BE\n\n"
-        f"🛑 <b>SL</b>: <code>${sl:,.2f}</code>  -{sl_pct}%  (ATR × {ATR_SL})\n\n"
-        f"⚠️ <i>Gestión: SWING normal si VIX &lt; 25. "
-        f"RAPIDA (50% tamaño) si VIX &gt; 25 o DXY &gt; 105</i>\n"
-        f"🕐 {datetime.now().strftime('%Y-%m-%d %H:%M')} UTC"
+        f"🏛️ <b>SWING {side_icon}</b> {symbol}  ·  Bias: {ai_bias} · Kumo: {kumo_status}\n"
+        f"Entry: <code>${price:,.4f}</code>  ATR: ${atr:,.2f}\n"
+        f"🎯 TP1: <code>${tp1:,.4f}</code> +{tp1_pct}% (R:R {rr1}:1) — 50% pos\n"
+        f"🎯 TP2: <code>${tp2:,.4f}</code> +{tp2_pct}% (R:R {rr2}:1) — 30%\n"
+        f"🎯 TP3: <code>${tp3:,.4f}</code> +{tp3_pct}% (R:R {rr3}:1) — runner\n"
+        f"🛑 SL: <code>${sl:,.4f}</code> -{sl_pct}%\n"
+        f"<i>{tk_icon} · Kumo ${kumo_bot:.0f}-${kumo_top:.0f} · {datetime.now().strftime('%H:%M')}</i>"
     )
     return msg, round(sl, 4), round(tp1, 4), round(tp2, 4), round(tp3, 4)
 

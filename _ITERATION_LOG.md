@@ -49,3 +49,7 @@ Métricas: PnL agregado · trades · PF global. KEEP = aplica al config. REVERT 
 | btc_rsi_35 | `{'RSI_REVERSAL_BY_SYMBOL.BTC': 35.0}` | +407.89% → +407.89% (+0.00) | 238 → 238 (+0.0%) | PF 2.13 → 2.13 | ❌ REVERT |
 | zec_rsi_33 | `{'RSI_REVERSAL_BY_SYMBOL.ZEC': 33.0}` | +407.89% → +407.89% (+0.00) | 238 → 238 (+0.0%) | PF 2.13 → 2.13 | ❌ REVERT |
 | zec_rsi_27 | `{'RSI_REVERSAL_BY_SYMBOL.ZEC': 27.0}` | +407.89% → +389.04% (-18.85) | 238 → 233 (-2.1%) | PF 2.13 → 2.08 | ❌ REVERT |
+| mtf_strict_45 | `{'MTF_RSI_4H_MAX': 45.0}` | +492.09% → +492.09% (+0.00) | 238 → 238 (+0.0%) | PF 2.21 → 2.21 | ❌ REVERT |
+| mtf_strict_40 | `{'MTF_RSI_4H_MAX': 40.0}` | +492.09% → +490.11% (-1.98) | 238 → 234 (-1.7%) | PF 2.21 → 2.21 | ❌ REVERT |
+| mtf_loose_60 | `{'MTF_RSI_4H_MAX': 60.0}` | +492.09% → +492.09% (+0.00) | 238 → 238 (+0.0%) | PF 2.21 → 2.21 | ❌ REVERT |
+| mtf_off | `{'MTF_RSI_4H_MAX': 100.0}` | +492.09% → +492.09% (+0.00) | 238 → 238 (+0.0%) | PF 2.21 → 2.21 | ❌ REVERT |

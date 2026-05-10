@@ -152,6 +152,16 @@ class Backtester:
         # BB width for regime
         bb_mid = df['close'].rolling(20).mean()
         df['bb_width'] = (df['bb_u'] - df['bb_l']) / bb_mid.replace(0, 1e-10)
+        # Multi-TF: RSI 4H (resampleado de 1H, sin look-ahead — usa último close 4H)
+        # Resample 4H y forward-fill al index 1H original
+        rsi_4h = df['close'].resample('4h').last().dropna()
+        delta_4h = rsi_4h.diff()
+        gain_4h = delta_4h.where(delta_4h > 0, 0).ewm(alpha=1/14, adjust=False).mean()
+        loss_4h = (-delta_4h.where(delta_4h < 0, 0)).ewm(alpha=1/14, adjust=False).mean()
+        rs_4h = gain_4h / loss_4h.replace(0, 1e-10)
+        rsi_4h_series = 100 - (100 / (1 + rs_4h))
+        # Forward-fill al index 1H (sin look-ahead: cada bar 1H ve último close 4H ya cerrado)
+        df['rsi_4h'] = rsi_4h_series.reindex(df.index, method='ffill')
         # Previous RSI for "rising" filter
         df['rsi_prev'] = df['rsi'].shift(1)
 
@@ -326,10 +336,15 @@ class Backtester:
                         )
                         continue
 
-            # ── V3 REVERSAL (FIXED: divergence + BB squeeze + timeout) ───
+            # ── V3 REVERSAL (FIXED: divergence + BB squeeze + timeout + multi-TF) ───
             if strategy in ("V3", "ALL"):
+                # Multi-TF filter (NFI style): solo entrar si TF mayor (4H) también débil
+                # Evita comprar reversal cuando el TF mayor sigue trending up fuerte
+                from config import MTF_RSI_4H_MAX
+                rsi_4h = row.get('rsi_4h', 50)
+                mtf_ok = pd.isna(rsi_4h) or rsi_4h <= MTF_RSI_4H_MAX
                 if (price < ema200 and regime in ("VOLATILE", "TRENDING_DOWN")
-                        and rsi <= reversal_rsi):
+                        and rsi <= reversal_rsi and mtf_ok):
                     # Require structural confirmation
                     has_divergence = row.get('rsi_divergence', False) if V3_REQUIRE_DIVERGENCE else True
                     has_squeeze = row.get('bb_squeeze', False) if V3_REQUIRE_BB_SQUEEZE else True

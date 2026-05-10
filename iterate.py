@@ -160,21 +160,13 @@ if __name__ == "__main__":
 
     # Lista de iteraciones a probar (cada una se evalúa, keep/revert)
     iters = [
-        # ── Ronda 4: per-symbol RSI tuning ──────────────────────────────────────
-        # TAO V3 OOS NEGATIVO con 32 — probar valores más estrictos
-        ("tao_rsi_28",       {"RSI_REVERSAL_BY_SYMBOL.TAO": 28.0}),
-        ("tao_rsi_25",       {"RSI_REVERSAL_BY_SYMBOL.TAO": 25.0}),
-        ("tao_rsi_30",       {"RSI_REVERSAL_BY_SYMBOL.TAO": 30.0}),
-        # ETH V3 ✅ campeón — probar más laxo (más oportunidades)
-        ("eth_rsi_35",       {"RSI_REVERSAL_BY_SYMBOL.ETH": 35.0}),
-        ("eth_rsi_30",       {"RSI_REVERSAL_BY_SYMBOL.ETH": 30.0}),
-        # BTC marginal — probar más estricto
-        ("btc_rsi_28",       {"RSI_REVERSAL_BY_SYMBOL.BTC": 28.0}),
-        ("btc_rsi_35",       {"RSI_REVERSAL_BY_SYMBOL.BTC": 35.0}),
-        # ZEC alto edge — probar más laxo y más estricto
-        ("zec_rsi_33",       {"RSI_REVERSAL_BY_SYMBOL.ZEC": 33.0}),
-        ("zec_rsi_27",       {"RSI_REVERSAL_BY_SYMBOL.ZEC": 27.0}),
-        # Ronda 3 archivada — ver _ITERATION_LOG.md
+        # ── Ronda 5: Multi-TF + sizing ──────────────────────────────────────────
+        # MTF threshold tuning
+        ("mtf_strict_45",    {"MTF_RSI_4H_MAX": 45.0}),
+        ("mtf_strict_40",    {"MTF_RSI_4H_MAX": 40.0}),
+        ("mtf_loose_60",     {"MTF_RSI_4H_MAX": 60.0}),
+        ("mtf_off",          {"MTF_RSI_4H_MAX": 100.0}),  # disabled (sanity check)
+        # Ronda 4 archivada (resultados en _ITERATION_LOG.md)
     ]
 
     current_baseline = baseline

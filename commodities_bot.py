@@ -566,24 +566,16 @@ def analyze_commodity(key: str, inst: dict):
     side_icon = "LONG" if side == "LONG" else "SHORT"
     strength = "FUERTE" if score >= 4 else "VALIDA"
 
+    # Template simplificado (ronda 5 Telegram cleanup) — 7 líneas
+    ema_dir = '↑' if ema50 > ema200 else '↓'
     msg = (
-        f"<b>COMMODITIES ALERT ({key})</b>\n"
-        f"{inst['name']}\n\n"
-        f"<b>ESTRATEGIA</b>: Conservadora 1H\n"
-        f"<b>Confluencia</b>: {score}/5 ({strength})\n"
-        f"  EMA50 {'&gt;' if ema50 > ema200 else '&lt;'} EMA200\n"
-        f"  RSI: {rsi:.1f}\n"
-        f"  DXY: {dxy:.2f}\n"
-        f"  ATR: ${atr:,.2f}\n\n"
-        f"{'─' * 28}\n"
-        f"<b>Entrada {side_icon}</b>: <code>${price:,.{dec}f}</code>\n\n"
-        f"TP1 (50%): <code>${tp1:,.{dec}f}</code>  R:R {rr1}:1\n"
-        f"  Mover SL a breakeven\n"
-        f"TP2 (30%): <code>${tp2:,.{dec}f}</code>  R:R {rr2}:1\n"
-        f"TP3 (20%): <code>${tp3:,.{dec}f}</code>  R:R {rr3}:1\n\n"
-        f"SL: <code>${sl:,.{dec}f}</code>  (ATR x {atr_sl_mult})\n\n"
-        f"<i>Bot conservador. Confluencia minima 3/5.</i>\n"
-        f"{datetime.now().strftime('%Y-%m-%d %H:%M')} UTC"
+        f"⛏️ <b>COMMOD {side_icon}</b> {key} ({score}/5 {strength})\n"
+        f"Entry: <code>${price:,.{dec}f}</code>  RSI {rsi:.0f}  EMA50{ema_dir}EMA200\n"
+        f"🎯 TP1 <code>${tp1:,.{dec}f}</code> R:R {rr1}:1  → BE\n"
+        f"🎯 TP2 <code>${tp2:,.{dec}f}</code> R:R {rr2}:1\n"
+        f"🎯 TP3 <code>${tp3:,.{dec}f}</code> R:R {rr3}:1\n"
+        f"🛑 SL <code>${sl:,.{dec}f}</code> (ATRx{atr_sl_mult})\n"
+        f"<i>DXY {dxy:.1f} · {datetime.now().strftime('%H:%M')}</i>"
     )
 
     # Wire signal keyboard (Activar / Skip) — mismo flujo que strategies.py

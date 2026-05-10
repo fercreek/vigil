@@ -29,8 +29,12 @@ PERIODS = [
     ("2026_M03",   "2026-03-01", "2026-03-29"),
 ]
 
-# Pesos por símbolo (default 1.0 = sin sizing diferencial)
-SYMBOL_WEIGHTS = {"BTC": 1.0, "ETH": 1.0, "TAO": 1.0, "ZEC": 1.0}
+# Pesos por símbolo según walk-forward edge (ronda 4):
+#   ETH V3: campeón OOS +15.9% → boost 1.5x
+#   ZEC V3: alto edge OOS +21% → 1.2x
+#   BTC V3: marginal positivo → 0.8x
+#   TAO V3: aún OOS marginal (-3%) → 0.7x
+SYMBOL_WEIGHTS = {"BTC": 0.8, "ETH": 1.5, "TAO": 0.7, "ZEC": 1.2}
 
 
 def aggregate(trades, weight=1.0):

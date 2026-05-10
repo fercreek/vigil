@@ -136,11 +136,15 @@ RSI_LONG_ZEC_EXTREME = 30.0   # ZEC modo rescate agresivo (legacy)
 # Per-symbol RSI threshold para V3-REVERSAL (sincronizado strategies.py + backtester.py)
 # Si símbolo no está aquí → usa RSI_LONG_EXTREME (default 30)
 RSI_REVERSAL_BY_SYMBOL = {
-    "TAO": 28.0,    # tunable per-symbol (TAO V3 OOS NEGATIVO walk-fwd con 32 — candidato revertir 28)
+    "TAO": 28.0,    # ronda 4: 32→28 mejoró TAO V3 OOS de -14.7% a -3.0%
     "ZEC": 30.0,    # ZEC V3 ✅ alto edge OOS (+21%)
     "ETH": 32.0,    # ETH V3 ✅ campeón OOS (+15.9%)
     "BTC": 32.0,    # BTC V3 marginal positivo OOS
 }
+
+# Multi-TF filter (NFI style) ronda 5 — bloquea V3 LONG si RSI 4H demasiado alto
+# Permite reversal solo cuando 4H también está débil → reduce false signals
+MTF_RSI_4H_MAX = 50.0  # V3 LONG: solo si rsi_4h <= 50
 
 RSI_SHORT_ENTRY      = 55.0   # Entrada Short estándar (was 62 — casi nunca en downtrend)
 RSI_SHORT_EXTREME    = 70.0   # Entrada Short extrema
