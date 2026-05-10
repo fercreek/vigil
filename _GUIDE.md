@@ -160,41 +160,45 @@ Si SL hit:
 
 ## 6. Comandos Telegram que importan
 
-### Diarios
-- `/pos` — posiciones abiertas
-- `/pos full` — detalle completo de cada una
+### Menú visible en `/` (16 comandos esenciales)
+
+**Diario:**
+- `/pos` — posiciones abiertas (`/pos full` = detalle)
 - `/check` — P&L + recomendaciones SL/TP por ATR
+- `/open` — abrir posición manual (picker inline)
 - `/winrate` — win rate global + Real vs SIM
 - `/pnl` — ganancia/pérdida del día
 
-### Mercado
-- `/status` — precios + RSI + sentimiento AI
+**Mercado:**
 - `/macro` — USDT.D + Macro Shield
 - `/funding` — funding rates por símbolo
-- `/regime` — régimen actual del mercado (trending/ranging/volatile)
-- `/commodities` o `/commod` — estado GOLD/OIL/NG/SLV/HG
-- `/scalper_shorts` o `/ss` — estado DOGE/FIL/TAO scalper
-- `/stocks` — estado watchlist acciones
+- `/commodities` — estado GOLD/OIL/NG/SLV/HG
+- `/scalper_shorts` — estado DOGE/FIL/TAO scalper
 
-### Posición manual
-- `/open` — abrir posición manual (picker inline)
+**Posición manual:**
 - `/manual_add SYM ENTRY [LONG|SHORT]` — registrar trade ya abierto
 - `/manual_tp SYM [pct]` — cerrar parcial / TP
 - `/manual_sl SYM` — marcar SL tocado
 - `/manual_be SYM` — mover SL a break even
 - `/manual_off SYM` — desactivar monitoreo
 
-### Admin
+**Admin:**
 - `/budget` — gasto IA (Gemini + Claude)
+
+### Comandos avanzados (NO en menú, pero handlers activos)
+
+Si los necesitás, los podés tipear igual:
+- `/status` — precios + RSI + sentimiento AI (redundante con `/macro`)
+- `/regime` — régimen actual (trending/ranging/volatile)
+- `/audit` — auditoría institucional (Profit Factor, SQN)
+- `/agents` — historial Cuadrilla Zenith
 - `/circuit` — estado circuit breaker
 - `/risk` — resumen de riesgo (ATR, VIX, position size)
-- `/audit` — auditoría institucional (Profit Factor, SQN)
-- `/agents` — historial de aciertos de la Cuadrilla Zenith
-- `/intel` — Social Intel & News Feed por símbolo
-- `/pause` / `/resume` — pausar bot (no en setMyCommands pero handler existe)
-- `/logs [N]` — últimas N líneas del log (no en setMyCommands)
-- `/stocks` — estado watchlist acciones (no en setMyCommands)
-- `/bitlobo` — análisis BitLobo (no en setMyCommands)
+- `/intel` — Social Intel & News Feed
+- `/pause` / `/resume` — pausar bot
+- `/logs [N]` — últimas N líneas del log
+- `/stocks` — estado watchlist acciones
+- `/bitlobo` — análisis BitLobo
 
 ---
 

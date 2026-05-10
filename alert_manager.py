@@ -90,33 +90,27 @@ def set_bot_commands():
     """
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setMyCommands"
     commands = [
-        # ── Posiciones (uso diario) ───────────────────────────────────────
-        {"command": "pos",         "description": "Ver posiciones abiertas. /pos full para detalle completo"},
+        # ── Diario (uso constante) ────────────────────────────────────────
+        {"command": "pos",         "description": "Ver posiciones abiertas (/pos full = detalle)"},
+        {"command": "check",       "description": "P&L + SL/TP recomendados por ATR"},
         {"command": "open",        "description": "Abrir posición manual (picker inline)"},
-        {"command": "check",       "description": "P&L + SL/TP recomendados por ATR de posiciones activas"},
-        # ── Mercado ───────────────────────────────────────────────────────
-        {"command": "commodities",     "description": "Estado Gold, Oil, Nat Gas, Silver, Copper"},
-        {"command": "scalper_shorts",  "description": "Scalper SHORT agent: DOGE/FIL/TAO — estado + win rate"},
-        {"command": "status",      "description": "Precios en vivo + RSI + sentimiento AI (Mercado)"},
-        {"command": "macro",       "description": "Dominancia USDT + Macro Shield análisis"},
-        {"command": "funding",     "description": "Tasas de funding por símbolo (largo vs corto)"},
-        {"command": "regime",      "description": "Régimen de mercado detectado (trending/ranging/volatile)"},
-        # ── Performance ───────────────────────────────────────────────────
-        {"command": "winrate",     "description": "Win rate global + Real vs SIM (Activate/Skip)"},
+        {"command": "winrate",     "description": "Win rate global + Real vs SIM"},
         {"command": "pnl",         "description": "Profit & Loss del día actual"},
-        {"command": "audit",       "description": "Auditoría institucional (Profit Factor, SQN)"},
-        {"command": "agents",      "description": "Historial de aciertos de la Cuadrilla Zenith"},
-        # ── Gestión de posición ───────────────────────────────────────────
+        # ── Mercado ───────────────────────────────────────────────────────
+        {"command": "macro",       "description": "Dominancia USDT + Macro Shield análisis"},
+        {"command": "funding",     "description": "Tasas de funding por símbolo"},
+        {"command": "commodities", "description": "Estado Gold, Oil, Nat Gas, Silver, Copper"},
+        {"command": "scalper_shorts", "description": "Scalper SHORT: DOGE/FIL/TAO — estado + WR"},
+        # ── Gestión manual de posición ────────────────────────────────────
         {"command": "manual_add",  "description": "Registrar posición manual: /manual_add SYM ENTRY [LONG]"},
         {"command": "manual_tp",   "description": "Tomar TP/parcial: /manual_tp SYM [pct]"},
         {"command": "manual_sl",   "description": "Marcar SL tocado: /manual_sl SYM"},
         {"command": "manual_be",   "description": "Mover SL a break even: /manual_be SYM"},
-        {"command": "manual_off",  "description": "Cerrar/desactivar posición manual: /manual_off SYM"},
+        {"command": "manual_off",  "description": "Cerrar/desactivar posición manual"},
         # ── Admin ─────────────────────────────────────────────────────────
-        {"command": "budget",      "description": "Consumo de API de IA y presupuesto mensual"},
-        {"command": "circuit",     "description": "Estado del circuit breaker (pérdidas consecutivas)"},
-        {"command": "risk",        "description": "Resumen de riesgo actual (ATR, VIX, posición size)"},
-        {"command": "intel",       "description": "Social Intel & News Feed por símbolo"},
+        {"command": "budget",      "description": "Consumo de IA y presupuesto mensual"},
+        # Comandos avanzados disponibles pero NO en menú:
+        # /status /regime /audit /agents /circuit /risk /intel /pause /resume /logs /stocks /bitlobo
     ]
     
     try:
