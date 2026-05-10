@@ -142,27 +142,36 @@ if __name__ == "__main__":
 
     # Lista de iteraciones a probar (cada una se evalúa, keep/revert)
     iters = [
-        # ── Ronda 2: refinamiento sobre ronda 1 ─────────────────────────────────
-        # RSI aún más laxo
-        ("v3_rsi_v2_more",   {"RSI_LONG_TAO_EXTREME": 35.0, "RSI_LONG_ZEC_EXTREME": 32.0}),
-        # RSI back to mid
-        ("v3_rsi_v2_mid",    {"RSI_LONG_TAO_EXTREME": 30.0, "RSI_LONG_ZEC_EXTREME": 28.0}),
-        # Confluence aún más alto (5→6) — solo top calidad
-        ("conf_strict_v2",   {"MIN_CONFLUENCE_SCORE": 6}),
-        # ATR SL más amplio (2.0 → 2.5) — menos SL hits
-        ("atr_sl_wide",      {"ATR_SL_MULT": 2.5}),
-        # ATR SL más estricto (2.0 → 1.5)
-        ("atr_sl_tight",     {"ATR_SL_MULT": 1.5}),
-        # ATR TP1 más conservador (2.0 → 1.5)
-        ("atr_tp1_conservative", {"ATR_TP1_MULT": 1.5}),
-        # ATR TP1 más ambicioso (2.0 → 3.0)
-        ("atr_tp1_ambitious", {"ATR_TP1_MULT": 3.0}),
-        # RSI_LONG_ENTRY (V1 ya off pero por si reactivamos) más bajo
-        ("rsi_long_entry_lower", {"RSI_LONG_ENTRY": 40.0}),
-        # RSI extreme genérico (no-TAO/ZEC) más laxo
-        ("rsi_extreme_loose", {"RSI_LONG_EXTREME": 35.0}),
-        # V4_RSI_HIGH más alto (44 → 50)
-        ("v4_rsi_high_loose", {"V4_RSI_HIGH": 50.0}),
+        # ── Ronda 3: params nunca tocados ───────────────────────────────────────
+        # Ahora TP1=3.0 — re-probar SL combos
+        ("sl_2.5_with_tp3",    {"ATR_SL_MULT": 2.5}),
+        ("sl_1.8_with_tp3",    {"ATR_SL_MULT": 1.8}),
+        # TP2 / TP3 ajustes
+        ("tp2_extended",       {"ATR_TP2_MULT": 5.0}),
+        ("tp3_moonshot",       {"ATR_TP3_MULT": 10.0}),
+        ("tp2_conservative",   {"ATR_TP2_MULT": 2.5}),
+        # Min SL pct: protege de SL muy ajustados
+        ("min_sl_pct_higher",  {"ATR_MIN_SL_PCT": 0.012}),
+        ("min_sl_pct_lower",   {"ATR_MIN_SL_PCT": 0.005}),
+        # RVOL filters
+        ("rvol_strict",        {"RVOL_MIN_ENTRY": 1.3}),
+        ("rvol_loose",         {"RVOL_MIN_ENTRY": 0.8}),
+        ("rvol_btc_higher",    {"RVOL_MIN_BTC": 1.0}),
+        # ADX regime
+        ("adx_strict",         {"ADX_TRENDING_THRESHOLD": 25}),
+        ("adx_loose",          {"ADX_TRENDING_THRESHOLD": 15}),
+        # BB ranging detection
+        ("bb_ranging_wider",   {"BB_WIDTH_RANGING_PCT": 0.025}),
+        ("bb_ranging_tighter", {"BB_WIDTH_RANGING_PCT": 0.010}),
+        # V3 holding bars (timeout)
+        ("v3_max_bars_short",  {"V3_MAX_HOLDING_BARS": 24}),
+        ("v3_max_bars_long",   {"V3_MAX_HOLDING_BARS": 96}),
+        # V4 specific SL
+        ("v4_atr_sl_tight",    {"V4_ATR_SL_MULT": 1.0}),
+        ("v4_atr_sl_wide",     {"V4_ATR_SL_MULT": 2.0}),
+        # V4 RSI low (currently 35)
+        ("v4_rsi_low_lower",   {"V4_RSI_LOW": 30.0}),
+        ("v4_rsi_low_higher",  {"V4_RSI_LOW": 40.0}),
     ]
 
     current_baseline = baseline

@@ -138,9 +138,9 @@ RSI_SHORT_EXTREME    = 70.0   # Entrada Short extrema
 # ── ATR Multipliers (gestión de riesgo) ───────────────────────────────────────
 ATR_SL_MULT         = 2.0    # Stop Loss = entry ± (ATR * mult)
 ATR_TP1_MULT        = 3.0    # TP1 = 2:1 R:R
-ATR_TP2_MULT        = 3.5    # TP2 = 3.5:1 R:R
+ATR_TP2_MULT        = 5.0    # TP2 = 3.5:1 R:R
 ATR_TP3_MULT        = 7.0    # TP3 = 7:1 R:R (moonshot, V2-AI)
-ATR_MIN_SL_PCT      = 0.007  # SL mínimo: 0.7% del precio (evita SL muy ajustados)
+ATR_MIN_SL_PCT      = 0.012  # SL mínimo: 0.7% del precio (evita SL muy ajustados)
 ATR_MIN_SL_REVERSAL = 0.010  # SL mínimo para reversals (wider = less noise stops)
 
 # --- STRATEGY KILL SWITCHES (basado en análisis win rate 76 trades) ---
@@ -194,7 +194,7 @@ V4_EMA_PROX_MAP = {"BTC": 1.02, "ETH": 1.025, "TAO": 1.03, "ZEC": 1.03, "TON": 1
 
 # ── V3 Reversal improvements ────────────────────────────────────────────────
 V3_MIN_CONFLUENCE    = 4       # Was 3 — too many false reversals
-V3_MAX_HOLDING_BARS  = 48      # Force-close stale V3 trades after 48 bars (48h)
+V3_MAX_HOLDING_BARS  = 96      # Force-close stale V3 trades after 48 bars (48h)
 V3_REQUIRE_DIVERGENCE = True   # RSI bullish divergence required
 V3_REQUIRE_BB_SQUEEZE = True   # BB width contracting (sell-off losing steam)
 
@@ -206,7 +206,7 @@ SHORT_EMA_SLOPE_MIN  = -0.001  # EMA200 must be declining
 # ── Regime improvements ─────────────────────────────────────────────────────
 ADX_CHOPPY_THRESHOLD = 20      # ADX < 20 + BB 2-4% = CHOPPY (suppress all)
 REGIME_COOLDOWN_BARS = 6       # Bars to wait after regime transition
-RVOL_MIN_ENTRY       = 1.0     # Relative Volume minimum for entries
+RVOL_MIN_ENTRY       = 0.8     # Relative Volume minimum for entries
 RVOL_MIN_BTC         = 0.7    # BTC has stable volume — less aggressive filter
 
 # ── Estrategia V5: Momentum Breakout (RSI Midline Cross) ─────────────────────
@@ -244,8 +244,8 @@ SWING_EMA50_TREND_FILTER = True  # Only enter with EMA50 direction (4H)
 # ── Phase 2: Market Intelligence ─────────────────────────────────────────────
 FUNDING_EXTREME_LONG  = 0.0005   # 0.05% — ccxt devuelve decimal (longs crowded)
 FUNDING_EXTREME_SHORT = -0.0005  # -0.05% (shorts crowded)
-ADX_TRENDING_THRESHOLD = 20      # ADX > 25 = trending
-BB_WIDTH_RANGING_PCT   = 0.015    # BB width < 2% = ranging (bajo edge)
+ADX_TRENDING_THRESHOLD = 25      # ADX > 25 = trending
+BB_WIDTH_RANGING_PCT   = 0.01    # BB width < 2% = ranging (bajo edge)
 ATR_VOLATILE_PERCENTILE = 80     # ATR > percentil 80 = volatile
 REGIME_CACHE_TTL       = 900     # 15 min cache por simbolo
 FUNDING_CACHE_TTL      = 300     # 5 min cache

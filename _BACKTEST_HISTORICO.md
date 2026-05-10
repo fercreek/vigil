@@ -240,6 +240,103 @@ ATR_TP1_MULT         = 3.0    # era 2.0 (R:R más ambicioso)
 
 ---
 
+## 🔁 Ronda 3 — params nunca tocados (2026-05-09)
+
+19 patches evaluados (ATR SL combos, TP2/TP3, RVOL, ADX, BB ranging, holding bars, V4 SL).
+**5 patches KEEP, 14 REVERT.**
+
+| Patch KEEP | Cambio | Δ PnL acum |
+|------------|--------|-----------|
+| `min_sl_pct_higher` | ATR_MIN_SL_PCT 0.007 → 0.012 | +1.52% |
+| `rvol_loose` | RVOL_MIN_ENTRY 1.0 → 0.8 | **+32.98%** |
+| `adx_strict` | ADX_TRENDING_THRESHOLD 20 → 25 | +2.58% (PF cruzó 2.0) |
+| `bb_ranging_tighter` | BB_WIDTH_RANGING 0.015 → 0.010 | +2.34% |
+| `v3_max_bars_long` | V3_MAX_HOLDING_BARS 48 → 96 | **+13.89%** |
+
+**Resultado neto ronda 3:**
+
+| Métrica | Pre-r3 | Post-r3 | Δ |
+|---------|--------|---------|---|
+| **PnL agregado** | +307.70% | **+361.01%** | **+53pp** |
+| **Profit Factor** | 1.99 | 1.95 | -0.04 (estable) |
+| **Trades** | 230 | 246 | +7% (RVOL loose abrió más) |
+
+**Total acumulado desde baseline original:**
+
+```
+Baseline:        +59.11% PnL · PF 1.15
+Post Ronda 1:   +239.62% (+180pp) · PF 1.72
+Post Ronda 2:   +283.57% (+44pp)  · PF 1.89
+Post Ronda 3:   +361.01% (+77pp)  · PF 1.95
+─────────────────────────────────────────
+TOTAL:          +302pp (~6x base) · PF 1.95
+```
+
+### Hallazgos críticos ronda 3
+
+**1. `v3_max_bars_short` (24h) catastrófico (-124% PnL):**
+Cerrar V3 trades antes de 24h mata el edge. V3 necesita tiempo para reversal completo. **96h es mejor que 48h.**
+
+**2. RVOL más laxo gana volumen sin sacrificar PF:**
+RVOL_MIN_ENTRY 0.8 (vs 1.0) capturó 25 trades adicionales con PF prácticamente igual.
+
+**3. ADX más estricto (25 vs 20) reduce señales pero mejora calidad:**
+Filtro de "trending market" más selectivo → menos falsas en lateral.
+
+### ⚠️ Walk-Forward post-ronda 3 — destapó TAO V3 overfit
+
+| Symbol/Strat | Train PnL | Test PnL | Estado |
+|--------------|----------|----------|--------|
+| **ETH V3** | +69% | **+15.9%** | ✅ alto edge OOS |
+| **ZEC V3** | +75% | **+21.0%** | ✅ alto edge OOS |
+| BTC V3 | +9.9% | +2.7% | overfit pero positivo |
+| **TAO V3** | -9.7% | **-14.7%** | ❌ **NEGATIVO OOS** |
+| ZEC V4 | +20.7% | +1.4% | ✅ robust |
+| TAO V4 | -0.8% | +8.6% | test mejora |
+| BTC V4 | +8.7% | -1.3% | overfit |
+| ETH V4 | -1.5% | -6.8% | overfit (ya en blocklist) |
+
+**Insight crítico:** Las iteraciones globales mejoran el AGREGADO pero rompieron TAO V3 individualmente. ETH/ZEC compensan en suite pero TAO V3 ahora pierde OOS.
+
+**Implicación:** parámetros globales son límite. Para seguir mejorando necesitamos **per-symbol tuning** (ronda 4 futura).
+
+### Cambios totales aplicados al `config.py` (3 rondas)
+
+```python
+RSI_LONG_ENTRY       = 40.0   # era 45
+RSI_LONG_TAO_EXTREME = 32.0   # era 28  ⚠️ TAO overfit OOS, considerar revertir
+RSI_LONG_ZEC_EXTREME = 30.0   # era 26
+MIN_CONFLUENCE_SCORE = 5      # era 4
+V4_EMA_PROXIMITY_MAX = 1.020  # era 1.025
+V4_EMA_PROXIMITY_MIN = 1.005  # era 1.001
+ATR_TP1_MULT         = 3.0    # era 2.0
+ATR_MIN_SL_PCT       = 0.012  # era 0.007
+RVOL_MIN_ENTRY       = 0.8    # era 1.0
+ADX_TRENDING_THRESHOLD = 25   # era 20
+BB_WIDTH_RANGING_PCT = 0.010  # era 0.015
+V3_MAX_HOLDING_BARS  = 96     # era 48
+```
+
+### Próxima frontera (ronda 4)
+
+Tuning por símbolo:
+- TAO: probablemente necesita RSI más estricto (revertir 32→28 SOLO para TAO)
+- ETH: el campeón, mantener config actual
+- BTC: V3 y V4 robustos, pequeño tuning
+- ZEC: V3 alto edge, V4 robust
+
+Implementación requeriría refactor de `strategies.py` para leer dict por símbolo:
+```python
+RSI_OVERRIDE_BY_SYMBOL = {
+    "TAO": {"long_extreme": 28},
+    "ETH": {"long_extreme": 32},  # default actual
+}
+```
+
+Esfuerzo: 3-4h. Beneficio esperado: TAO V3 vuelve a positivo OOS sin sacrificar ETH/ZEC.
+
+---
+
 ## 🔗 Datos crudos
 
 Raw results JSON: `/tmp/backtest_results.json` (regenerable con):
