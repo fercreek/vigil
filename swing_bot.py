@@ -264,16 +264,43 @@ def analyze_symbol(symbol: str):
         ai_bias, kumo_status, tk_cross, kumo_cloud, analysis
     )
 
-    # 8. Enviar via alert_manager (cooldown persistente ante reinicios del hilo)
-    import alert_manager as _am
-    if _am.alert(f"swing_{sym}_{side}", msg, version="V2-AI-GEMINI", cooldown=ALERT_COOLDOWN) is None:
+    # 8. Cooldown check (memoria local + DIRECTION_FLIP_CD ya cubre reinicios)
+    if _in_cooldown(symbol):
         print(f"    ⏸️  En cooldown — omitiendo")
         return
-    _set_direction(symbol, side)
-    tracker.log_trade(sym, side, price, tp1, tp2, sl, None,
-                      version="SWING", rsi=50.0, bb="Ichimoku",
-                      atr=atr, score=4, alert_type="swing_institutional")
-    print(f"    ✅ Alerta SWING enviada — {side} @ ${price:,.2f} | TP3: ${tp3:,.2f}")
+
+    # 9. Enviar con keyboard Activar/Skip (mismo flujo que commodities/scalper_shorts)
+    #    Antes: tracker.log_trade() automático sin pedir confirmación → contaminaba WR.
+    try:
+        from scalp_alert_bot import _store_pending
+        import alert_manager as _am
+        import requests as _req
+
+        _sid = _store_pending(symbol, side, price, tp1, tp2, sl, atr, 50.0, 4,
+                              "swing_institutional", "SWING", None,
+                              macro_regime=f"KUMO:{kumo_status}|AI:{ai_bias}")
+        _kb = _am.get_signal_keyboard(_sid, symbol, side)
+
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        r = _req.post(url, json={
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": msg,
+            "parse_mode": "HTML",
+            "reply_markup": _kb,
+        }, timeout=10)
+        if not r.ok or not r.json().get("ok"):
+            raise RuntimeError(f"Telegram send failed: {r.status_code}")
+
+        _set_cooldown(symbol)
+        _set_direction(symbol, side)
+        print(f"    ✅ SWING alerta con keyboard — {side} @ ${price:,.2f} | TP3: ${tp3:,.2f}")
+    except Exception as _e:
+        # Fallback: send sin keyboard (preserva alerta visible) — NO auto-log a DB
+        # User decide manualmente vía /open o /manual_add si quiere registrar
+        print(f"    ⚠️ Keyboard fallback ({_e}) — enviando sin botones (sin auto-log)")
+        send_telegram(msg)
+        _set_cooldown(symbol)
+        _set_direction(symbol, side)
 
 
 def run_zenith_swing():
