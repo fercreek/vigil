@@ -50,7 +50,7 @@ MIN_ATR_PCT = 0.005
 # TAO: 4% WR en SHORT (27 pérdidas consecutivas, tendencia alcista dominante)
 NO_SHORT = {"TAO/USDT"}
 
-binance = ccxt.binance({'timeout': 15000})
+from exchange_singleton import binance_spot as binance
 
 
 def send_telegram(msg: str):

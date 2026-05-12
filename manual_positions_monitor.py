@@ -26,7 +26,7 @@ ALERT_COOLDOWN = 3600   # 1h entre alertas del mismo símbolo
 
 _last_alert: dict = {}   # {sym: timestamp}
 
-_binance = ccxt.binance({"timeout": 15000})
+from exchange_singleton import binance_spot as _binance
 
 
 # ── Price fetch ───────────────────────────────────────────────────────────────

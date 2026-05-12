@@ -29,7 +29,7 @@ from config import (
 )
 
 # ── Exchange (publica, sin auth — solo para funding rates) ────────────────────
-_binance_futures = ccxt.binance({'timeout': 15000, 'options': {'defaultType': 'future'}})
+from exchange_singleton import binance_futures as _binance_futures
 
 # ── Cache ─────────────────────────────────────────────────────────────────────
 _CACHE = {

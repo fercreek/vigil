@@ -211,10 +211,10 @@ def check_strategies(prices: dict):
     if not prices:
         return
 
-    # Hour filter — basado en análisis de 77 trades reales (WR 0% confirmado por hora)
-    # SIM D2: bloquear 1,4,6,10,11,14,15,16,17,20 UTC → WR histórico 50.0% (12W/12L/24T)
+    # Hour filter — basado en análisis de 91 trades reales (WR 0% confirmado por hora)
+    # SIM D2 original: {1,4,6,10,11,14,15,16,17,20} — removidos 1 (14.3% WR) y 14 (25% WR)
     _utc_hour = datetime.utcnow().hour
-    _BLOCKED_HOURS = {1, 4, 6, 10, 11, 14, 15, 16, 17, 20}
+    _BLOCKED_HOURS = {4, 6, 10, 11, 15, 16, 17, 20}
     if _utc_hour in _BLOCKED_HOURS:
         print(f"⏸️ [HourFilter] {_utc_hour:02d}:xx UTC — 0% WR histórico, entradas bloqueadas")
         return

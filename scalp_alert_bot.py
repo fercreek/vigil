@@ -69,7 +69,7 @@ OPEN_POSITIONS = {}
 POSITION_TTL = 3600  # 1 hora: posición se considera expirada si no hay TP/SL en ese tiempo
 # Tiempos de Vida (TTL) en segundos
 TTL_PRICES = 20      # Precio: 20s (Fallback si falla la red)
-TTL_INDICATORS = 120 # Indicadores: 2 min (Reducción de carga)
+TTL_INDICATORS = 300 # Indicadores: 5 min — reducción de peso API Binance
 TTL_GLOBAL = 600     # Métricas Globales: 10 min
 TTL_MACRO = 900      # Macro (SPY/Oil): 15 min (Lento)
 TTL_SOCIAL = 1800    # Inteligencia Social: 30 min (sin Twitter API, reducir tokens)
@@ -181,7 +181,7 @@ LEVELS = {
 
 # ─── CONECTORES DE INTERCAMBIO (REUTILIZABLES) ──────────────────────────
 # Inicializamos una vez para evitar latencia de conexión
-binance_ex = ccxt.binance({'timeout': 15000})
+from exchange_singleton import binance_spot as binance_ex
 
 def get_phase() -> str:
     if not os.path.exists(PHASE_FILE): return "SHORT"

@@ -11,7 +11,7 @@ except ImportError:
     print("[indicators] yfinance no disponible — DXY/VIX deshabilitados")
 
 # Binance para BTC, SOL y TAO
-binance = ccxt.binance({'timeout': 15000})
+from exchange_singleton import binance_spot as binance
 
 # --- CACHE LOCAL PARA INDICADORES ---
 INDICATOR_CACHE = {
