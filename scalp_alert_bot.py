@@ -405,6 +405,12 @@ def _handle_callback(callback: dict, prices: dict):
             kb=_am.get_management_keyboard(tid, sym, side),
         )
         _answer_callback(cb_id, f"✅ {sym} {side} activado")
+        # Confirmación separada — mensaje nuevo en el chat como backup visible
+        send_telegram(
+            f"🎯 <b>TRADE ABIERTO #{tid}</b>\n"
+            f"<b>{sym} {side}</b> @ <code>${entry:,.4f}</code>\n"
+            f"TP1 ${sig['tp1']:,.4f} | TP2 ${sig['tp2']:,.4f} | SL ${sig['sl']:,.4f}"
+        )
         return
 
     # ── Skip signal (Fernando pasa, pero bot trackea outcome sim) ────────────

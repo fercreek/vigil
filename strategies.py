@@ -466,6 +466,22 @@ def check_strategies(prices: dict):
             # Per-symbol RSI threshold via config (sincronizado con backtester)
             from config import RSI_REVERSAL_BY_SYMBOL
             reversal_rsi = RSI_REVERSAL_BY_SYMBOL.get(sym, RSI_LONG_EXTREME)
+
+            # 🥷 Ninja pre-alerta: RSI cayendo hacia zona de trigger (threshold+8 → threshold)
+            _ninja_warn_key = f"ninja_warn_{sym}"
+            _ninja_rsi_warn = reversal_rsi + 8  # zona de calentamiento
+            if reversal_rsi < rsi <= _ninja_rsi_warn and rsi < prev_rsi:
+                _last_ninja = GLOBAL_CACHE.get(_ninja_warn_key, 0)
+                if time.time() - _last_ninja > 1800:  # max 1 aviso cada 30min por símbolo
+                    send_telegram(
+                        f"🥷 <b>Ninja Alerta — {sym.replace('/USDT','')}</b>\n"
+                        f"RSI cayendo: <code>{rsi:.1f}</code> → zona trigger en ≤{reversal_rsi}\n"
+                        f"Precio: ${p:,.2f} | Régimen: {regime}\n"
+                        f"⚡ Preparando entrada potencial LONG"
+                    )
+                    GLOBAL_CACHE[_ninja_warn_key] = time.time()
+                    print(f"🥷 [Ninja] {sym} pre-alerta enviada RSI={rsi:.1f} (trigger≤{reversal_rsi})")
+
             if rsi <= reversal_rsi:
                 register_signal_event(sym.replace("/USDT", ""), prices)
                 side = "LONG"
