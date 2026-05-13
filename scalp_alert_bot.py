@@ -83,17 +83,35 @@ _PENDING_SIG_TTL: float = 14400.0      # 4h: señal expira si no se decide
 
 def _store_pending(sym, side, entry, tp1, tp2, sl, atr, rsi, score,
                    alert_type, version, trigger_conditions, macro_regime="") -> int:
-    """Guarda parámetros de señal. Retorna signal_id para callback_data."""
+    """Guarda parámetros de señal. Retorna signal_id para callback_data.
+    Auto-crea SIM trade al momento de la señal — independiente de si Fernando activa o skipea.
+    """
     global _PENDING_SIG_COUNTER
     _PENDING_SIG_COUNTER += 1
     sid = _PENDING_SIG_COUNTER
+
+    # Auto-SIM: loguear inmediatamente como simulación para tracking automático SL/TP
+    try:
+        sim_id = tracker.log_simulated(
+            sym, side, entry, tp1, tp2, sl, msg_id=0,
+            version=version, rsi=rsi, score=score,
+            alert_type=alert_type, trigger_conditions=trigger_conditions,
+            macro_regime=macro_regime,
+        )
+    except Exception as _e:
+        print(f"⚠️ [AutoSIM] Error creando SIM para {sym}: {_e}")
+        sim_id = None
+
     _PENDING_SIGNALS[sid] = {
         "sym": sym, "side": side, "entry": entry,
         "tp1": tp1, "tp2": tp2, "sl": sl, "atr": atr,
         "rsi": rsi, "score": score, "alert_type": alert_type,
         "version": version, "trigger_conditions": trigger_conditions,
         "macro_regime": macro_regime, "ts": time.time(),
+        "sim_id": sim_id,  # SIM ya corriendo — monitor_open_trades lo cierra en SL/TP
     }
+    if sim_id:
+        print(f"🎮 [AutoSIM] {sym} {side} SIM#{sim_id} iniciado @ ${entry:,.4f}")
     return sid
 
 def _gc_pending_signals():
@@ -422,14 +440,16 @@ def _handle_callback(callback: dict, prices: dict):
             return
         sig = _PENDING_SIGNALS.pop(sid, None)
         if sig:
-            tracker.log_simulated(
-                sym, side, sig["entry"], sig["tp1"], sig["tp2"], sig["sl"],
-                msg_id, version=sig["version"], rsi=sig["rsi"],
-                score=sig["score"], alert_type=sig["alert_type"],
-                trigger_conditions=sig["trigger_conditions"],
-                macro_regime=sig.get("macro_regime", ""),
-            )
-        _edit_msg(f"⏭️ <b>{sym} {side}</b> skiada. Bot trackea outcome en SIM.")
+            # SIM ya fue creado en _store_pending (AutoSIM). Evitar duplicado.
+            if not sig.get("sim_id"):
+                tracker.log_simulated(
+                    sym, side, sig["entry"], sig["tp1"], sig["tp2"], sig["sl"],
+                    msg_id, version=sig["version"], rsi=sig["rsi"],
+                    score=sig["score"], alert_type=sig["alert_type"],
+                    trigger_conditions=sig["trigger_conditions"],
+                    macro_regime=sig.get("macro_regime", ""),
+                )
+        _edit_msg(f"⏭️ <b>{sym} {side}</b> skiada. SIM#{sig['sim_id'] if sig else '?'} corriendo.")
         _answer_callback(cb_id, "⏭️ Skiada — SIM activo")
         return
 
