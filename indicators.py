@@ -270,10 +270,13 @@ def detect_elliot_wave(df):
         return "Analizando..."
 
 def get_df(symbol, timeframe='1h', limit=300):
-    """Obtiene el DataFrame de precios (OHLCV) desde Binance."""
+    """Obtiene el DataFrame de precios (OHLCV). Fallback: Binance → Bybit → KuCoin."""
     try:
-        exchange_symbol = f"{symbol}/USDT"
-        ohlcv = binance.fetch_ohlcv(exchange_symbol, timeframe=timeframe, limit=limit)
+        from exchange_singleton import fetch_ohlcv_with_fallback
+        ohlcv = fetch_ohlcv_with_fallback(symbol, timeframe=timeframe, limit=limit)
+        if not ohlcv:
+            print(f"Error fetching DF: all exchanges failed for {symbol}/{timeframe}")
+            return pd.DataFrame()
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         return df
     except Exception as e:
