@@ -1,10 +1,25 @@
 # _NEXT.md — Scalp Bot / Zenith
-> Update: 2026-05-09 · Prev: `597fead`
-> **Sesión cerrada — fase de validación 2 semanas hasta 2026-05-23**
+> Update: 2026-05-13 · Prev: `dccff2b`
+> **Sesión cerrada — validación live activa hasta 2026-05-23**
 
 ## 🎯 Spec maestro
 
 **LEER PRIMERO:** [`_SPEC.md`](_SPEC.md) — único punto de verdad de qué se hizo + criterios de aceptación validación 2 semanas.
+
+---
+
+## ✅ Sesión 2026-05-13 — Fixes aplicados
+
+| Commit | Fix |
+|--------|-----|
+| `688deb4` | Singleton ccxt compartido + `enableRateLimit` — elimina weight 3-4x |
+| `688deb4` | HourFilter: removidas horas 01 y 14 (tenían WR positivo) |
+| `e1e3c2b` | Ninja pre-alerta en bot — Telegram cuando RSI entra zona trigger |
+| `e1e3c2b` | Confirmación trade: mensaje nuevo al activar (no solo editar) |
+| `42ee6ef` | AutoSIM: cada señal crea SIM automático al disparar |
+| `8927548` | Fallback OHLCV: Binance → Bybit → KuCoin (ante 403s) |
+
+**Todos deployados en Railway. AutoSIM confirmado funcionando en logs.**
 
 ---
 
