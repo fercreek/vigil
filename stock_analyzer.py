@@ -330,6 +330,7 @@ def stock_watchdog():
                             _send_alert(msg_tp)
                         _alert_cache.setdefault(t, []).append("TP_ALERT")
                         _em.fill_outcome_by_symbol(t, "STOCK", "WIN", pnl_pct)
+                        _alert_cache.pop(t, None)  # trade cerrado en TP, liberar memoria
 
                 # Check 4: STOP LOSS
                 if sl and "SL_ALERT" not in _alert_cache.get(t, []):
@@ -351,7 +352,13 @@ def stock_watchdog():
                             _send_alert(msg_sl)
                         _alert_cache.setdefault(t, []).append("SL_ALERT")
                         _em.fill_outcome_by_symbol(t, "STOCK", "LOSS", pnl_pct)
-                        
+                        _alert_cache.pop(t, None)  # trade cerrado en SL, liberar memoria
+
+            # Safety cap: si _alert_cache crece >100 keys (no debería con cleanup TP/SL), reset
+            if len(_alert_cache) > 100:
+                logger.warning(f"[Centinela] _alert_cache excedió 100 keys ({len(_alert_cache)}) — reset")
+                _alert_cache.clear()
+
         except Exception as e:
             logger.error(f"Error en Centinela Acciones (Watchdog loop): {e}")
             

@@ -69,7 +69,7 @@ OPEN_POSITIONS = {}
 POSITION_TTL = 3600  # 1 hora: posición se considera expirada si no hay TP/SL en ese tiempo
 # Tiempos de Vida (TTL) en segundos
 TTL_PRICES = 20      # Precio: 20s (Fallback si falla la red)
-TTL_INDICATORS = 300 # Indicadores: 5 min — reducción de peso API Binance
+TTL_INDICATORS = 600 # Indicadores: 10 min — antes 5min, reducido para bajar Binance API calls ~50%
 TTL_GLOBAL = 600     # Métricas Globales: 10 min
 TTL_MACRO = 900      # Macro (SPY/Oil): 15 min (Lento)
 TTL_SOCIAL = 1800    # Inteligencia Social: 30 min (sin Twitter API, reducir tokens)
@@ -1154,7 +1154,7 @@ def run_telegram_worker():
             if "Connection" not in str(e):
                 from logger_core import logger as _logger
                 _logger.error("❌ Telegram Worker Error: %s", e, exc_info=True)
-        time.sleep(5) # Respuesta mucho más ágil
+        time.sleep(15) # Telegram poll cada 15s (antes 5s — 17280→5760 calls/día)
 
 if __name__ == "__main__":
     main()
