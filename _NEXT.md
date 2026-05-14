@@ -23,6 +23,18 @@
 
 ---
 
+## 💰 Tracking de costos Railway (post optimización 2026-05-13)
+
+Baseline + targets en `docs/COST_BASELINE.md`.
+
+**Reminders manuales:**
+- [ ] **2026-05-20** — Checkpoint semana 1: abrir https://railway.com/workspace/usage, comparar Memory minutely GB vs baseline (target -35%). Si < -20% → Round 3.
+- [ ] **2026-05-22** — Checkpoint fin de ciclo (May 21 cerró): actualizar `docs/COST_BASELINE.md` con resultados reales del ciclo completo.
+
+Commits relevantes: `8f485b5` (Round 1), `eb6b2a1` (Round 2), `21c4d9a` (baseline doc).
+
+---
+
 ## ⏰ Próxima acción: 2026-05-23 (NO ANTES)
 
 **Auditoría automática** correrá sola via routine `trig_01QjZVU9531oqK9pvNUoWSzF` el 2026-05-23T15:00:00Z (09:00 Mty) y appendea a `_AUDIT_LOG.md`.
