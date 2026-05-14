@@ -920,7 +920,7 @@ def check_market_pulse(prices):
                f"🪙 <b>{sym}</b> @ ${(p or 0.0):,.2f}\n"
                f"📊 RSI: {(rsi or 0.0):.1f} | EMA: {'ALCISTA' if (p or 0.0) > (ema_200 or 0.0) else 'BAJISTA'}\n"
                f"💰 Volatilidad: {(atr or 0.0):,.2f} USD\n\n"
-               f"🤖 <b>ANÁLISIS HÍBRIDO AI:</b>\n<i>{safe_html(analysis)}</i>")
+               f"🤖 <b>ANÁLISIS HÍBRIDO AI:</b>\n{safe_html(analysis)}")
         
         # Enviamos alerta única (no trackeamos como trade)
         alert(f"pulse_{sym}_{event}_{now.date()}", msg)
