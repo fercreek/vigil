@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 import os
 
-DB_FILE = "trades.db"
+DB_FILE = os.getenv("TRACKER_DB", "trades.db")
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
