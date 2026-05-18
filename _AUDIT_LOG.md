@@ -1,6 +1,43 @@
 # _AUDIT_LOG — Zenith Trading Suite
 > Entradas más recientes arriba. Baseline pre-fixes: WR global = **18.7%** (91 trades).
 
+
+---
+
+## Audit 2026-05-18 — Checkpoint 14d
+
+**DB:** ⛔ DB no encontrada en `/home/user/vigil/trades.db` — sin Railway Volume o TRACKER_DB no seteada
+**Trades stuck:** ✅ Sin trades stuck
+
+> ⚠️ Volumen <10 trades — considerar relajar `MIN_CONFLUENCE_SCORE` 5→4 o `RVOL_MIN_ENTRY` 0.8→0.7
+
+### WR Global 14d
+
+| Métrica | Valor | vs Baseline 18.7% |
+|---------|-------|-------------------|
+| WR global | N/D | — |
+| Trades cerrados | 0 | — |
+| Wins | 0 | — |
+| Losses | 0 | — |
+| PF estimado (2:1 R:R) | N/D | ⬜ Sin datos |
+
+**Régimen:** ⬜ Sin datos
+
+### WR por Estrategia
+
+_Sin trades cerrados en la ventana._
+
+### REAL vs SIM
+
+| Tipo | WR | Trades |
+|------|----|--------|
+| REAL (activados) | N/D | 0 |
+| SIM (skiados) | N/D | 0 |
+
+### Acciones
+
+- 🔴 **1** — Configurar Railway Volume + env var `TRACKER_DB=/app/data/trades.db` (ver `docs/VOLUME_SETUP.md`)
+
 ---
 
 ## Audit 2026-05-18 — Checkpoint 14d post-fixes (May 9)
