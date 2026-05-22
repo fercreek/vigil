@@ -124,7 +124,73 @@ STOCK_WATCHLIST = [
     {"ticker": "UVXY",  "yf_ticker": "UVXY",  "direction": "LONG",
      "entry": 51.17,  "stop_loss": 39.93,  "take_profit_1": 73.65,  "break_even": 62.41,
      "context": "⚠️ Niveles pre-mercado. VIX cobertura. SPY con MACRO PHY bajista activo."},
+
+    # ── PTS Reports May 19 + May 22 2026 ─────────────────────────────────────
+    {"ticker": "RGTI",  "yf_ticker": "RGTI",  "direction": "LONG",
+     "entry": 19.0,  "stop_loss": 21.23, "take_profit_1": 34.21, "take_profit_2": 39.40, "break_even": 30.31,
+     "context": "PTS 22-May-2026. Rigetti Computing (quantum). Entry original PTS $19; precio actual $26.42 (ya en ganancia). ATR=$2.60. Niveles ATR-based (Spec 001 May-22). PTS: 'puede ir a máximos, de los trades más grandes del año'."},
+
+    {"ticker": "CORZ",  "yf_ticker": "CORZ",  "direction": "LONG",
+     "entry": 25.26, "stop_loss": 22.24, "take_profit_1": 29.79, "take_profit_2": 32.81, "break_even": 27.53,
+     "context": "PTS 22-May-2026. CORZ AI infrastructure. Precio $25.26, ATR=$1.51. Niveles ATR-based (Spec 001 May-22). PTS: 'súper acción, puede multiplicar precio'. Confirmar entrada formal próximo reporte (Mar 27-May)."},
+
+    {"ticker": "CIFR",  "yf_ticker": "CIFR",  "direction": "LONG",
+     "entry": 21.97, "stop_loss": 18.25, "take_profit_1": 27.56, "take_profit_2": 31.28, "break_even": 24.76,
+     "context": "PTS 22-May-2026. CIFR (Cipher Mining / AI infra). Precio $21.97, ATR=$1.86. Niveles ATR-based (Spec 001 May-22). 'Pronto activa, súper acción con enorme potencial'."},
+
+    {"ticker": "JNJ",   "yf_ticker": "JNJ",   "direction": "LONG",
+     "entry": 234.36, "stop_loss": 226.48, "take_profit_1": 246.18, "take_profit_2": 254.06, "break_even": 240.27,
+     "context": "PTS 22-May-2026. Johnson & Johnson DEFENSIVA pero FUERTE. Precio $234.36, ATR=$3.94. Niveles ATR-based (Spec 001 May-22). 'Activó hoy, arriba del punto de entrada — como defensiva con fuerza alcista de semiconductores'."},
+
+    {"ticker": "KO",    "yf_ticker": "KO",    "direction": "LONG",
+     "entry": 81.49, "stop_loss": 79.26, "take_profit_1": 84.83, "take_profit_2": 87.06, "break_even": 83.16,
+     "context": "PTS 22-May-2026. Coca-Cola DEFENSIVA. Precio $81.49, ATR=$1.11 (movimiento lento). Niveles ATR-based ajustados (Spec 001 May-22). 'En zona de entrada, válido para operar como sector defensivo'."},
+
+    {"ticker": "CL",    "yf_ticker": "CL",    "direction": "LONG",
+     "entry": 90.62, "stop_loss": 86.96, "take_profit_1": 96.12, "take_profit_2": 99.78, "break_even": 93.37,
+     "context": "PTS 22-May-2026. Colgate-Palmolive DEFENSIVA. Precio $90.62, ATR=$1.83. Niveles ATR-based (Spec 001 May-22). 'En zona de entrada, válido para operar como sector defensivo'."},
+
+    {"ticker": "CLSK",  "yf_ticker": "CLSK",  "direction": "LONG",
+     "entry": None, "stop_loss": None, "take_profit_1": 23.0, "take_profit_2": 32.0, "break_even": None,
+     "context": "PTS 19-May-2026. CleanSpark (AI infra, ex-BTC mining). OM alcista formándose, +9% en sesión, ruptura 0.38 fib → target $23 luego $32. NO operativa aún en PTS, solo en monitoreo. Esperar señal formal."},
+
+    {"ticker": "MO",    "yf_ticker": "MO",    "direction": "LONG",
+     "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
+     "context": "PTS 22-May-2026. Altria DEFENSIVA. 'Va muy bien arriba del punto de entrada'. Niveles pendientes."},
+
+    {"ticker": "ASTS",  "yf_ticker": "ASTS",  "direction": "LONG",
+     "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
+     "context": "PTS 22-May-2026. AST SpaceMobile. 'Ya va en ganancias muy buenas'. Setup original Apr-26. Niveles pendientes."},
+
+    {"ticker": "CVX",   "yf_ticker": "CVX",   "direction": "LONG",
+     "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
+     "context": "PTS 22-May-2026. Chevron petrolera. 'Más lenta pero muy sólida, va a seguir subiendo'. XOM tocó BE. Niveles pendientes."},
+
+    {"ticker": "VAL",   "yf_ticker": "VAL",   "direction": "LONG",
+     "entry": None, "stop_loss": None, "take_profit_1": None, "break_even": None,
+     "context": "PTS 22-May-2026. Valaris petrolera. 'Retrocedió y está más barata, potencial alcista intacto'. Niveles pendientes."},
 ]
+
+# ── Defensive sectors (no filtrar con bias bajista) ──────────────────────────
+# Expandido May-22-2026: nuclear + AI-infra + quantum + petroleras + defensivos
+DEFENSIVE_SECTORS = [
+    "XOM", "MOO", "GDX", "XBI", "COIN", "RKLB", "HOOD", "MP", "SOFI",
+    "UUUU", "IREN", "XLE", "OKLO", "SMR", "IONQ", "RDDT", "CRWV",
+    "RGTI", "CORZ", "CIFR", "JNJ", "KO", "CL", "MO", "CVX", "VAL", "ASTS",
+]
+
+# ── Clusters de correlación (no acumular 3+ del mismo en una sesión) ─────────
+# Riesgo: si un cluster colapsa, exposure concentrado. Bot debe limitar 1-2 por cluster.
+SECTOR_CLUSTERS = {
+    "nuclear":   ["UUUU", "OKLO", "SMR"],
+    "ai_infra":  ["CRWV", "IREN", "CORZ", "CIFR", "CLSK"],
+    "quantum":   ["IONQ", "RGTI"],
+    "crypto_proxy": ["COIN", "MSTR", "IREN", "CORZ", "CIFR", "CLSK"],
+    "petroleras": ["XOM", "CVX", "XLE", "VAL"],
+    "defensivos": ["JNJ", "KO", "CL", "MO", "MOO"],
+}
+MAX_PER_CLUSTER = 2   # Max 2 posiciones simultáneas por cluster
+
 
 # ── Thresholds RSI ────────────────────────────────────────────────────────────
 RSI_LONG_ENTRY       = 40.0   # Entrada Long estándar (was 42 — too restrictive)
@@ -162,7 +228,10 @@ V1_SHORT_ENABLED     = False   # 0% WR en 16 trades — disabled Apr 2026
 V1_LONG_ENABLED      = False   # 15.4% WR / -34.1% PnL en backtest 365d → disabled May 2026
 V4_BLOCKLIST         = ["ETH", "ZEC"] # ETH (-7% PnL) + ZEC (overfit walk-forward, deg -100%) excluidos
 V5_ENABLED           = False   # 0 trades en backtest 365d → bug o filtro muy restrictivo, deshabilitado
-TAO_TRADING_ENABLED  = True    # Re-enabled May-2026 con filtro 1D EMA200 en strategies.py
+TAO_TRADING_ENABLED  = False   # Spec 001 (May-22-2026): bot-generated TAO 0/31 (0% WR). rsi_entry=50 placeholder = pipeline indicadores roto. Kill.
+TAO_SHORT_ENABLED    = False   # Spec 001 (May-22-2026): 75% de SHORT losses son TAO-SHORT. Kill explícito.
+SWING_BLOCKLIST      = ["TAO", "ZEC"]  # Spec 001 (May-22-2026): ZEC Q3+Q4 WR=0% chase del top. V4_BLOCKLIST no aplica porque vienen por SWING channel.
+SHORT_BLOCKED_IN_VERDE_BULL = True     # Spec 001: cuando SP500>7000 + VIX<22 (VERDE_BULL_DORMANT), no abrir shorts en cripto.
 
 # ── Confluence Score ──────────────────────────────────────────────────────────
 MIN_CONFLUENCE_SCORE = 5     # Score mínimo para disparar alerta
@@ -172,12 +241,32 @@ USDT_D_THRESHOLD    = 8.05   # Por encima: condición bajista para cripto
 ZEC_MAX_VOL_PCT     = 3.5    # % ATR/Precio máximo para ZEC (guarda anti-manipulación)
 VIX_RAPIDA_THRESHOLD = 18.0  # VIX > 18 → trade RAPIDA (was 22 — VIX base post-FOMC Apr-26: ~18-20)
 VIX_EXTREME_THRESHOLD = 32.0 # VIX > 32 → no operar / mínima posición (was 35)
+VIX_DORMANT_THRESHOLD = 22.0 # PTS May-22: VIX < 22 + SP500 > 7000 → barridas = oportunidad de entrada (no panic mode)
+
+# ── Macro Regime Gate (PTS May-22-2026) ──────────────────────────────────────
+# Determina régimen según SP500 + VIX. Bot consulta esto antes de filtrar señales.
+#   VERDE_BULL (SP500 > 7000):       no suprimir longs, barridas = entrada
+#   AMARILLA_INDECISA (6800-7000):    reducir tamaño 50%, requiere confluencia extra
+#   NARANJA_BEAR (< 6800):            activar SHORT SPY, filtrar longs débiles
+SP500_VERDE_THRESHOLD     = 7000.0
+SP500_NARANJA_THRESHOLD   = 6800.0
+SP500_NARANJA_TRIGGER_SHORT = 6728.0  # Pierde 6728 → SHORT SPY activado
 DXY_CRIPTO_PRESSURE = 103.0  # DXY > 103 → presión bajista en cripto (was 105 — FOMC: USD safe-haven activo)
 OIL_INFLATION_THRESHOLD = 85.0  # Oil > $85 = presión inflacionaria → hawkish Fed (FOMC Mar-26)
 
 # ── FOMC Calendar ────────────────────────────────────────────────────────────
 FOMC_NEXT_MEETING = "2026-06-17"   # Próxima reunión FOMC (Apr 28-29 ya pasó) — suprimir señales 24h antes
 RATE_BIAS = "HAWKISH_HOLD"         # FOMC Mar-26: tasas 3.50-3.75%, 30% prob de subida, sin recortes hasta dic
+
+# ── Earnings Suppression (Spec 001 May-22-2026) ──────────────────────────────
+# Símbolos con earnings críticos. Bot debe suprimir señales 24h antes/después
+# (igual que FOMC logic). Fechas en EARNINGS_CALENDAR per-symbol abajo.
+EARNINGS_SUPPRESS_24H = ["NVDA", "OKLO", "TSLA", "MSFT", "META", "AAPL", "GOOGL"]
+# Fechas de earnings conocidas (YYYY-MM-DD). Actualizar al recibir confirmación.
+EARNINGS_CALENDAR = {
+    "OKLO": "2026-05-27",  # PTS 08-May: earnings martes (siguiente martes)
+    "NVDA": "2026-05-21",  # PTS 19-May referenció earnings esta semana — ya pasó
+}
 
 # ── Cache TTL (segundos) ──────────────────────────────────────────────────────
 TTL_PRICES     = 20    # Precios live

@@ -204,14 +204,34 @@ def stock_watchdog():
 
             current_prices = _fetch_prices(signals)
 
+            # Spec 001 (May-22-2026): earnings suppression 24h (NVDA, OKLO, TSLA, etc.)
+            from config import EARNINGS_SUPPRESS_24H, EARNINGS_CALENDAR
+            from datetime import datetime as _dt
+            _suppressed_today = set()
+            _today = _dt.now()
+            for _t, _date in EARNINGS_CALENDAR.items():
+                try:
+                    _ed = _dt.strptime(_date, "%Y-%m-%d")
+                    if _t in EARNINGS_SUPPRESS_24H and abs((_today - _ed).total_seconds()) < 86400:
+                        _suppressed_today.add(_t)
+                except Exception:
+                    pass
+            if _suppressed_today:
+                logger.info("👁️ Centinela: earnings suppression activa para %s", _suppressed_today)
+
             for s in signals:
                 t = s.get('ticker')
                 if not t:
                     continue
+
+                # Spec 001: skip si dentro de ventana 24h de earnings
+                if t in _suppressed_today:
+                    continue
+
                 p = current_prices.get(t, 0.0)
                 if not p:
                     continue
-                
+
                 direction = s.get('direction', 'HOLD')
                 entry = s.get('entry')
                 be = s.get('break_even')

@@ -21,6 +21,8 @@ from config import (
     SHORT_EMA_SLOPE_MIN, RVOL_MIN_ENTRY, RVOL_MIN_BTC, MIN_CONFLUENCE_SCORE,
     FOMC_NEXT_MEETING, RSI_LONG_EXTREME,
     V1_LONG_ENABLED, V4_BLOCKLIST, V5_ENABLED,
+    SWING_BLOCKLIST, SHORT_BLOCKED_IN_VERDE_BULL,
+    VIX_DORMANT_THRESHOLD, SP500_VERDE_THRESHOLD,
 )
 
 
@@ -253,6 +255,11 @@ def check_strategies(prices: dict):
         print(f"⚠️ [1D Bias] Error precalculando bias diario: {_e}")
 
     for sym in _SYMBOLS:
+        # Spec 001 (May-22-2026): kill switch TAO. Bot-generated TAO = 0/31 WR.
+        from config import TAO_TRADING_ENABLED
+        if sym == "TAO" and not TAO_TRADING_ENABLED:
+            continue
+
         p = prices.get(sym, 0.0)
         rsi = prices.get(f"{sym}_RSI", 50.0)
 
@@ -722,21 +729,26 @@ def check_strategies(prices: dict):
 
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V2: AI ENHANCED (LONG ONLY)
+        # Spec 001 (May-22-2026): V2-AI estaba gated por p > ema_200 → en bear
+        # market nunca disparaba. Ahora deja a la IA decidir; EMA pasa como
+        # contexto a get_ai_decision (no como veto duro).
         # ═══════════════════════════════════════════════════════════════════
         if rsi <= 40:
             side = "LONG"
+
+            # Skip si símbolo en SWING_BLOCKLIST (Spec 001)
+            if sym in SWING_BLOCKLIST:
+                print(f"⏩ [V2-AI] {sym} en SWING_BLOCKLIST — skip")
+                continue
+
             df = indicators.get_df(sym, "1h")
             obs = indicators_swing.find_order_blocks(df)
             ob_detected = any(ob["type"] == "BULL_OB" and p >= ob["low"] * 0.99 and p <= ob["high"] * 1.01 for ob in obs)
 
-            is_valid_trend = (side == "LONG" and p > ema_200) or (side == "SHORT" and p < ema_200)
-
-            if is_valid_trend:
-                dec_cons, reason_cons, full_cons = gemini_analyzer.get_ai_decision(sym, p, side, rsi, bb_u, bb_l, version="V1-TECH", usdt_d=usdt_d, vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias, fib_levels=fib_levels)
-                dec_scalp, reason_scalp, full_scalp = gemini_analyzer.get_ai_decision(sym, p, side, rsi, bb_u, bb_l, version="V2-AI", usdt_d=usdt_d, vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias, fib_levels=fib_levels)
-                full_analysis = f"Consenso:\n{full_cons}\n\n{full_scalp}"
-            else:
-                dec_cons, dec_scalp, full_analysis = "REJECT", "Contra tendencia mayor", ""
+            # EMA como contexto (no veto). La IA decide considerando trend macro.
+            dec_cons, reason_cons, full_cons = gemini_analyzer.get_ai_decision(sym, p, side, rsi, bb_u, bb_l, version="V1-TECH", usdt_d=usdt_d, vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias, fib_levels=fib_levels)
+            dec_scalp, reason_scalp, full_scalp = gemini_analyzer.get_ai_decision(sym, p, side, rsi, bb_u, bb_l, version="V2-AI", usdt_d=usdt_d, vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias, fib_levels=fib_levels)
+            full_analysis = f"Consenso:\n{full_cons}\n\n{full_scalp}"
 
             if dec_cons == "CONFIRM" or dec_scalp == "CONFIRM":
                 if is_position_open(sym, side):

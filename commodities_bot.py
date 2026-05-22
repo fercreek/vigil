@@ -468,9 +468,15 @@ def analyze_commodity(key: str, inst: dict):
         long_score += 1
         short_score += 1
 
-    # 5. ATR confirmation (already passed min filter, counts as +1)
-    long_score += 1
-    short_score += 1
+    # 5. ATR confirmation — Spec 001 (May-22-2026): ATR +1 INCONDICIONAL
+    # inflaba score=5 (6 GOLD-LONG losses Apr 15-22 con score=5/5). Solo cuenta
+    # si ATR/precio está en zona "saludable" (0.5%-3%), no si está muerto o extremo.
+    atr_pct = (atr / price) if price else 0
+    if 0.005 <= atr_pct <= 0.03:
+        long_score += 1
+        short_score += 1
+    else:
+        logger.info("    %s: ATR pct %.2f%% fuera de rango sano (0.5-3%%), no suma confluencia", key, atr_pct * 100)
 
     # --- Macro regime guards ---
     # Gold bull lock: Gold > $2500 → no shorts (DXY correlation broke 2026)

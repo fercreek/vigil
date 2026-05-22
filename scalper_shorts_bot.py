@@ -305,6 +305,25 @@ def analyze_scalper_short(key: str, inst: dict):
     if score < MIN_CONFLUENCE:
         return
 
+    # --- Spec 001 (May-22-2026) kill switches ---
+    from config import TAO_SHORT_ENABLED, SHORT_BLOCKED_IN_VERDE_BULL, VIX_DORMANT_THRESHOLD
+    if key == "TAO" and not TAO_SHORT_ENABLED:
+        logger.info("    %s: TAO_SHORT_ENABLED=False — 75%% de SHORT losses históricos son TAO. Skip.", key)
+        return
+
+    if SHORT_BLOCKED_IN_VERDE_BULL:
+        # Si SP500 > 7000 + VIX < 22 → VERDE_BULL_DORMANT, no operar shorts crypto.
+        try:
+            import indicators
+            _, vix_val = indicators.get_dxy_vix()
+            sp500_price = indicators.get_sp500_price() if hasattr(indicators, "get_sp500_price") else None
+            if sp500_price and sp500_price > 7000.0 and vix_val < VIX_DORMANT_THRESHOLD:
+                logger.info("    %s: SP500 %.0f > 7000 + VIX %.1f < %.0f — VERDE_BULL_DORMANT, shorts crypto bloqueados.",
+                            key, sp500_price, vix_val, VIX_DORMANT_THRESHOLD)
+                return
+        except Exception as _e:
+            logger.debug("    %s: SHORT macro gate failed (%s) — continuing", key, _e)
+
     # --- Macro guard: bloquear si ya está en tendencia bajista diaria ---
     bias = _daily_bias(ccxt_sym)
     if bias == "BEAR":

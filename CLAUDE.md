@@ -673,6 +673,98 @@ SMR (small modular reactor) — SWING ALCISTA
 
 ---
 
+### 8j. PTS Updates — Volatilidad de Barridas + Recuperación (19-22 Mayo 2026)
+
+Dos reportes de Daniel Marin durante semana post-NVDA earnings. Mercado tuvo barridas excesivas en sectores nuclear/quantum/AI-infra (martes 19-May), suelo establecido, recuperación en curso.
+
+**Régimen SP500 confirmado VERDE_BULL:**
+
+- SP500 lateral a 2% de máximos (~7100-7200). Muy arriba de soporte 7000.
+- VIX bajo, rompiendo a la baja, target $13. **VIX < 22 + SP500 > 7000 = barridas son OPORTUNIDAD de entrada, no panic.**
+- IWM testeó parte baja de su rango — clave para estabilidad de small caps. Si sostiene rango → reanudación alcista.
+- Acciones de calidad: ruta a máximos históricos confirmada.
+
+**Sector Nuclear bajo barrida (suelo May 20):**
+
+- OKLO + SMR + UUUU formaron PHY con ZR. Sostuvieron mínimos del martes → recuperación inminente.
+- Daniel: "el camino con estas acciones es tortuoso pero es porque tienen potencial gigantesco". OKLO licencia NRC para reactor en Eilson AFB Alaska = catalizador estructural. Valoración "madura" estimada: $250-350.
+- **Implicación bot:** sector nuclear correlacionado → no acumular UUUU+OKLO+SMR misma sesión. Usar `SECTOR_CLUSTERS["nuclear"]` con `MAX_PER_CLUSTER = 2`.
+
+**Sector AI-Infraestructura (ex-mineras BTC):**
+
+- CRWV + IREN + CORZ + CIFR + CLSK convergiendo en mismo tema.
+- **CLSK destaca:** +9% sesión 19-May, OM alcista formándose, ruptura 0.38 fib → target $23 luego $32. NO operativa formal aún, monitoreo.
+- **Implicación bot:** `SECTOR_CLUSTERS["ai_infra"]` con MAX 2 por sesión.
+
+**Sector Quantum despertando:**
+
+- IONQ: entry $50.05 activó fuerte, "potencial súper trade".
+- **RGTI nueva:** entry $19 dio "enormes ganancias", PTS dice "de los trades más grandes del año".
+- Cluster correlacionado: `SECTOR_CLUSTERS["quantum"] = ["IONQ", "RGTI"]`.
+
+**Defensivos activados o entrando:**
+
+- JNJ: activó May-22, "defensiva con fuerza alcista de semiconductores".
+- KO + CL: zona de entrada, válidos sector defensivo.
+- MO: arriba entry, va muy bien.
+- CVX: petrolera sólida, sigue subiendo. XOM tocó BE → reentrada próxima.
+- VAL: retrocedió, potencial alcista intacto.
+
+**Próximamente PTS (esperando entry formal):**
+
+- USAR: phy alcista en zona atractiva, potencial triplicar precio.
+- ARM, ALAB: cerca de área de descubrimiento de precio.
+- HOOD: cambio de contratos antes fin de mes (options rollover).
+
+**Estado watchlist consolidado (22-May-2026):**
+
+| Status | Símbolos |
+|--------|----------|
+| ✅ Ganancia / progreso | IONQ, RGTI, CORZ, ASTS, MO, JNJ, XLE, CVX |
+| ⏳ En zona / lateral | COIN, SOFI, HOOD, XBI |
+| 🔄 Suelo establecido (recovery) | OKLO, SMR, UUUU, IREN, CRWV |
+| ⏰ Entry pendiente próximo reporte | UUUU reentrada, XOM reentrada, MP reentrada, CIFR, KO, CL |
+| 👀 Monitoreo (no operativa formal) | CLSK, USAR, ARM, ALAB |
+
+**Implicaciones código bot:**
+
+1. **VIX gate dorment activo** (`config.py` agregado):
+   ```python
+   VIX_DORMANT_THRESHOLD = 22.0  # VIX < 22 + SP500 > 7000 → barridas = oportunidad
+   ```
+   En `is_macro_bullish_for_long()` usar: `if VIX < 22 and SP500 > 7000: regime = "VERDE_BULL_DORMANT"` → no filtrar longs en barridas.
+
+2. **DEFENSIVE_SECTORS expandido** (`config.py`):
+   ```python
+   DEFENSIVE_SECTORS = [..., "RGTI", "CORZ", "CIFR", "JNJ", "KO", "CL", "MO", "CVX", "VAL", "ASTS"]
+   ```
+   No filtrar con bias bajista de equities.
+
+3. **SECTOR_CLUSTERS nuevo** (`config.py`):
+   ```python
+   SECTOR_CLUSTERS = {
+       "nuclear":   ["UUUU", "OKLO", "SMR"],
+       "ai_infra":  ["CRWV", "IREN", "CORZ", "CIFR", "CLSK"],
+       "quantum":   ["IONQ", "RGTI"],
+       "crypto_proxy": ["COIN", "MSTR", "IREN", "CORZ", "CIFR", "CLSK"],
+       "petroleras": ["XOM", "CVX", "XLE", "VAL"],
+       "defensivos": ["JNJ", "KO", "CL", "MO", "MOO"],
+   }
+   MAX_PER_CLUSTER = 2
+   ```
+   Bot debe consultar antes de abrir 3ra posición en mismo cluster — limita riesgo de colapso sectorial.
+
+4. **Macro regime gate** (constantes nuevas):
+   ```python
+   SP500_VERDE_THRESHOLD = 7000.0    # > 7000 = BULL, no suprimir longs
+   SP500_NARANJA_THRESHOLD = 6800.0  # < 6800 = BEAR risk, filtrar longs débiles
+   SP500_NARANJA_TRIGGER_SHORT = 6728.0  # SHORT SPY activado
+   ```
+
+5. **NVDA earnings supresión** — patrón confirmado: bot debe extender lógica FOMC para earnings críticos (NVDA, OKLO próx martes). Lista propuesta: `EARNINGS_SUPPRESS_24H = ["NVDA", "OKLO", "TSLA", "MSFT"]`.
+
+---
+
 ## Cómo Aplicar Estos Insights al Algoritmo
 
 ### Filtros a Implementar
