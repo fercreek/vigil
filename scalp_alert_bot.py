@@ -891,19 +891,23 @@ def get_prices() -> dict:
 
     return res
 
+_LAST_MARKET_PULSE_TS = 0.0  # epoch — set when PULSO fires; PANORAMA suprime si <600s
+
 def check_market_pulse(prices):
     """Detecta apertura/cierre NYSE y envía análisis híbrido."""
+    global _LAST_MARKET_PULSE_TS
     now = datetime.now()
     # NYSE: 9:30 AM / 4:00 PM EST (Aproximado según servidor del usuario)
     # 09:30 Local (Apertura) | 16:00 Local (Cierre)
     is_open = now.hour == 9 and now.minute == 30
     is_close = now.hour == 16 and now.minute == 0
-    
+
     if not (is_open or is_close):
         return
-        
+
     event = "APERTURA" if is_open else "CIERRE"
     print(f"📡 [Market Pulse] Detectado evento de {event}")
+    _LAST_MARKET_PULSE_TS = time.time()
     
     for sym in ["SOL", "BTC"]:
         p, rsi = prices[sym], prices[f"{sym}_RSI"]
@@ -1021,28 +1025,33 @@ def main():
                 now = time.time()
                 _hora_panorama = datetime.now().hour
                 if now - last_insight_time > 7200 and not (1 <= _hora_panorama < 8):
-                    # V3.4: Actualizamos el tiempo ANTES para evitar bucles si falla la IA o Telegram
-                    last_insight_time = now 
-                    print("[Robot] Generando panorama horario...")
-                    panoramas = gemini_analyzer.get_hourly_panorama(prices)
-                    ts_now = datetime.now().strftime("%H:%M")
-                    btc_p   = prices.get("BTC", 0)
-                    btc_rsi = prices.get("BTC_RSI", 0)
-                    tao_p   = prices.get("TAO", 0)
-                    tao_rsi = prices.get("TAO_RSI", 0)
-                    usdt_d  = prices.get("USDT_D", 0)
-                    header = (f"🤖 <b>PANORAMA [{ts_now}]</b>\n"
-                              f"<code>BTC ${btc_p:,.0f} RSI:{btc_rsi:.0f} | TAO ${tao_p:,.2f} RSI:{tao_rsi:.0f} | USDT.D {usdt_d:.2f}%</code>\n"
-                              f"━━━━━━━━━━━━━\n")
-                    salmos_p  = panoramas.get('salmos', '')
-                    scalper_p = panoramas.get('scalper', '')
-                    if salmos_p and scalper_p:
-                        panel = f"{salmos_p}\n\n━━━━━━━━━━━━━\n\n{scalper_p}"
-                    elif salmos_p:
-                        panel = salmos_p
+                    # Gate anti-duplicado: si PULSO disparó <10min antes, saltar PANORAMA (mismo análisis AI)
+                    if now - _LAST_MARKET_PULSE_TS < 600:
+                        print(f"[Robot] PANORAMA suprimido — PULSO disparó hace {int(now - _LAST_MARKET_PULSE_TS)}s")
+                        last_insight_time = now  # avanzar ventana igual para evitar retry inmediato
                     else:
-                        panel = panoramas.get('conservador', 'Sin datos')
-                    send_telegram(f"{header}{safe_html(panel)}")
+                        # V3.4: Actualizamos el tiempo ANTES para evitar bucles si falla la IA o Telegram
+                        last_insight_time = now
+                        print("[Robot] Generando panorama horario...")
+                        panoramas = gemini_analyzer.get_hourly_panorama(prices)
+                        ts_now = datetime.now().strftime("%H:%M")
+                        btc_p   = prices.get("BTC", 0)
+                        btc_rsi = prices.get("BTC_RSI", 0)
+                        tao_p   = prices.get("TAO", 0)
+                        tao_rsi = prices.get("TAO_RSI", 0)
+                        usdt_d  = prices.get("USDT_D", 0)
+                        header = (f"🤖 <b>PANORAMA [{ts_now}]</b>\n"
+                                  f"<code>BTC ${btc_p:,.0f} RSI:{btc_rsi:.0f} | TAO ${tao_p:,.2f} RSI:{tao_rsi:.0f} | USDT.D {usdt_d:.2f}%</code>\n"
+                                  f"━━━━━━━━━━━━━\n")
+                        salmos_p  = panoramas.get('salmos', '')
+                        scalper_p = panoramas.get('scalper', '')
+                        if salmos_p and scalper_p:
+                            panel = f"{salmos_p}\n\n━━━━━━━━━━━━━\n\n{scalper_p}"
+                        elif salmos_p:
+                            panel = salmos_p
+                        else:
+                            panel = panoramas.get('conservador', 'Sin datos')
+                        send_telegram(f"{header}{safe_html(panel)}")
                 
                 # --- AUTO-FILL OUTCOMES (cada ciclo — resuelve señales pendientes) ---
                 import episode_memory as _ep_mem
@@ -1118,6 +1127,13 @@ def main():
 
                         _bias = parsed.get("bias", "NEUTRAL")
                         _score = parsed.get("score", 0)
+                        # Filtro contradicción RSI vs dirección — evita LONG @ RSI overbought / SHORT @ RSI oversold
+                        if _bias == "LONG" and _rsi >= 72.0:
+                            print(f"🔕 Sentinel {_sym}: contradicción LONG @ RSI {_rsi:.0f} ≥72 — alerta omitida (esperar pullback).")
+                            continue
+                        if _bias == "SHORT" and _rsi <= 28.0:
+                            print(f"🔕 Sentinel {_sym}: contradicción SHORT @ RSI {_rsi:.0f} ≤28 — alerta omitida (esperar bounce).")
+                            continue
                         ok, reason = _vc.should_send_sentinel(_sym, _bias, _score)
                         if not ok:
                             print(f"🔕 Sentinel {_sym}: filtered — {reason}")
