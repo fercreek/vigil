@@ -84,11 +84,22 @@ def _merge_signals(report_signals):
     return (report_signals or []) + static
 
 def _fetch_prices(signals):
-    """Descarga precios para una lista de señales. Usa yf_ticker si existe, ticker si no."""
+    """Descarga precios para una lista de señales. Usa yf_ticker si existe, ticker si no.
+
+    Bug fix 2026-05-23: ~37 sequential yfinance calls bloqueaban loop >300s,
+    watchdog mataba thread, restart wipeaba _alert_cache, re-emitía duplicados.
+    Fix: heartbeat cada 10 símbolos + skip si error (no retry inline).
+    """
     yf_symbols = [s.get("yf_ticker", s["ticker"]) for s in signals if "ticker" in s]
     yf_symbols = list(dict.fromkeys(yf_symbols))  # deduplicar
     prices = {}
-    for sym in yf_symbols:
+    try:
+        import thread_health as _th
+    except Exception:
+        _th = None
+    for idx, sym in enumerate(yf_symbols):
+        if _th and idx % 10 == 0:
+            _th.heartbeat("stock")  # mantiene watchdog calm durante batch yfinance
         display = _YF_ALIAS.get(sym, sym)
         try:
             price = yf.Ticker(sym).fast_info.last_price
@@ -187,7 +198,43 @@ def _fetch_live_price_stock(ticker: str) -> float:
     except Exception:
         return 0.0
 
-_alert_cache = {}
+# Audit B (2026-05-23): _alert_cache solo en memoria → restart wipe →
+# re-emite ZONE/ENTRY/BE/TP alerts para TODA la watchlist (37 tickers).
+# Fix: persistencia simple JSON. Recarga al import, save tras cada modificación.
+_ALERT_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "stock_alert_cache.json")
+
+def _load_alert_cache() -> dict:
+    try:
+        if os.path.exists(_ALERT_CACHE_PATH):
+            import json as _json
+            with open(_ALERT_CACHE_PATH, "r") as f:
+                return _json.load(f)
+    except Exception as e:
+        logger.warning(f"_alert_cache load failed: {e}")
+    return {}
+
+def _save_alert_cache() -> None:
+    try:
+        os.makedirs(os.path.dirname(_ALERT_CACHE_PATH), exist_ok=True)
+        import json as _json
+        with open(_ALERT_CACHE_PATH, "w") as f:
+            _json.dump(_alert_cache, f)
+    except Exception as e:
+        logger.warning(f"_alert_cache save failed: {e}")
+
+_alert_cache: dict = _load_alert_cache()
+
+def _mark_alert(ticker: str, kind: str) -> None:
+    """Marca alerta como emitida + persiste. Idempotente."""
+    bucket = _alert_cache.setdefault(ticker, [])
+    if kind not in bucket:
+        bucket.append(kind)
+        _save_alert_cache()
+
+def _clear_alert(ticker: str) -> None:
+    if ticker in _alert_cache:
+        _alert_cache.pop(ticker, None)
+        _save_alert_cache()
 
 def stock_watchdog():
     """Bucle infinito para checkeos en segundo plano de las acciones (cada 15 min)."""
@@ -261,7 +308,7 @@ def stock_watchdog():
                             f"🛑 Stop Loss: ${sl:.2f}\n"
                             f"📌 <i>{ctx_note[:100]}</i>"
                         )
-                        _alert_cache.setdefault(t, []).append("ZONE_ALERT")
+                        _mark_alert(t, "ZONE_ALERT")
                         _em.log_alert_episode(t, "STOCK", direction, entry, sl, tp, source="BITLOBO")
 
                 # Check 1: NEAR ENTRY — usa Activate/Skip en lugar de log inmediato
@@ -296,7 +343,7 @@ def stock_watchdog():
                         except Exception as _e:
                             logger.warning("stock_analyzer: signal keyboard fallback (%s)", _e)
                             _send_alert(msg)
-                        _alert_cache.setdefault(t, []).append("ENTRY_ALERT")
+                        _mark_alert(t, "ENTRY_ALERT")
                         _em.log_alert_episode(t, "STOCK", direction, entry, sl, tp,
                                               source="STOCK")
 
@@ -338,7 +385,7 @@ def stock_watchdog():
                             _send_alert_with_kb(msg_be, kb)
                         else:
                             _send_alert(msg_be)
-                        _alert_cache.setdefault(t, []).append("BE_ALERT")
+                        _mark_alert(t, "BE_ALERT")
 
                 # Check 3: TAKE PROFIT
                 if tp and "TP_ALERT" not in _alert_cache.get(t, []):
@@ -358,9 +405,9 @@ def stock_watchdog():
                             _send_alert_with_kb(msg_tp, kb)
                         else:
                             _send_alert(msg_tp)
-                        _alert_cache.setdefault(t, []).append("TP_ALERT")
+                        _mark_alert(t, "TP_ALERT")
                         _em.fill_outcome_by_symbol(t, "STOCK", "WIN", pnl_pct)
-                        _alert_cache.pop(t, None)  # trade cerrado en TP, liberar memoria
+                        _clear_alert(t)  # trade cerrado en TP, liberar memoria
 
                 # Check 4: STOP LOSS
                 if sl and "SL_ALERT" not in _alert_cache.get(t, []):
@@ -380,14 +427,14 @@ def stock_watchdog():
                             _send_alert_with_kb(msg_sl, kb)
                         else:
                             _send_alert(msg_sl)
-                        _alert_cache.setdefault(t, []).append("SL_ALERT")
+                        _mark_alert(t, "SL_ALERT")
                         _em.fill_outcome_by_symbol(t, "STOCK", "LOSS", pnl_pct)
-                        _alert_cache.pop(t, None)  # trade cerrado en SL, liberar memoria
+                        _clear_alert(t)  # trade cerrado en SL, liberar memoria
 
             # Safety cap: si _alert_cache crece >100 keys (no debería con cleanup TP/SL), reset
             if len(_alert_cache) > 100:
                 logger.warning(f"[Centinela] _alert_cache excedió 100 keys ({len(_alert_cache)}) — reset")
-                _alert_cache.clear()
+                _alert_cache.clear(); _save_alert_cache()
 
         except Exception as e:
             logger.error(f"Error en Centinela Acciones (Watchdog loop): {e}")

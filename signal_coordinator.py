@@ -56,13 +56,17 @@ def get_verdict(symbol: str) -> dict:
     oldest_age = now - min(e["ts"] for e in entries)
 
     # Only one source so far
+    # Bug 2026-05-23: callers hacen submit + resolve_and_send inmediato (oldest_age=0)
+    # → siempre HOLD → señales single-source nunca se enviaban (TradingView webhook).
+    # Fix: si confidence >= 0.7, mandar inmediato; resto espera ventana para deduplicar.
     if len(entries) == 1:
-        if oldest_age < WINDOW_SECS:
-            return {"action": "HOLD", "direction": entries[0]["direction"],
-                    "msg": entries[0]["msg"], "reason": "waiting for more signals"}
-        # Window expired with a single signal — send it
-        return {"action": "SEND", "direction": entries[0]["direction"],
-                "msg": entries[0]["msg"], "reason": "single signal after window"}
+        e = entries[0]
+        if e["confidence"] >= 0.7 or oldest_age >= WINDOW_SECS:
+            return {"action": "SEND", "direction": e["direction"],
+                    "msg": e["msg"],
+                    "reason": "single signal — confident" if e["confidence"] >= 0.7 else "single signal after window"}
+        return {"action": "HOLD", "direction": e["direction"],
+                "msg": e["msg"], "reason": "waiting for more signals"}
 
     # All signals agree
     if len(directions) == 1:

@@ -150,20 +150,33 @@ def send_telegram(msg: str, reply_to: str = None, keyboard: dict = None) -> str:
         kb = keyboard if keyboard is not None else get_main_menu()
         payload["reply_markup"] = kb
 
-    try:
-        r = requests.post(url, json=payload, timeout=10)
-        res = r.json()
-        if res.get("ok"):
-            return str(res["result"]["message_id"])
-        else:
-            print(f"❌ Error en Telegram (HTML): {res.get('description')}")
-            return None
-    except Exception as e:
-        if "NameResolutionError" in str(e) or "Max retries exceeded" in str(e):
-            print(f"⚠️ [Network] Error enviando Telegram (DNS/Conexión)")
-        else:
-            print(f"❌ Error enviando Telegram: {e}")
-        return None
+    # Retry con backoff exponencial — 3 intentos para sobrevivir DNS hiccups + rate limit 429.
+    import time as _time
+    for _attempt in range(3):
+        try:
+            r = requests.post(url, json=payload, timeout=10)
+            res = r.json()
+            if res.get("ok"):
+                return str(res["result"]["message_id"])
+            # Rate limit 429: respetar retry_after
+            if r.status_code == 429:
+                _wait = res.get("parameters", {}).get("retry_after", 2)
+                print(f"⚠️ [Telegram] 429 rate limit — sleep {_wait}s (try {_attempt+1}/3)")
+                _time.sleep(_wait + 1)
+                continue
+            # Token expired / chat not found = no retry, log loud
+            desc = res.get("description", "")
+            print(f"❌ [Telegram] {r.status_code}: {desc}")
+            if r.status_code in (401, 403, 404):
+                return None  # no point retrying auth errors
+        except Exception as e:
+            if "NameResolutionError" in str(e) or "Max retries exceeded" in str(e):
+                print(f"⚠️ [Network] DNS/Conexión (try {_attempt+1}/3): {str(e)[:80]}")
+            else:
+                print(f"❌ [Telegram] excepción (try {_attempt+1}/3): {e}")
+        _time.sleep(2 ** _attempt)  # 1s, 2s, 4s
+    print(f"❌ [Telegram] 3 intentos fallidos — alerta perdida")
+    return None
 
 
 def send_telegram_long(msg: str, reply_to: str = None) -> str:
