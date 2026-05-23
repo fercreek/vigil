@@ -385,12 +385,14 @@ def analyze_scalper_short(key: str, inst: dict):
         _kb = _am.get_signal_keyboard(_sid, key, "SHORT")
 
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        r = _req.post(url, json={
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": msg,
-            "parse_mode": "HTML",
-            "reply_markup": _kb,
-        }, timeout=10)
+        _payload = {"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
+        try:
+            from config import ENABLE_TELEGRAM_BUTTONS as _BTN
+        except Exception:
+            _BTN = True
+        if _BTN:
+            _payload["reply_markup"] = _kb
+        r = _req.post(url, json=_payload, timeout=10)
         mid = str(r.json().get("result", {}).get("message_id", "")) if r.ok else None
         if not mid:
             raise RuntimeError("Telegram send failed")

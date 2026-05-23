@@ -269,12 +269,14 @@ def analyze_symbol(symbol: str):
         _kb = _am.get_signal_keyboard(_sid, symbol, side)
 
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        r = _req.post(url, json={
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": msg,
-            "parse_mode": "HTML",
-            "reply_markup": _kb,
-        }, timeout=10)
+        _payload = {"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
+        try:
+            from config import ENABLE_TELEGRAM_BUTTONS as _BTN
+        except Exception:
+            _BTN = True
+        if _BTN:
+            _payload["reply_markup"] = _kb
+        r = _req.post(url, json=_payload, timeout=10)
         if not r.ok or not r.json().get("ok"):
             raise RuntimeError(f"Telegram send failed: {r.status_code}")
 

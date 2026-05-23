@@ -159,14 +159,19 @@ def _send_alert(msg: str) -> str | None:
 
 
 def _send_alert_with_kb(msg: str, keyboard: dict) -> str | None:
-    """Envía alerta con inline keyboard. Retorna msg_id o None."""
+    """Envía alerta con inline keyboard. Retorna msg_id o None. Botones gateados por ENABLE_TELEGRAM_BUTTONS."""
     import requests
     url = f"https://api.telegram.org/bot{os.getenv('TELEGRAM_TOKEN')}/sendMessage"
     payload = {
         "chat_id": os.getenv("TELEGRAM_CHAT_ID"),
         "text": msg, "parse_mode": "HTML",
-        "reply_markup": keyboard,
     }
+    try:
+        from config import ENABLE_TELEGRAM_BUTTONS as _BTN
+    except Exception:
+        _BTN = True
+    if _BTN:
+        payload["reply_markup"] = keyboard
     try:
         r = requests.post(url, json=payload, timeout=5)
         return str(r.json().get("result", {}).get("message_id", "")) if r.ok else None

@@ -376,6 +376,11 @@ SENTINEL_INTERVAL_SEC   = 14400   # 4h (era 7200 = 2h)
 SENTINEL_DEDUPE_MIN     = 90      # No re-enviar mismo (sym, bias) en últimos 90min
 KILL_SALMOS_PROPHECY    = True    # Mata trigger_salmos_prophecy() en main loop
 
+# ── v1.3.0: Buttons kill switch ──────────────────────────────────────────────
+# Período de análisis exhaustivo: sin botones inline ni menús reply en Telegram.
+# Reenchufar caso por caso bajando este flag o filtrando por tipo de alerta.
+ENABLE_TELEGRAM_BUTTONS = False
+
 # ── Manual Positions ─────────────────────────────────────────────────────────
 # Storage unificado en trades.db (flag is_manual=1). Sin seed hardcoded.
 # Lista de símbolos preferidos para el picker de /open (inline keyboard).

@@ -141,8 +141,14 @@ def send_telegram(msg: str, reply_to: str = None, keyboard: dict = None) -> str:
     if reply_to:
         payload["reply_to_message_id"] = reply_to
 
-    kb = keyboard if keyboard is not None else get_main_menu()
-    payload["reply_markup"] = kb
+    # v1.3.0: kill switch global de botones. Si flag off → no reply_markup.
+    try:
+        from config import ENABLE_TELEGRAM_BUTTONS as _ENABLE_BTN
+    except Exception:
+        _ENABLE_BTN = True
+    if _ENABLE_BTN:
+        kb = keyboard if keyboard is not None else get_main_menu()
+        payload["reply_markup"] = kb
 
     try:
         r = requests.post(url, json=payload, timeout=10)
@@ -202,7 +208,12 @@ def alert(key: str, msg: str, version: str = "V1-TECH", cooldown: int = 300,
     full = f"{header} — <code>{ts}</code>\n{msg}"
     print(f"[{version}] {key} alert sent (hit #{new_count}).")
 
-    if inline_keyboard:
+    # v1.3.0: kill switch global de botones inline. Si flag off → ignorar inline_keyboard.
+    try:
+        from config import ENABLE_TELEGRAM_BUTTONS as _ENABLE_BTN
+    except Exception:
+        _ENABLE_BTN = True
+    if inline_keyboard and _ENABLE_BTN:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         payload = {
             "chat_id": TELEGRAM_CHAT_ID,

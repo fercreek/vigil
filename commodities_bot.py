@@ -595,14 +595,16 @@ def analyze_commodity(key: str, inst: dict):
                               macro_regime=f"OIL_RALLY:{post_rally_active}" if key == "OIL" else "")
         _kb = _am.get_signal_keyboard(_sid, key, side)
 
-        # Send with inline keyboard
+        # Send with inline keyboard (gateado por ENABLE_TELEGRAM_BUTTONS)
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        r = _req.post(url, json={
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": msg,
-            "parse_mode": "HTML",
-            "reply_markup": _kb,
-        }, timeout=10)
+        _payload = {"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
+        try:
+            from config import ENABLE_TELEGRAM_BUTTONS as _BTN
+        except Exception:
+            _BTN = True
+        if _BTN:
+            _payload["reply_markup"] = _kb
+        r = _req.post(url, json=_payload, timeout=10)
         mid = str(r.json().get("result", {}).get("message_id", "")) if r.ok else None
         if not mid:
             logger.warning("    %s: Telegram send failed, logging trade direct", key)
