@@ -236,22 +236,41 @@ def _clear_alert(ticker: str) -> None:
         _alert_cache.pop(ticker, None)
         _save_alert_cache()
 
+def _is_nyse_market_open() -> bool:
+    """True solo Mon-Fri 09:30-16:00 ET. NYSE holidays NO chequeados (acepta ~10 días/año noise)."""
+    try:
+        from datetime import datetime as _dt, time as _dtime
+        from zoneinfo import ZoneInfo
+        now_et = _dt.now(ZoneInfo("America/New_York"))
+        if now_et.weekday() >= 5:  # Sat=5, Sun=6
+            return False
+        t = now_et.time()
+        return _dtime(9, 30) <= t < _dtime(16, 0)
+    except Exception:
+        return True  # fail-open por si zoneinfo no disponible
+
+
 def stock_watchdog():
     """Bucle infinito para checkeos en segundo plano de las acciones (cada 15 min)."""
     import time
     from datetime import datetime
-    
+
     try:
         from config import ANALYSIS_MODE_QUIET as _QUIET
     except Exception:
         _QUIET = False
     if not _QUIET:
         _send_alert("👁️ <b>CENTINELA DE ACCIONES ACTIVADO</b>\nVigilando niveles de entrada, Break Even y Take Profit automáticamente desde el último reporte cargado.")
-    
+
     while True:
         try:
             import thread_health
             thread_health.heartbeat("stock")
+            # Gate 2026-05-23: alertas stock solo Mon-Fri 09:30-16:00 ET. Sat/Sun + pre/after = mute.
+            if not _is_nyse_market_open():
+                logger.info("👁️ Centinela: NYSE cerrado — skip ciclo (heartbeat OK, sleep 15min).")
+                time.sleep(900)
+                continue
             logger.info("👁️ Centinela: Analizando Reporte de Acciones + Watchlist estática...")
             report_signals, _ = extract_stock_signals()
             signals = _merge_signals(report_signals)
