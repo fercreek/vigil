@@ -152,10 +152,30 @@ def check_pending_outcomes(prices: dict):
     pending = c.fetchall()
     conn.close()
 
+    # Audit B (2026-05-23): main loop solo trae precios cripto → 22 stock episodes huérfanas.
+    # Fallback: si símbolo no está en prices, intentar yfinance una vez por ciclo.
+    # Cache local por ciclo evita N×yfinance calls.
+    _stock_cache: dict[str, float] = {}
+    def _resolve_price(sym: str) -> float:
+        p = prices.get(sym) or prices.get(f"{sym}/USDT")
+        if p:
+            return float(p)
+        if sym in _stock_cache:
+            return _stock_cache[sym]
+        try:
+            import yfinance as _yf
+            _yf_alias = {"GCM6": "GC=F", "CLM26": "CL=F", "CLK6": "CL=F"}
+            _t = _yf_alias.get(sym, sym)
+            fp = _yf.Ticker(_t).fast_info.last_price
+            _stock_cache[sym] = float(fp or 0)
+        except Exception:
+            _stock_cache[sym] = 0.0
+        return _stock_cache[sym]
+
     filled = 0
     for row in pending:
         sym = row["symbol"]
-        p   = prices.get(sym) or prices.get(f"{sym}/USDT")
+        p   = _resolve_price(sym)
         if not p:
             continue
         entry = row["entry_price"]

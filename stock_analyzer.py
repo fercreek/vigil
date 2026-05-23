@@ -194,7 +194,12 @@ def stock_watchdog():
     import time
     from datetime import datetime
     
-    _send_alert("👁️ <b>CENTINELA DE ACCIONES ACTIVADO</b>\nVigilando niveles de entrada, Break Even y Take Profit automáticamente desde el último reporte cargado.")
+    try:
+        from config import ANALYSIS_MODE_QUIET as _QUIET
+    except Exception:
+        _QUIET = False
+    if not _QUIET:
+        _send_alert("👁️ <b>CENTINELA DE ACCIONES ACTIVADO</b>\nVigilando niveles de entrada, Break Even y Take Profit automáticamente desde el último reporte cargado.")
     
     while True:
         try:

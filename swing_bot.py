@@ -294,11 +294,16 @@ def analyze_symbol(symbol: str):
 
 def run_zenith_swing():
     print(f"🏛️ ZENITH SWING BOT V3.0 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    send_telegram(
-        "🏛️ <b>ZENITH SWING BOT V3.0 ACTIVADO</b>\n"
-        "Estrategia: Ichimoku + Bias IA | 3 Targets ATR\n"
-        "Símbolos: " + ", ".join(SYMBOLS)
-    )
+    try:
+        from config import ANALYSIS_MODE_QUIET as _QUIET
+    except Exception:
+        _QUIET = False
+    if not _QUIET:
+        send_telegram(
+            "🏛️ <b>ZENITH SWING BOT V3.0 ACTIVADO</b>\n"
+            "Estrategia: Ichimoku + Bias IA | 3 Targets ATR\n"
+            "Símbolos: " + ", ".join(SYMBOLS)
+        )
 
     while True:
         try:

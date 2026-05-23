@@ -908,6 +908,14 @@ def check_market_pulse(prices):
     event = "APERTURA" if is_open else "CIERRE"
     print(f"📡 [Market Pulse] Detectado evento de {event}")
     _LAST_MARKET_PULSE_TS = time.time()
+    # Audit D (2026-05-23): PULSO no accionable. Modo quiet → skip envío.
+    try:
+        from config import ANALYSIS_MODE_QUIET as _QUIET
+    except Exception:
+        _QUIET = False
+    if _QUIET:
+        print("[PULSO] suprimido — ANALYSIS_MODE_QUIET=True")
+        return
     
     for sym in ["SOL", "BTC"]:
         p, rsi = prices[sym], prices[f"{sym}_RSI"]
@@ -1000,7 +1008,14 @@ def main():
     last_zec_sentinel_time = 0
     last_coordinator_cleanup = 0.0
     keyboard = get_main_menu()
-    send_telegram("🤖 <b>Scalp Bot Multi-Estrategia Online</b>\n🛡️ V1-TECH: Activa\n🤖 V2-AI: Activa\n📡 Expert Advisor: Escuchando", keyboard=keyboard)
+    try:
+        from config import ANALYSIS_MODE_QUIET as _QUIET
+    except Exception:
+        _QUIET = False
+    if not _QUIET:
+        send_telegram("🤖 <b>Scalp Bot Multi-Estrategia Online</b>\n🛡️ V1-TECH: Activa\n🤖 V2-AI: Activa\n📡 Expert Advisor: Escuchando", keyboard=keyboard)
+    else:
+        print("[Robot] Startup ONLINE msg suprimido — ANALYSIS_MODE_QUIET=True")
     
     while True:
         try:
@@ -1025,8 +1040,16 @@ def main():
                 now = time.time()
                 _hora_panorama = datetime.now().hour
                 if now - last_insight_time > 7200 and not (1 <= _hora_panorama < 8):
+                    # Audit D (2026-05-23): PANORAMA no accionable. Modo quiet → skip.
+                    try:
+                        from config import ANALYSIS_MODE_QUIET as _QUIET
+                    except Exception:
+                        _QUIET = False
+                    if _QUIET:
+                        last_insight_time = now
+                        print("[Robot] PANORAMA suprimido — ANALYSIS_MODE_QUIET=True")
                     # Gate anti-duplicado: si PULSO disparó <10min antes, saltar PANORAMA (mismo análisis AI)
-                    if now - _LAST_MARKET_PULSE_TS < 600:
+                    elif now - _LAST_MARKET_PULSE_TS < 600:
                         print(f"[Robot] PANORAMA suprimido — PULSO disparó hace {int(now - _LAST_MARKET_PULSE_TS)}s")
                         last_insight_time = now  # avanzar ventana igual para evitar retry inmediato
                     else:
@@ -1079,7 +1102,10 @@ def main():
                     import runtime_state as _rs
                     _open_syms = {t["symbol"] for t in _tracker.get_open_trades()}
                     _verbose = _rs.is_verbose()
-                    for _sym in ["ZEC", "TAO"]:
+                    # Audit C+D (2026-05-23): TAO trading off → no Sentinel TAO (67% AI cost desperdiciado).
+                    from config import TAO_TRADING_ENABLED as _TAO_OK
+                    _sentinel_syms = ["ZEC"] + (["TAO"] if _TAO_OK else [])
+                    for _sym in _sentinel_syms:
                         if _sym in _open_syms:
                             print(f"⏭️ Sentinel {_sym}: Posición abierta — reporte omitido.")
                             continue

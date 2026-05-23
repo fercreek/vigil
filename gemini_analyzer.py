@@ -800,6 +800,13 @@ def update_agent_accuracy(persona: str, was_correct: bool):
 
 def get_weekly_bias(symbol: str, prices: dict) -> dict:
     """Determina el Bias Semanal usando el Estratega Institucional."""
+    # Audit C (2026-05-23): skip símbolos con trading=False (TAO 67% AI cost, 0 trades).
+    try:
+        from config import TAO_TRADING_ENABLED
+        if symbol == "TAO" and not TAO_TRADING_ENABLED:
+            return {"analysis": "TAO trading disabled — bias skipped.", "bias": "ACCUMULATION"}
+    except Exception:
+        pass
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     p = prices.get(symbol, 0)
     rsi = prices.get(f"{symbol}_RSI", 0)

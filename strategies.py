@@ -479,7 +479,12 @@ def check_strategies(prices: dict):
             _ninja_rsi_warn = reversal_rsi + 8  # zona de calentamiento
             if reversal_rsi < rsi <= _ninja_rsi_warn and rsi < prev_rsi:
                 _last_ninja = GLOBAL_CACHE.get(_ninja_warn_key, 0)
-                if time.time() - _last_ninja > 1800:  # max 1 aviso cada 30min por símbolo
+                # Audit D (2026-05-23): Ninja pre-alerta duplica con V3 si entrada llega. Modo quiet → skip.
+                try:
+                    from config import ANALYSIS_MODE_QUIET as _QUIET
+                except Exception:
+                    _QUIET = False
+                if not _QUIET and time.time() - _last_ninja > 1800:  # max 1 aviso cada 30min por símbolo
                     send_telegram(
                         f"🥷 <b>Ninja Alerta — {sym.replace('/USDT','')}</b>\n"
                         f"RSI cayendo: <code>{rsi:.1f}</code> → zona trigger en ≤{reversal_rsi}\n"

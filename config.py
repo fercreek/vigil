@@ -381,6 +381,13 @@ KILL_SALMOS_PROPHECY    = True    # Mata trigger_salmos_prophecy() en main loop
 # Reenchufar caso por caso bajando este flag o filtrando por tipo de alerta.
 ENABLE_TELEGRAM_BUTTONS = False
 
+# ── v1.3.0: Quiet mode (análisis exhaustivo) ─────────────────────────────────
+# Mata alertas NO accionables: PULSO NYSE, PANORAMA AI, NINJA pre-warning,
+# startup ONLINE msgs. Mantiene: V2-AI, SENTINEL ZEC, SWING, STOCK NEAR ENTRY,
+# trade lifecycle (TP/SL/BE), daily report.
+# Bajar flag = restaurar todas las alertas previas.
+ANALYSIS_MODE_QUIET = True
+
 # ── Manual Positions ─────────────────────────────────────────────────────────
 # Storage unificado en trades.db (flag is_manual=1). Sin seed hardcoded.
 # Lista de símbolos preferidos para el picker de /open (inline keyboard).

@@ -19,13 +19,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Ruta de la misma BD que tracker para no dispersar archivos
-# Default era data/trades.db pero el bot real usa trades.db en raíz → fix mismatch
-try:
-    from tracker import DB_FILE as _TRACKER_DB
-    DB_FILE = os.getenv("TRACKER_DB", _TRACKER_DB)
-except ImportError:
-    DB_FILE = os.getenv("TRACKER_DB", "trades.db")
+# Ruta DB — path absoluto al root del repo para evitar mismatch cuando Railway/cwd cambia
+# Audit C (2026-05-23): import-time race con tracker resolvía a data/trades.db en algunos procesos
+# → ai_calls invisible desde Apr 7. Fix: forzar absolute path al archivo junto al módulo.
+_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.getenv("TRACKER_DB", os.path.join(_REPO_ROOT, "trades.db"))
 
 # ─── Límites ──────────────────────────────────────────────────────────────────
 MAX_MONTHLY_USD      = float(os.getenv("AI_MAX_MONTHLY_USD", "10.0"))
