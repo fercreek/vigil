@@ -1,6 +1,32 @@
 # _NEXT.md — Scalp Bot / Zenith
-> Update: 2026-05-13 · Prev: `dccff2b`
-> **Sesión cerrada — validación live activa hasta 2026-05-23**
+> Update: 2026-05-23 · Prev: `db3681d`
+> **Sesión cerrada — análisis exhaustivo activo. Ver spec-002.**
+
+---
+
+## ⚡ En proceso (retomar aquí)
+
+- [ ] Verificación día siguiente mercado vivo — ver `docs/specs/002-alert-noise-failure-audit/tasks.md` sección "Verificación pendiente"
+- [ ] Confirmar PULSO + PANORAMA suprimidos (quiet on)
+- [ ] Confirmar `ai_calls` se llena en `trades.db` raíz (no `data/`)
+- [ ] Confirmar `data/stock_alert_cache.json` se crea + persiste
+
+## ✅ Sesión 2026-05-23 — Alert noise audit + 4 failure modes
+
+| Commit | Fix |
+|--------|-----|
+| `c299b09` | PULSO/PANORAMA gate + Sentinel RSI filter |
+| `94bec99` | ENABLE_TELEGRAM_BUTTONS kill switch |
+| `94e3cb6` | P0: quiet mode + AI DB fix + TAO kill + stock outcomes |
+| `db3681d` | 4 failure modes: signal_coordinator + retry + heartbeat + cache persist |
+
+Spec completo: [`docs/specs/002-alert-noise-failure-audit/`](docs/specs/002-alert-noise-failure-audit/)
+
+## 🔒 Bloqueado
+
+- Logs Railway necesarios para validar stock thread health post-deploy (Fernando debe pegar `railway logs --service zenith-bot` si hay incidencia)
+
+---
 
 ## 🎯 Spec maestro
 
