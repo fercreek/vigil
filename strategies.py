@@ -35,6 +35,71 @@ def _is_fomc_proximity() -> bool:
         return False
 
 
+def _build_extra_intel(sym: str) -> dict:
+    """Spec 017.5 (2026-05-26): helper para construir dict INTEL EN VIVO para cualquier strategy.
+
+    Llama los 4 módulos intel (HMM/CVD/Social/Whale) — cada uno con su propio cache TTL,
+    así que llamadas repetidas dentro del mismo ciclo (loop por símbolo, varias strategies)
+    son cache hits, no penalizan rendimiento.
+
+    Args:
+        sym: par como "BTC/USDT", "ETH/USDT", etc.
+
+    Returns:
+        dict con keys condicionales: hmm_regime, hmm_confidence, cvd_signal,
+        cvd_whale_usd, cvd_retail_usd, social_signal, social_reddit,
+        social_trends_delta, whale_signal, whale_net_flow_usd.
+        Si un módulo no disponible, sus keys se omiten silenciosamente.
+    """
+    intel = {}
+    sym_base = sym.replace("/USDT", "")
+
+    # HMM regime
+    try:
+        import regime_hmm
+        _hmm = regime_hmm.detect_regime(sym, timeframe="1h", lookback=200) or {}
+        if _hmm.get("regime"):
+            intel["hmm_regime"] = _hmm.get("regime")
+            intel["hmm_confidence"] = _hmm.get("confidence", 0.0)
+    except Exception:
+        pass
+
+    # CVD segmentado
+    try:
+        import cvd_segmented
+        _cvd = cvd_segmented.compute_cvd_segmented(sym, lookback_trades=1000) or {}
+        if _cvd.get("divergence_signal"):
+            intel["cvd_signal"] = _cvd.get("divergence_signal")
+            intel["cvd_whale_usd"] = _cvd.get("whale_cvd_usd", 0)
+            intel["cvd_retail_usd"] = _cvd.get("retail_cvd_usd", 0)
+    except Exception:
+        pass
+
+    # Social sentiment (Reddit + Trends)
+    try:
+        import social_quant
+        _social = social_quant.get_social_sentiment(sym_base, lookback_hours=24) or {}
+        if _social.get("signal"):
+            intel["social_signal"] = _social.get("signal")
+            intel["social_reddit"] = _social.get("reddit_compound", 0)
+            intel["social_trends_delta"] = _social.get("google_trends_delta", 0)
+    except Exception:
+        pass
+
+    # Whale netflow on-chain (solo ETH por ahora)
+    if sym_base == "ETH":
+        try:
+            import onchain
+            _whale = onchain.get_whale_netflow(token_symbol="ETH", chain="eth", lookback_hours=24) or {}
+            if _whale.get("signal"):
+                intel["whale_signal"] = _whale.get("signal")
+                intel["whale_net_flow_usd"] = _whale.get("net_flow_usd", 0)
+        except Exception:
+            pass
+
+    return intel
+
+
 # ─── Confluence Score ───────────────────────────────────────────────────────
 
 def calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d=8.0,
@@ -744,7 +809,7 @@ def check_strategies(prices: dict):
                        f"🎯 TP2: <b>${(tp2 or 0.0):,.2f}</b> (3:1)\n"
                        f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                        f"🎙️ <b>DEBATE DEL CUADRANTE ZENITH:</b>\n"
-                       f"{gemini_analyzer.get_ai_consensus(sym, p, 'LONG', rsi, usdt_d, spy=prices.get('SPY', 0), oil=prices.get('OIL', 0), nvda=prices.get('NVDA', 0), pltr=prices.get('PLTR', 0), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias)}")
+                       f"{gemini_analyzer.get_ai_consensus(sym, p, 'LONG', rsi, usdt_d, spy=prices.get('SPY', 0), oil=prices.get('OIL', 0), nvda=prices.get('NVDA', 0), pltr=prices.get('PLTR', 0), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias, extra_intel=_build_extra_intel(sym))}")
                 _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v1_long", "LONG", rsi_threshold=entry_rsi)
                 _sid = _store_pending(sym, "LONG", p, tp1, tp2, sl, atr, rsi, conf_score, "v1_long", "V1-TECH", _tc, macro_status)
                 mid = alert(f"{sym}_v1_long", msg, version="V1-TECH",
@@ -808,7 +873,7 @@ def check_strategies(prices: dict):
                            f"🎯 TP3 (25%): <b>${(tp3 or 0.0):,.2f}</b>\n"
                            f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                            f"🎙️ <b>DEBATE DEL CUADRANTE ZENITH:</b>\n"
-                           f"{gemini_analyzer.get_ai_consensus(sym, p, phase, rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias)}")
+                           f"{gemini_analyzer.get_ai_consensus(sym, p, phase, rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias, extra_intel=_build_extra_intel(sym))}")
                     _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v2_ai_long", phase, rsi_threshold=entry_rsi)
                     _sid = _store_pending(sym, phase, p, tp1, tp2, sl, atr, rsi, conf_score, "v2_ai_long", "V2-AI", _tc, macro_status)
                     mid = alert(f"{sym}_v2_ai_{phase}", msg, version="V2-AI",
@@ -932,7 +997,7 @@ def check_strategies(prices: dict):
                        f"🎯 TP2: <b>${(tp2 or 0.0):,.2f}</b> (3:1)\n"
                        f"🛑 SL: <b>${(sl or 0.0):,.2f}</b>\n\n"
                        f"🎙️ <b>DEBATE DEL CUADRANTE ZENITH:</b>\n"
-                       f"{gemini_analyzer.get_ai_consensus(sym, p, side, rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias)}")
+                       f"{gemini_analyzer.get_ai_consensus(sym, p, side, rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias, extra_intel=_build_extra_intel(sym))}")
 
                 _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, 5 if is_consensus else 4, "v2_ai_consensus", side, rsi_threshold=40.0)
                 _score_v2 = 5 if is_consensus else 4
