@@ -1,160 +1,132 @@
 # _NEXT.md — Scalp Bot / Zenith
-> Update: 2026-05-23 · Prev: `db3681d`
-> **Sesión cerrada — análisis exhaustivo activo. Ver spec-002.**
+
+> Update: 2026-05-26 · Prev: `33205b9`
+> **Sesión cerrada — 37+ specs implementados hoy. Pipeline NotebookLM 4 completo + wires + boosts + A/B framework.**
 
 ---
 
 ## ⚡ En proceso (retomar aquí)
 
-- [ ] Verificación día siguiente mercado vivo — ver `docs/specs/002-alert-noise-failure-audit/tasks.md` sección "Verificación pendiente"
-- [ ] Confirmar PULSO + PANORAMA suprimidos (quiet on)
-- [ ] Confirmar `ai_calls` se llena en `trades.db` raíz (no `data/`)
-- [ ] Confirmar `data/stock_alert_cache.json` se crea + persiste
+### Verificaciones operativas pendientes
 
-## ✅ Sesión 2026-05-23 — Alert noise audit + 4 failure modes
+- [ ] Schedule task 13:35 UTC fired? Verificar `docs/specs/004-notebooklm-findings-integration/VERIFICATION_2026-05-26.md` post-trigger.
+- [ ] Producción Railway: trades cerrando → `sqlite3 trades.db "SELECT id, alert_id, outcome, outcome_pnl FROM intel_outcomes WHERE outcome IS NOT NULL ORDER BY id DESC LIMIT 10"` muestra rows con outcome + pnl
+- [ ] `curl https://[railway]/api/metrics/intel_ab` → `with_outcome > 0`, boost_segments WR populated
+- [ ] Tras 30+ trades cerrados V3: validar `boost_3+ WR > boost_0 WR + 5pp` (Spec 021 boost helps?)
+- [ ] NotebookLM 3 Performance Audit (`docs/research/notebook-lm-3/`) — Fernando ejecuta prompts manualmente
 
-| Commit | Fix |
-|--------|-----|
-| `c299b09` | PULSO/PANORAMA gate + Sentinel RSI filter |
-| `94bec99` | ENABLE_TELEGRAM_BUTTONS kill switch |
-| `94e3cb6` | P0: quiet mode + AI DB fix + TAO kill + stock outcomes |
-| `db3681d` | 4 failure modes: signal_coordinator + retry + heartbeat + cache persist |
+### Smoke tests post-deploy próximos días
 
-Spec completo: [`docs/specs/002-alert-noise-failure-audit/`](docs/specs/002-alert-noise-failure-audit/)
+- [ ] Próxima alerta V3 ETH/USDT → Telegram muestra INTEL block con whale netflow línea (Spec 019)
+- [ ] Próxima alerta stock NVDA/TSLA → Telegram muestra 5 tags acumulados (Specs 003+023+002.5+023.5+023.6)
+- [ ] `/bitlobomulti BTC` con 2 imágenes recientes → analiza cross-asset (Spec 011.5)
+- [ ] `/dashboard/live` muestra intel cards + Chart.js + tabla WR (Specs 015+020.5+020.6)
+
+---
+
+## 💡 Backlog Spec X.7+ — Próxima sesión
+
+Orden por valor + dependencias.
+
+### Sprint A (alto valor, validación A/B)
+
+- [ ] **Spec 022.7** — Expected Value per boost bucket (`WR × avg_pnl + (1-WR) × avg_pnl_losses`). Métrica definitiva A/B. Sin esto, no se distingue boost que gana raro pero alto vs boost frecuente pequeño.
+- [ ] **Spec 002.7** — `intraday_drop_pct` real tracking en `GLOBAL_CACHE["intraday_high"]` por símbolo. Activa BARRIDA fire (hoy dormant en V3 cripto + futuro V2/V4 stocks).
+
+### Sprint B (cobertura stocks)
+
+- [ ] **Spec 023.7** — IV rank percentile + unusual options activity scanner. Extiende Spec 023.6 con historic IV percentile. Requiere DB persist daily OI snapshots.
+- [ ] **Spec 023.8** — Gate stocks alerts por PUT_HEAVY OI (post-backtest validation).
+
+### Sprint C (Pydantic completeness)
+
+- [ ] **Spec 005.6** — Pydantic para `get_top_setup` + `get_expert_advice` + `get_macro_shield`. Schemas más complejos (conditional fields).
+- [ ] **Spec 005.7** — Deprecate `voice_compactor.parse_sentinel_json` cuando Pydantic primary path > 95% success en 30d.
+
+### Sprint D (UX + dashboard)
+
+- [ ] **Spec 011.6** — `media_group_id` Telegram detection (multi-photo single update). Spec 011.5 ya cubre via filesystem workflow, esto es upgrade UX.
+- [ ] **Spec 015.5** — HTTP Basic auth dashboard (si Railway URL becomes discoverable).
+- [ ] **Spec 020.7** — Multi-line chart WR overlapped por régimen HMM (cross WR × regime).
+- [ ] **Spec 020.8** — Notif Telegram cuando boost segment achieves stat significance (N≥30, Δ≥5pp).
+
+### Sprint E (low priority)
+
+- [ ] **Spec 009.7** — Telegram `/regime SYMBOL` command (debug rapid).
+- [ ] **Spec 014.6** — Persist grounded_search counter SQLite (sobrevive Railway restarts).
+- [ ] **Spec 019.5** — BTC + SOL whale tracking (blockchain.com + SolanaFM gratis).
+- [ ] **Spec 010.6** — ERC-20 stablecoin support (USDT/USDC inflows).
+
+---
+
+## ✅ Sesión 2026-05-26 — Pipeline NotebookLM 4 + 37 specs
+
+### Commits batch
+
+| Commit | Specs |
+|--------|-------|
+| `2692562` | Spec 004 NotebookLM findings (MAX_PER_CLUSTER_BY_CLUSTER, QUANTUM_SUPPRESSED_UNTIL, BTC gate, bonds watch) |
+| `1544eb6` | Notebook 1 PTS Watchlist Deep Dive docs |
+| `aa42ad9` | Notebook 3 Bot Performance Audit pipeline |
+| `5101ce6` | fix(stock) watchdog restart loop |
+| `7d306a7` | fix(sentinel) alerts vacías ZEC |
+| `06a7f9d` | Notebook 4 Trading Strategies Research |
+| `7cb1961` | Spec 005 Pydantic Sentinel |
+| `a2e9fae` | Spec 006 Funding Rate Filter |
+| `48668d7` | Spec 007 Liquidity Sweeps |
+| `858406e` | Spec 008 Fair Value Gaps |
+| `d745c79` | Spec 009 HMM Regime Classifier |
+| `127d2b4` | Spec 011 Multi-image BitLobo |
+| `fc8f6cc` | Spec 010 Whale Netflows Etherscan |
+| `478c4f1` | Spec 014 Grounded Search |
+| `22b9add` | Spec 013 Social Sentiment |
+| `1f27f13` | Spec 015 Live Metrics Dashboard |
+| `64490bb` | Spec 012 Spot CVD Segmentado |
+| `b8336e7` | Spec 016 V3 Multi-Gate Hooks |
+| `2d29faf` | Spec 017 Cuadrilla Intel Injection |
+| `2f8553d` | Spec 018 Grounded Search Panorama |
+| `8902a61` | Spec 019 Whale Netflows V3 INTEL |
+| `113aead` | Spec 020 Dashboard Intel Endpoints |
+| `21c2fe0` | Spec 021 V3 Confluence Boost |
+| `305f550` | Spec 017.5 INTEL a V2/V4/SWING |
+| `1ac3dbc` | Spec 009.6 HMM TTL Cache |
+| `20187cd` | Spec 022 A/B Test Framework |
+| `4964cc8` | Spec 023 Intel Stocks Social |
+| `f4e2756` | Spec 002.5 Regime Transitions |
+| `6e7fbc8` | Spec 011.5 /bitlobomulti |
+| `322ee24` | Spec 020.5 Dashboard Intel Cards |
+| `d111695` | Spec 023.5 HMM Stocks yfinance |
+| `fad56e4` | Spec 002.6 + 020.6 BARRIDA/EXPLOSIVE + Chart.js |
+| `c50a0db` | Spec 022.5 Outcome Auto-Update |
+| `33205b9` | Spec 023.6 + 022.6 + 005.5 Options OI + PnL + Pydantic Panorama |
+
+---
 
 ## 🔒 Bloqueado
 
-- Logs Railway necesarios para validar stock thread health post-deploy (Fernando debe pegar `railway logs --service zenith-bot` si hay incidencia)
+- NotebookLM 3 Performance Audit prompts ejecución (Fernando manual)
+- Validation A/B framework requiere ≥30 trades cerrados (semanas)
+- ETHERSCAN_API_KEY env var configuración Railway (recommended para Spec 010+019)
+- REDDIT_CLIENT_ID/SECRET env vars Railway (recommended para Spec 013)
 
 ---
 
-## 🎯 Spec maestro
+## 📊 Cost Estimation API (post-deploy)
 
-**LEER PRIMERO:** [`_SPEC.md`](_SPEC.md) — único punto de verdad de qué se hizo + criterios de aceptación validación 2 semanas.
+Ver `docs/COST_ESTIMATION_2026-05-26.md` para análisis detallado. Resumen:
 
----
+- **Gemini Flash 2.5:** ~$0.40-1.50/mes
+- **Grounded Search:** ~$0.015/mes (cap 5/día)
+- **Anthropic Claude:** $0 (SDK no instalado)
+- **Externas (yfinance/Etherscan/Reddit/Trends/Binance):** $0 (free tiers)
+- **Total estimado:** **~$0.50-$1.50/mes**
+- **Budget configurado:** $10/mes
+- **Margen:** ~85-95% libre
 
-## ✅ Sesión 2026-05-13 — Fixes aplicados
+Riesgo: si bot busy mode cripto volátil, +V3 alerts × 4 strategies podría duplicar. Mitigaciones:
+- HMM cache Spec 009.6 reduce overhead 4x
+- CVD/Social/Whale TTL caches absorben
+- Gates V3 (Spec 016) filtran alerts
+- Grounded cap 5/día protege
 
-| Commit | Fix |
-|--------|-----|
-| `688deb4` | Singleton ccxt compartido + `enableRateLimit` — elimina weight 3-4x |
-| `688deb4` | HourFilter: removidas horas 01 y 14 (tenían WR positivo) |
-| `e1e3c2b` | Ninja pre-alerta en bot — Telegram cuando RSI entra zona trigger |
-| `e1e3c2b` | Confirmación trade: mensaje nuevo al activar (no solo editar) |
-| `42ee6ef` | AutoSIM: cada señal crea SIM automático al disparar |
-| `8927548` | Fallback OHLCV: Binance → Bybit → KuCoin (ante 403s) |
-
-**Todos deployados en Railway. AutoSIM confirmado funcionando en logs.**
-
----
-
-## 💰 Tracking de costos Railway (post optimización 2026-05-13)
-
-Baseline + targets en `docs/COST_BASELINE.md`.
-
-**Reminders manuales:**
-- [ ] **2026-05-20** — Checkpoint semana 1: abrir https://railway.com/workspace/usage, comparar Memory minutely GB vs baseline (target -35%). Si < -20% → Round 3.
-- [ ] **2026-05-22** — Checkpoint fin de ciclo (May 21 cerró): actualizar `docs/COST_BASELINE.md` con resultados reales del ciclo completo.
-
-Commits relevantes: `8f485b5` (Round 1), `eb6b2a1` (Round 2), `21c4d9a` (baseline doc).
-
----
-
-## ⏰ Próxima acción: 2026-05-23 (NO ANTES)
-
-**Auditoría automática** correrá sola via routine `trig_01QjZVU9531oqK9pvNUoWSzF` el 2026-05-23T15:00:00Z (09:00 Mty) y appendea a `_AUDIT_LOG.md`.
-
-**Hasta entonces:** dejar al sistema correr en Railway. NO tocar config. NO iterar. Solo recolectar data.
-
-**Daily reports automáticos** llegarán cada día 13:00 UTC (≈8 AM EST) con PnL/PF/Expectancy del trailing 7d/24h/30d.
-
----
-
-## 📊 Estado al cierre (2026-05-09)
-
-**Backtest agregado (5 rondas tuning):**
-```
-PnL agregado:  +59.11% → +492.09%   (+433pp absolute, ~8.3x)
-Profit Factor: 1.15 → 2.21          (institutional grade ≥ 2.0)
-Trades:        253 → 238             (mejor calidad por trade)
-```
-
-**Walk-forward OOS (validación):**
-- ETH V3: +15.9% test ✅ (campeón)
-- ZEC V3: +21% test ✅ (alto edge)
-- ZEC V4: +1.4% test ✅ (robust)
-- TAO V3: -3% test (marginal, mejora vs -14.7% pre-r4)
-- BTC V3: +2.7% test (overfit pero +OOS)
-
-**Estrategias activas:**
-- ✅ V3-REVERSAL (BTC ETH TAO ZEC) — core
-- 🟡 V4-EMA (BTC TAO solo, ETH+ZEC blocklisted)
-- 🟡 SWING (con keyboard fix)
-- 🟡 COMMODITIES (con cooldown 8h post-LOST + 1D filter)
-- 🆕 SCALPER_SHORTS (sin data aún)
-- ❌ V1-LONG / V1-SHORT / V5-MOMENTUM (killed)
-
----
-
-## 🚨 Si el bot falla durante validación
-
-**Triggers para rollback (ver `_SPEC.md §11`):**
-- PF live < 0.5 con n>10
-- Bot crashes >3 veces/semana
-- Trades stuck (OPEN >7d)
-
-**Comando rollback rápido (vuelve pre-sesión):**
-```bash
-git checkout f99ea27^  # antes de los kill switches y tuning
-```
-
----
-
-## 🎯 Criterios decisión 2026-05-23 (auditor automático aplicará)
-
-| Resultado live | Acción siguiente |
-|----------------|------------------|
-| **WR ≥ 35% AND PF ≥ 1.5** | ✅ pagar TradingView Essential, ronda 6 (Hyperopt) |
-| **WR 25-35%** | 🟡 atacar items `_BACKLOG.md` (D1 trigger_conditions, D5 near_miss) |
-| **WR < 25%** | 🔴 paper trading, audit slippage/comisiones reales vs backtest |
-| **Volumen <10 trades 14d** | Relajar `MIN_CONFLUENCE_SCORE` 5→4 o `RVOL_MIN_ENTRY` 0.8→0.7 |
-
----
-
-## 📋 Items backlog para post-validación
-
-Si data live confirma edge → ronda 6 (en orden de impacto):
-
-1. **Hyperopt-light** vía Freqtrade — V3 RSI por símbolo, 500 épocas
-2. **Per-strategy + per-symbol weights** (no solo símbolo)
-3. **VWAP RANGING strategy** — cubrir gap lateral (Q1 2026 todas perdieron)
-4. **TradingView Pine webhook** — solo si edge confirmado
-5. **Régimen detection refinement**
-
-Otros items diferidos en `_BACKLOG.md`:
-- 🔴 S1: rotar secrets `.env` (security)
-- 🔴 S2: Railway Volume mount (data persist)
-- 🟡 D1: poblar `trigger_conditions` JSON
-- 🟡 D5: near_miss logging
-- 🟢 C1-C7: refactor + tests
-
----
-
-## 🧠 Filosofía vigente
-
-> "No somos rentables todavía. Step by step. PF > 1.3 = ganando. WR alone es vanity."
-
-3 strikes y muere. Iterar con data, no intuición. Cada decisión documentada.
-
----
-
-## 📚 Docs leer en orden
-
-1. **`_SPEC.md`** ← maestro, leer SIEMPRE primero
-2. `_GUIDE.md` — manual operacional (sin código)
-3. `_BACKTEST_HISTORICO.md` — historia + rondas tuning
-4. `_STRATEGY_LIFECYCLE.md` — política de iteración
-5. `_ITERATION_LOG.md` — log auditable de patches
-6. `_BACKLOG.md` — items diferidos
-7. `_AUDIT_LOG.md` — auditoría automática (se llena 2026-05-23)
+Validación real: monitor `/api/ai_budget` en dashboard 7 días post-deploy.
