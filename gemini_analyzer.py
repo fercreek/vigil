@@ -598,6 +598,62 @@ def _call_persona_task(persona_name: str, prompt: str) -> tuple[str, str | None]
     return persona_name, answer
 
 
+def _call_persona_task_structured(persona_name: str, prompt: str) -> tuple[str, str | None]:
+    """Spec 005.5 — Worker con Pydantic Structured Output para Panorama horario.
+
+    Path primario: response_schema=PanoramaPersonaResponse → respuesta tipada.
+    Si Pydantic falla (parsed=None) o el SDK no soporta el schema → fallback a
+    `_chat_with_persona` (texto libre) que respeta el contrato existente.
+
+    Retorna tupla (persona_name, answer_str). answer_str sigue el formato
+    BIAS/CLAVE/ACCIÓN esperado por el renderer downstream.
+    """
+    # Import condicional — si el modelo no existe (deploy parcial) graceful degradation
+    try:
+        from models import PanoramaPersonaResponse
+        _has_schema = True
+    except ImportError as _e:
+        logger.warning(f"[Panorama Structured] PanoramaPersonaResponse no disponible ({_e}) — fallback chat")
+        _has_schema = False
+
+    if not _has_schema or not client:
+        return _call_persona_task(persona_name, prompt)
+
+    system = PERSONAS[persona_name]["system"]
+
+    try:
+        resp = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                temperature=0.4,
+                max_output_tokens=400,
+                response_mime_type="application/json",
+                response_schema=PanoramaPersonaResponse,
+            ),
+        )
+        parsed_obj: PanoramaPersonaResponse | None = getattr(resp, "parsed", None)
+        if parsed_obj is not None and parsed_obj.has_real_content():
+            answer = parsed_obj.to_telegram_format()
+            # Mantener memoria de la persona (replica el side-effect de _chat_with_persona)
+            try:
+                ctx = _load_memory(persona_name)
+                ctx = _add_to_memory(persona_name, "user", prompt, ctx)
+                ctx = _add_to_memory(persona_name, "model", answer, ctx)
+                log_ai_decision(persona_name, prompt, answer)
+            except Exception as _mem_e:
+                logger.warning(f"[Panorama Structured] {persona_name}: memoria no actualizada ({_mem_e})")
+            return persona_name, answer
+
+        logger.warning(f"[Panorama Structured] {persona_name}: response.parsed vacío — fallback chat")
+    except Exception as e:
+        logger.warning(f"[Panorama Structured] {persona_name}: error {e} — fallback chat")
+
+    # Fallback graceful: usa el path tradicional con chat history
+    return _call_persona_task(persona_name, prompt)
+
+
 def get_hourly_panorama(prices_dict: dict) -> dict:
     """
     Genera el panorama horario desde AMBOS agentes de forma independiente.
@@ -649,8 +705,10 @@ Solo <b>, <i>, <code>. Máximo 5 líneas totales."""
 
     results = {}
     with ThreadPoolExecutor(max_workers=4) as executor:
+        # Spec 005.5 (2026-05-26): usa Pydantic Structured Output via PanoramaPersonaResponse.
+        # Si falla / Pydantic no disponible, el worker hace fallback a _call_persona_task tradicional.
         futures = {
-            executor.submit(_call_persona_task, persona, prompt): persona
+            executor.submit(_call_persona_task_structured, persona, prompt): persona
             for persona in ["CONSERVADOR", "SCALPER", "SALMOS", "APOCALIPSIS"]
         }
         for future in as_completed(futures):

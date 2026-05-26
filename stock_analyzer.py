@@ -431,11 +431,36 @@ def stock_watchdog():
                         except Exception:
                             pass
 
+                        # Spec 023.6 (2026-05-26): Options OI volume profile (proxy positioning institucional).
+                        # yfinance options chain → suma calls OI vs puts OI en primeras 2 expirations.
+                        # Cache TTL 30min — OI no cambia segundo a segundo (institucionales acumulan).
+                        # CALL_HEAVY (ratio >= 2.0) = bullish positioning. PUT_HEAVY (<= 0.5) = bearish hedging.
+                        # BALANCED → sin tag (evita ruido).
+                        _options_oi_tag = ""
+                        try:
+                            import options_oi
+                            _oi = options_oi.get_options_oi_ratio(t.upper(), expirations_lookback=2) or {}
+                            _oi_signal = _oi.get("signal")
+                            _oi_ratio = _oi.get("call_put_ratio", 0.0)
+                            if _oi_signal == "CALL_HEAVY":
+                                _options_oi_tag = (
+                                    f"📈 <b>Options OI: CALL_HEAVY</b> "
+                                    f"(ratio {_oi_ratio:.1f}x) — bullish institutional\n"
+                                )
+                            elif _oi_signal == "PUT_HEAVY":
+                                _options_oi_tag = (
+                                    f"📉 <b>Options OI: PUT_HEAVY</b> "
+                                    f"(ratio {_oi_ratio:.1f}x) — bearish hedging\n"
+                                )
+                        except Exception:
+                            pass
+
                         msg = (
                             f"{_priority_tag}"
                             f"{_social_tag}"
                             f"{_explosive_tag}"
                             f"{_hmm_tag}"
+                            f"{_options_oi_tag}"
                             f"🚨 <b>ALERTA DE ENTRADA: {t}</b>\n"
                             f"📌 {direction} — Precio actual: <b>${p:.2f}</b>\n"
                             f"🎯 Entrada obj: <b>${entry:.2f}</b> (dist. {dist*100:.2f}%)\n"

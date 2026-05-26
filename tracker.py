@@ -174,6 +174,47 @@ def log_intel_event(alert_id: int, symbol: str, strategy: str, side: str,
         return None
 
 
+def _compute_pnl_pct(entry: float | None, sl: float | None, tp1: float | None,
+                     outcome: str, side: str | None) -> float | None:
+    """Spec 022.6 (2026-05-26): pure compute pnl_pct% según outcome/side.
+
+    Estimación conservadora (no requiere close_price real):
+      - WIN     → close = tp1            (asume hit TP1)
+      - LOSS    → close = sl             (asume hit SL)
+      - PARTIAL → close = midpoint(entry, tp1)   (estimación cauta)
+
+    Formula:  pnl_pct = (close - entry) / entry * 100
+    Si side == "SHORT" → invertir signo.
+
+    Returns:
+        float pnl_pct o None si datos insuficientes (entry <= 0 o tp1/sl missing donde aplica).
+    """
+    try:
+        if not entry or entry <= 0:
+            return None
+        outcome_u = (outcome or "").upper()
+        if outcome_u == "WIN":
+            if not tp1 or tp1 <= 0:
+                return None
+            close = float(tp1)
+        elif outcome_u == "LOSS":
+            if not sl or sl <= 0:
+                return None
+            close = float(sl)
+        elif outcome_u == "PARTIAL":
+            if not tp1 or tp1 <= 0:
+                return None
+            close = (float(entry) + float(tp1)) / 2.0
+        else:
+            return None
+        pnl_pct = (close - float(entry)) / float(entry) * 100.0
+        if (side or "").upper() == "SHORT":
+            pnl_pct *= -1.0
+        return round(pnl_pct, 4)
+    except Exception:
+        return None
+
+
 def update_intel_outcome(intel_id: int, outcome: str, pnl: float | None = None) -> bool:
     """Update outcome de un intel_outcomes row cuando trade cierra.
 
@@ -242,7 +283,18 @@ def get_intel_ab_stats() -> dict:
             c.execute(f"SELECT COUNT(*) FROM intel_outcomes WHERE {condition} AND outcome='WIN'")
             wins = c.fetchone()[0]
             wr = round(100.0 * wins / cnt, 1) if cnt > 0 else 0.0
-            boost_segments[label] = {'count': cnt, 'wr': wr}
+            # Spec 022.6: PnL aggregates (avg + total) sobre outcome_pnl NOT NULL
+            c.execute(f"SELECT AVG(outcome_pnl), SUM(outcome_pnl), COUNT(outcome_pnl) FROM intel_outcomes WHERE {condition} AND outcome_pnl IS NOT NULL")
+            _avg, _total, _n = c.fetchone()
+            avg_pnl_pct = round(float(_avg), 3) if _avg is not None else 0.0
+            total_pnl_pct = round(float(_total), 3) if _total is not None else 0.0
+            boost_segments[label] = {
+                'count': cnt,
+                'wr': wr,
+                'avg_pnl_pct': avg_pnl_pct,
+                'total_pnl_pct': total_pnl_pct,
+                'pnl_n': int(_n or 0),
+            }
 
         # Top gates blocking
         c.execute("SELECT gates_blocked_json FROM intel_outcomes WHERE gates_blocked_json NOT IN ('[]','',NULL)")
@@ -590,9 +642,33 @@ def update_trade_status(trade_id: int, status: str):
         ''', (_outcome, trade_id))
         _updated = _c.rowcount
         _conn.commit()
-        _conn.close()
         if _updated > 0:
             print(f"📊 [intel_outcomes] auto-updated alert_id={trade_id} → {_outcome}")
+
+        # Spec 022.6 (2026-05-26): compute pnl_pct real para rows recién marcados.
+        # Query entry/sl/tp1/side, compute, UPDATE outcome_pnl WHERE NULL.
+        try:
+            _c.execute('''
+                SELECT id, entry_price, sl_price, tp1_price, side
+                FROM intel_outcomes
+                WHERE alert_id = ? AND outcome = ? AND outcome_pnl IS NULL
+            ''', (trade_id, _outcome))
+            _rows = _c.fetchall()
+            for _row_id, _entry, _sl, _tp1, _side in _rows:
+                _pnl_pct = _compute_pnl_pct(_entry, _sl, _tp1, _outcome, _side)
+                if _pnl_pct is None:
+                    continue
+                _c.execute('''
+                    UPDATE intel_outcomes
+                    SET outcome_pnl = ?
+                    WHERE id = ?
+                ''', (_pnl_pct, _row_id))
+                print(f"📊 [intel_outcomes] pnl_pct alert_id={trade_id} (id={_row_id}, side={_side}) → {_pnl_pct:+.2f}%")
+            _conn.commit()
+        except Exception as _pe:
+            print(f"[intel_outcomes pnl_pct ERROR] trade_id={trade_id}: {_pe}")
+
+        _conn.close()
     except Exception as _e:
         print(f"[intel_outcomes auto-update ERROR] trade_id={trade_id}: {_e}")
 
