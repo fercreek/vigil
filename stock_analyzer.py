@@ -414,10 +414,28 @@ def stock_watchdog():
                         except Exception:
                             pass
 
+                        # Spec 023.5 (2026-05-26): HMM regime tag para stocks vía yfinance adapter.
+                        # Cache TTL 15min en regime_hmm — múltiples tickers no saturan API.
+                        # Lookback 100 (vs 200 cripto) porque yfinance horas limitadas + más rápido.
+                        _hmm_tag = ""
+                        try:
+                            import regime_hmm
+                            _hmm = regime_hmm.detect_regime(t.upper(), timeframe="1h", lookback=100) or {}
+                            _hmm_regime = _hmm.get("regime")
+                            _hmm_conf = _hmm.get("confidence", 0.0)
+                            if _hmm_regime:
+                                _hmm_tag = (
+                                    f"📊 <b>HMM régimen:</b> {_hmm_regime} "
+                                    f"(conf {_hmm_conf*100:.0f}%)\n"
+                                )
+                        except Exception:
+                            pass
+
                         msg = (
                             f"{_priority_tag}"
                             f"{_social_tag}"
                             f"{_explosive_tag}"
+                            f"{_hmm_tag}"
                             f"🚨 <b>ALERTA DE ENTRADA: {t}</b>\n"
                             f"📌 {direction} — Precio actual: <b>${p:.2f}</b>\n"
                             f"🎯 Entrada obj: <b>${entry:.2f}</b> (dist. {dist*100:.2f}%)\n"

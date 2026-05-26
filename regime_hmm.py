@@ -33,6 +33,15 @@ except ImportError:
     _HMMLEARN_AVAILABLE = False
     GaussianHMM = None  # type: ignore
 
+# Spec 023.5 (2026-05-26): yfinance lazy import para stocks regime detection.
+# Bot principal corre en Railway con yfinance instalado; dev local puede no tenerlo.
+try:
+    import yfinance as _yf  # type: ignore
+    _YFINANCE_AVAILABLE = True
+except ImportError:
+    _YFINANCE_AVAILABLE = False
+    _yf = None  # type: ignore
+
 
 REGIME_LABELS = ("STRONG_TREND", "RANGE", "VOLATILE_SQUEEZE")
 
@@ -133,13 +142,85 @@ def _map_states_to_regimes(model: "GaussianHMM", features: np.ndarray, states: n
     return mapping
 
 
+def _yf_interval_period(timeframe: str, lookback: int) -> tuple[str, str]:
+    """Mapea timeframe ccxt + lookback a (interval, period) yfinance.
+
+    yfinance limits:
+        - intervals "1m"/"2m"/"5m"/"15m"/"30m"/"60m"/"1h"/"1d"/"1wk"/"1mo"
+        - "1h"/"60m": max 730 días history
+        - "1d": sin límite real
+    Para HMM stocks usamos típicamente "1h" + lookback 100 candles ≈ 14 trading days.
+    """
+    tf_map = {
+        "1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m",
+        "1h": "1h", "60m": "1h", "4h": "1h",  # 4h no soportado nativo, usar 1h
+        "1d": "1d", "1day": "1d", "1w": "1wk", "1wk": "1wk",
+    }
+    interval = tf_map.get(timeframe, "1h")
+
+    # period must cover lookback candles. trading hours: ~6.5h/day NYSE.
+    if interval in ("1m", "5m", "15m", "30m"):
+        # intraday short: usar días
+        days_needed = max(2, lookback // 13 + 2)  # ~13 candles intraday/day a 30m
+        period = f"{min(days_needed, 60)}d"
+    elif interval == "1h":
+        # ~7 candles/day stocks NYSE → lookback 100 ≈ 15 días
+        days_needed = max(5, lookback // 6 + 5)
+        period = f"{min(days_needed, 730)}d"
+    elif interval == "1d":
+        days_needed = max(30, lookback + 10)
+        period = f"{min(days_needed, 3650)}d"
+    else:
+        period = "60d"
+    return interval, period
+
+
+def _fetch_ohlcv_stock(ticker: str, timeframe: str = "1h", lookback_candles: int = 200) -> pd.DataFrame | None:
+    """Spec 023.5: descarga OHLCV stock vía yfinance, retorna DataFrame columnas
+    open/high/low/close/volume normalizadas (lowercase, mismo schema que indicators.get_df).
+
+    Returns None si falla o data insuficiente.
+    """
+    if not _YFINANCE_AVAILABLE:
+        print(f"[HMM YFINANCE] yfinance no instalado — skip stock regime para {ticker}")
+        return None
+    try:
+        interval, period = _yf_interval_period(timeframe, lookback_candles)
+        hist = _yf.Ticker(ticker).history(period=period, interval=interval, auto_adjust=False)
+        if hist is None or hist.empty:
+            print(f"[HMM YFINANCE] history vacía para {ticker}/{interval}/{period}")
+            return None
+        # Normalizar columnas a lowercase para matchar indicators.get_df schema
+        df = hist.rename(columns={
+            "Open": "open", "High": "high", "Low": "low",
+            "Close": "close", "Volume": "volume",
+        })
+        cols_needed = ["open", "high", "low", "close", "volume"]
+        missing = [c for c in cols_needed if c not in df.columns]
+        if missing:
+            print(f"[HMM YFINANCE] columnas faltantes {missing} para {ticker}")
+            return None
+        df = df[cols_needed].dropna()
+        if len(df) < 50:
+            print(f"[HMM YFINANCE] data insuficiente {len(df)} candles para {ticker}")
+            return None
+        return df
+    except Exception as e:
+        print(f"[HMM YFINANCE ERROR] {ticker}/{timeframe}: {e}")
+        return None
+
+
 def detect_regime(symbol: str, timeframe: str = "1h", lookback: int = 200) -> dict:
     """Detecta régimen actual via HMM 3-state sobre OHLCV.
 
+    Spec 023.5 (2026-05-26): symbol routing:
+        - Si contiene "/" → cripto vía indicators.get_df (ccxt Binance)
+        - Si NO contiene "/" → stock vía _fetch_ohlcv_stock (yfinance)
+
     Args:
-        symbol: e.g. "BTC/USDT"
+        symbol: e.g. "BTC/USDT" (cripto) o "NVDA" (stock)
         timeframe: e.g. "1h" (default)
-        lookback: candles a usar para entrenar HMM (default 200)
+        lookback: candles a usar para entrenar HMM (default 200; stocks suele usar 100)
 
     Returns:
         {
@@ -162,11 +243,17 @@ def detect_regime(symbol: str, timeframe: str = "1h", lookback: int = 200) -> di
         return _cached
 
     try:
-        # Lazy import para que el módulo sea importable sin ccxt local
-        from indicators import get_df
+        # Spec 023.5: branch source por presence de "/" en symbol
+        is_crypto = "/" in symbol
+        if is_crypto:
+            # Lazy import para que el módulo sea importable sin ccxt local
+            from indicators import get_df
+            # Pedimos lookback+50 para tener margen tras dropna de features
+            df = get_df(symbol, timeframe=timeframe, limit=lookback + 50)
+        else:
+            # Stock vía yfinance
+            df = _fetch_ohlcv_stock(symbol, timeframe=timeframe, lookback_candles=lookback + 50)
 
-        # Pedimos lookback+50 para tener margen tras dropna de features
-        df = get_df(symbol, timeframe=timeframe, limit=lookback + 50)
         if df is None or df.empty or len(df) < 50:
             print(f"[HMM ERROR] DataFrame insuficiente para {symbol}/{timeframe}")
             return {}
