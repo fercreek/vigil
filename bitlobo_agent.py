@@ -155,6 +155,98 @@ def analyze_chart(image_path: str, symbol: str, timeframe: str = "4H",
         return f"🐺 BitLobo: Error analizando {symbol} — {e}"
 
 
+def analyze_chart_multi(image_paths: list, symbol: str, timeframe: str = "4H",
+                        extra_context: str = "",
+                        image_labels: list | None = None) -> str:
+    """
+    Spec 011 (2026-05-26 — NotebookLM 4 Prompt 5): BitLobo analiza MÚLTIPLES imágenes
+    en un solo prompt multimodal. Útil para Panorama cross-asset: gráfica de precio +
+    mapa de calor sectorial + gráfico del VIX simultáneamente.
+
+    Gemini Flash 2.5 multimodal nativo soporta N imágenes en un solo prompt.
+    Esto emula visualmente la función "Panorama cross-asset" del bot, dándole a
+    BitLobo análisis macro integrado en lugar de N llamadas separadas.
+
+    Args:
+        image_paths: Lista de rutas locales a imágenes (PNG/JPG).
+        symbol: Ticker principal del análisis.
+        timeframe: Marco temporal del símbolo principal.
+        extra_context: Info adicional (precio actual, niveles conocidos).
+        image_labels: Lista opcional de labels descriptivos por imagen (en orden
+            paralelo a image_paths). Ej: ["Precio 4H", "Mapa sectorial", "VIX 1D"].
+            Si None, se usan labels genéricos "Imagen 1", "Imagen 2", etc.
+
+    Returns:
+        Análisis BitLobo con metodología de zonas + cross-asset context.
+    """
+    if not image_paths:
+        return f"🐺 BitLobo: No se proporcionaron imágenes para {symbol}"
+
+    # Validar que existan todas
+    missing = [p for p in image_paths if not os.path.exists(p)]
+    if missing:
+        return f"🐺 BitLobo: Faltan imágenes — {missing}"
+
+    if image_labels is None:
+        image_labels = [f"Imagen {i+1}" for i in range(len(image_paths))]
+    elif len(image_labels) != len(image_paths):
+        return f"🐺 BitLobo: image_labels ({len(image_labels)}) no coincide con image_paths ({len(image_paths)})"
+
+    try:
+        # Build prompt con descripción de cada imagen
+        labels_block = "\n".join([f"- Imagen {i+1}: {lbl}" for i, lbl in enumerate(image_labels)])
+        prompt = (
+            f"📊 Análisis Multi-Asset BitLobo para {symbol} — TF principal: {timeframe}\n"
+            f"{extra_context}\n\n"
+            f"Te paso {len(image_paths)} imágenes en este orden:\n{labels_block}\n\n"
+            "Analízalas TODAS juntas como un panorama integrado:\n"
+            "1. ZONA VERDE (entrada/soporte) del símbolo principal — niveles exactos.\n"
+            "2. ZONA ROJA (resistencia/target) — niveles exactos.\n"
+            "3. Confirmación cross-asset: ¿qué dicen las otras imágenes sobre el setup?\n"
+            "   (sectorial alcista/bajista, VIX bajo/alto, etc.)\n"
+            "4. Veredicto final: setup ACTIVO / EN CAMINO / NO HAY que tomar la operación.\n"
+            "5. Stop Loss sugerido.\n\n"
+            "Responde directo, en español, con emojis de zona. Máximo 8 líneas."
+        )
+
+        # Construir contenidos multimodal: cada imagen como Part + prompt como Part final
+        contents = []
+        for path in image_paths:
+            with open(path, "rb") as f:
+                img_bytes = f.read()
+            # Detectar mime por extensión
+            ext = path.lower().split(".")[-1]
+            mime = "image/jpeg" if ext in ("jpg", "jpeg") else "image/png"
+            contents.append(types.Part.from_bytes(data=img_bytes, mime_type=mime))
+        contents.append(types.Part.from_text(text=prompt))
+
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=BITLOBO_SYSTEM,
+                temperature=0.7,
+                max_output_tokens=600,  # +200 vs single-image, más contexto cross-asset
+            )
+        )
+        result = response.text.strip()
+
+        # Guardar en memoria
+        context = _load_memory()
+        context = _add_to_memory(
+            "user",
+            f"[MULTI-CHART {len(image_paths)}img] {symbol} {timeframe}: {extra_context}",
+            context,
+        )
+        context = _add_to_memory("model", result, context)
+        log_ai_decision("BITLOBO", f"multichart_{symbol}", result)
+        return result
+
+    except Exception as e:
+        logger.error(f"[BitLobo Multi-Chart Error] {e}")
+        return f"🐺 BitLobo: Error analizando multi-chart {symbol} — {e}"
+
+
 # ── Opinión sobre señal del bot (texto, sin imagen) ──────────────────────────
 def get_opinion(symbol: str, direction: str, price: float,
                 entry: float = None, sl: float = None,
