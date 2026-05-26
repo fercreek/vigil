@@ -489,6 +489,34 @@ def stock_watchdog():
                         _em.log_alert_episode(t, "STOCK", direction, entry, sl, tp,
                                               source="STOCK")
 
+                        # Spec 022.6.2 (2026-05-26): A/B framework — log stock intel.
+                        # Antes solo V3-Reversal + Sentinel logueaban. Stocks (mitad del bot) faltaban.
+                        try:
+                            import tracker as _trk
+                            from scalp_alert_bot import _PENDING_SIGNALS as _PS
+                            _trade_id = _PS.get(_sid, {}).get("sim_id") or _sid
+                            _stock_intel = {}
+                            if '_hmm_regime' in dir() and _hmm_regime:
+                                _stock_intel["hmm_regime"] = _hmm_regime
+                                _stock_intel["hmm_confidence"] = _hmm_conf
+                            if '_ss_signal' in dir() and _ss_signal:
+                                _stock_intel["social_signal"] = _ss_signal
+                                _stock_intel["social_reddit"] = _ss.get("reddit_compound", 0)
+                            if '_oi_signal' in dir() and _oi_signal in ("CALL_HEAVY", "PUT_HEAVY"):
+                                _stock_intel["options_signal"] = _oi_signal
+                                _stock_intel["options_ratio"] = _oi_ratio
+                            _trk.log_intel_event(
+                                alert_id=int(_trade_id), symbol=t,
+                                strategy="stock_entry", side=direction,
+                                intel=_stock_intel,
+                                boost_applied=0.0, boost_reasons=[],
+                                conf_score_pre=4.0, conf_score_post=4.0,
+                                entry=entry, sl=sl or 0.0, tp1=tp or 0.0,
+                                gates_blocked=[],
+                            )
+                        except Exception as _e:
+                            print(f"[stock intel_log skip {t}] {_e}")
+
                 # Helper: management keyboard si hay trade abierto en DB
                 def _mgmt_kb(ticker, side):
                     try:

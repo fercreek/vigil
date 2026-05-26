@@ -814,10 +814,14 @@ def check_strategies(prices: dict):
                     register_signal_event(sym.replace("/USDT", ""), prices)
 
                     # Spec 022 (2026-05-26): A/B test logging — capturar intel + boost para análisis posterior
+                    # Fix Spec 022.5.1 (2026-05-26): usar sim_id (trade.id) en lugar de _sid (counter),
+                    # para que update_trade_status pueda matchear y poblar outcome/pnl_pct.
                     try:
                         import tracker as _trk
+                        from scalp_alert_bot import _PENDING_SIGNALS as _PS
+                        _trade_id = _PS.get(_sid, {}).get("sim_id") or _sid
                         _trk.log_intel_event(
-                            alert_id=_sid, symbol=sym, strategy="v3_reversal", side="LONG",
+                            alert_id=int(_trade_id), symbol=sym, strategy="v3_reversal", side="LONG",
                             intel=_extra_intel, boost_applied=_boost,
                             boost_reasons=_boost_reasons,
                             conf_score_pre=_conf_score_pre, conf_score_post=conf_score,
