@@ -387,7 +387,7 @@ def check_user_queries(prices: dict):
                     send_telegram(f"🐦 <b>Escaneando X y News para {sym}...</b>")
                     send_telegram(safe_html(social_analyzer.get_social_intel(sym, current_price=prices.get(sym, 0.0))))
 
-                elif "mercado" in t or text.startswith("/status"):
+                elif "mercado" in t and not text.startswith("/status"):
                     sentiment = gemini_analyzer.get_market_sentiment(prices)
                     # Detectar bias y asignar emoji
                     bias_raw = sentiment.get("bias", "NEUTRAL")
