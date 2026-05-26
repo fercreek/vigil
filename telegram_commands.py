@@ -6,6 +6,7 @@ Usa lazy imports para evitar circularidad con scalp_alert_bot.
 """
 
 import os
+import time
 import requests
 from datetime import datetime
 import tracker
@@ -315,6 +316,46 @@ def check_user_queries(prices: dict):
                     send_telegram("⏳ Obteniendo radar de acciones con Yahoo Finance...")
                     import stock_analyzer
                     send_telegram(stock_analyzer.check_stock_status())
+
+                elif text.startswith("/bitlobomulti"):
+                    # Spec 011.5 (2026-05-26): batch analiza últimas N imágenes guardadas del símbolo.
+                    # Workflow: usuario manda fotos via /add_chart SYM TF1, /add_chart SYM TF2,
+                    # luego /bitlobomulti SYM → bot busca image_sym_*.png reciente (<30min) y manda
+                    # análisis cross-asset multimodal a Gemini.
+                    import bitlobo_agent
+                    import glob
+                    parts = text.split()
+                    if len(parts) >= 2:
+                        sym = parts[1].upper()
+                        # Buscar imágenes del símbolo en chart_ideas/assets — mtime ≤ 30min
+                        candidates = glob.glob(f"chart_ideas/assets/image_{sym.lower()}_*.png")
+                        now = time.time()
+                        recent = [p for p in candidates if now - os.path.getmtime(p) < 1800]
+                        recent.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+                        recent = recent[:5]  # Top 5 más recientes
+                        if not recent:
+                            send_telegram(f"🐺 BitLobo Multi: No encontré imágenes recientes (<30min) de {sym}. Manda primero con /add_chart {sym} TF.")
+                        else:
+                            # Labels = TF inferido del filename si posible
+                            labels = []
+                            for p in recent:
+                                # filename: image_sym_tf.png o image_sym_tf_timestamp.png
+                                base = os.path.basename(p).replace(".png", "")
+                                parts_fn = base.split("_")
+                                tf_part = parts_fn[2].upper() if len(parts_fn) >= 3 else "TF"
+                                labels.append(f"{sym} {tf_part}")
+                            send_telegram(f"🐺 <b>BitLobo Multi analizando {sym}</b> ({len(recent)} imágenes: {', '.join(labels)})...")
+                            result = bitlobo_agent.analyze_chart_multi(
+                                image_paths=recent,
+                                symbol=sym,
+                                timeframe=labels[0].split()[-1] if labels else "MULTI",
+                                extra_context=f"Análisis cross-TF de {sym}",
+                                image_labels=labels,
+                            )
+                            send_telegram(safe_html(result))
+                    else:
+                        send_telegram("🐺 Uso: /bitlobomulti SYMBOL\nEj: /bitlobomulti BTC (debe haber imágenes recientes guardadas via /add_chart)")
+                    continue
 
                 elif text.startswith("/bitlobo"):
                     # /bitlobo SYMBOL [TIMEFRAME] — opinión de BitLobo sin imagen
