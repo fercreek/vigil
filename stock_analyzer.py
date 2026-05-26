@@ -398,9 +398,26 @@ def stock_watchdog():
                         except Exception:
                             pass
 
+                        # Spec 002 (2026-05-26 — NotebookLM 4 Prompt 5): EXPLOSIVE_CORRECTION tag.
+                        # Si macro transitionó AMARILLA→VERDE recientemente y ticker es explosive,
+                        # señal de patron historic recovery vertical.
+                        _explosive_tag = ""
+                        try:
+                            import regime_transitions
+                            _sp500_p = current_prices.get("SPY", 0.0) * 10 if current_prices.get("SPY", 0.0) > 0 else 7000.0
+                            _vix_p = current_prices.get("VIX", 0.0)
+                            if regime_transitions.is_explosive_correction_setup(t.upper(), _sp500_p, _vix_p):
+                                _explosive_tag = (
+                                    f"⚡ <b>EXPLOSIVE_CORRECTION</b> — macro just turned VERDE_BULL, "
+                                    f"{t} en explosive set. Recovery vertical histórico\n"
+                                )
+                        except Exception:
+                            pass
+
                         msg = (
                             f"{_priority_tag}"
                             f"{_social_tag}"
+                            f"{_explosive_tag}"
                             f"🚨 <b>ALERTA DE ENTRADA: {t}</b>\n"
                             f"📌 {direction} — Precio actual: <b>${p:.2f}</b>\n"
                             f"🎯 Entrada obj: <b>${entry:.2f}</b> (dist. {dist*100:.2f}%)\n"
