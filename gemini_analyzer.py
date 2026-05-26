@@ -1107,29 +1107,60 @@ def get_sentinel_report_compact(symbol: str, current_price: float, rsi: float, e
 
     prompt = voice_compactor.compact_sentinel_prompt(symbol, market_block, macro_block, memory_ctx)
 
+    # Spec 005 (2026-05-26): Pydantic Structured Output via response_schema.
+    # Reemplaza JSON mode + manual parsing por enforcement de tipos en SDK.
     try:
-        resp = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.5,
-                max_output_tokens=2500,  # 2026-05-26: 1500→2500. voices empty en alerts ZEC (truncación recovery sin voices).
-                response_mime_type="application/json",
-                system_instruction="Genera SOLO el JSON pedido. Cada voz ≤8 palabras. Sin prosa adicional.",
-            ),
-        )
+        from models import SentinelResponse
+        _has_pydantic_schema = True
+    except ImportError as _e:
+        logger.warning(f"[Sentinel Compact] Pydantic SentinelResponse no disponible ({_e}) — fallback JSON mode")
+        _has_pydantic_schema = False
+
+    try:
+        if _has_pydantic_schema:
+            resp = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.5,
+                    max_output_tokens=2500,
+                    response_mime_type="application/json",
+                    response_schema=SentinelResponse,  # Pydantic enforce
+                    system_instruction="Genera SOLO el JSON pedido. Cada voz ≤8 palabras. Sin prosa adicional.",
+                ),
+            )
+            # response.parsed = instancia SentinelResponse o None
+            parsed_obj: SentinelResponse | None = getattr(resp, "parsed", None)
+            if parsed_obj is not None:
+                # Spec 003 fix: validar que voices tengan contenido real (no solo defaults "—")
+                if not parsed_obj.has_real_voices():
+                    logger.warning(f"[Sentinel Compact] {symbol}: voices empty via Pydantic (modelo no llenó voices). Skipping alert.")
+                    return None
+                return parsed_obj.to_renderer_dict()
+            # Fallback al parser manual si Pydantic schema falla
+            logger.warning(f"[Sentinel Compact] {symbol}: response.parsed=None — fallback parse_sentinel_json")
+        else:
+            resp = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.5,
+                    max_output_tokens=2500,
+                    response_mime_type="application/json",
+                    system_instruction="Genera SOLO el JSON pedido. Cada voz ≤8 palabras. Sin prosa adicional.",
+                ),
+            )
+
+        # ── Fallback legacy: parse manual via voice_compactor ─────────────────
         raw = (resp.text or "").strip()
         parsed = voice_compactor.parse_sentinel_json(raw)
         if parsed:
-            # 2026-05-26: validar que voices tenga contenido real, no solo placeholders "—"
-            # de _repair_partial. Sin voices, la alert es inútil ("🟢 ZEC 4/5 LONG / 🎩 — / ⚡ —").
             voices = parsed.get("voices", {})
             has_voices = bool(voices) and any(v and v != "—" for v in voices.values())
             if not has_voices:
                 logger.warning(f"[Sentinel Compact] {symbol}: voices empty (JSON truncated recovery). Skipping alert. raw_len={len(raw)}")
                 return None
             return parsed
-        # Log full raw (no truncation) so we can debug parse failures end-to-end
         logger.warning(f"[Sentinel Compact] JSON unparseable for {symbol} (len={len(raw)}): {raw!r}")
     except Exception as e:
         logger.warning(f"[Sentinel Compact] Error: {e}")
