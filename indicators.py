@@ -420,6 +420,126 @@ def get_fibonacci_levels(symbol, timeframe='4h', lookback=100):
         print(f"[Fibonacci ERROR] {symbol}/{timeframe}: {e}")
         return {}
 
+def detect_fair_value_gaps(symbol, timeframe='1h', lookback=30, max_gaps=5):
+    """
+    Spec 008 (2026-05-26 — NotebookLM 4): detecta Fair Value Gaps (FVG) recientes.
+
+    Un FVG es un patrón de 3 velas donde el rango entre vela N-1 y N+1 deja un "gap"
+    sin cubrir por la vela N central. Imán de precio: los FVG no rellenados tienden
+    a actuar como targets futuros (precio regresa a cerrar el gap).
+
+    Definición matemática (3 velas C0, C1, C2):
+        Bullish FVG: low(C2) > high(C0)  → gap entre high(C0) y low(C2)
+        Bearish FVG: high(C2) < low(C0)  → gap entre high(C2) y low(C0)
+        C1 (vela central) ignorada en la condición.
+
+    Args:
+        symbol: e.g. "BTC/USDT"
+        timeframe: e.g. "1h"
+        lookback: número de velas a escanear (excluye velas más recientes que la actual).
+        max_gaps: tope de FVGs devueltos (los más recientes primero).
+
+    Returns dict:
+        {
+            "bullish_fvgs": [{"top": float, "bot": float, "candle_idx": int, "age_candles": int}, ...],
+            "bearish_fvgs": [...],
+            "nearest_bullish_top": float | None,    # imán de precio más cercano arriba
+            "nearest_bearish_bot": float | None,    # imán de precio más cercano debajo
+        }
+
+    Uso típico: combinar nearest_bullish_top con TP dinámico del bot — si nearest_bullish
+    está por debajo de TP1 ATR-based, considerar usar FVG top como TP más probable de
+    ser tocado (imán Smart Money).
+
+    Si no hay datos suficientes o falla, retorna dict vacío.
+    """
+    try:
+        df = get_df(symbol, timeframe=timeframe, limit=lookback + 5)
+        if df.empty or len(df) < 4:
+            return {}
+
+        # Iteramos N-1, N, N+1 — usar últimas `lookback` velas (excluyendo la actual sin cerrar)
+        recent = df.iloc[-(lookback + 1):-1]  # excluir vela actual incompleta
+        n = len(recent)
+        if n < 3:
+            return {}
+
+        bullish = []
+        bearish = []
+        current_price = float(df.iloc[-1]['close'])
+
+        for i in range(n - 2):
+            c0 = recent.iloc[i]
+            c2 = recent.iloc[i + 2]
+            c0_high = float(c0['high'])
+            c0_low = float(c0['low'])
+            c2_high = float(c2['high'])
+            c2_low = float(c2['low'])
+
+            # Bullish FVG: c2.low > c0.high
+            if c2_low > c0_high:
+                # Verificar que no haya sido rellenado por velas posteriores
+                filled = False
+                for j in range(i + 3, n):
+                    if float(recent.iloc[j]['low']) <= c0_high:
+                        filled = True
+                        break
+                if not filled:
+                    bullish.append({
+                        "top": round(c2_low, 4),
+                        "bot": round(c0_high, 4),
+                        "candle_idx": i,
+                        "age_candles": n - i - 1,
+                    })
+
+            # Bearish FVG: c2.high < c0.low
+            elif c2_high < c0_low:
+                filled = False
+                for j in range(i + 3, n):
+                    if float(recent.iloc[j]['high']) >= c0_low:
+                        filled = True
+                        break
+                if not filled:
+                    bearish.append({
+                        "top": round(c0_low, 4),
+                        "bot": round(c2_high, 4),
+                        "candle_idx": i,
+                        "age_candles": n - i - 1,
+                    })
+
+        # Más recientes primero (mayor age_candles = más viejo)
+        bullish.sort(key=lambda g: g["age_candles"])
+        bearish.sort(key=lambda g: g["age_candles"])
+        bullish = bullish[:max_gaps]
+        bearish = bearish[:max_gaps]
+
+        # Imán más cercano arriba (bullish gap por encima del precio)
+        nearest_bullish_top = None
+        for g in bullish:
+            if g["bot"] > current_price:
+                # Es un gap por encima — posible target alcista
+                if nearest_bullish_top is None or g["top"] < nearest_bullish_top:
+                    nearest_bullish_top = g["top"]
+
+        # Imán más cercano debajo (bearish gap por debajo del precio)
+        nearest_bearish_bot = None
+        for g in bearish:
+            if g["top"] < current_price:
+                if nearest_bearish_bot is None or g["bot"] > nearest_bearish_bot:
+                    nearest_bearish_bot = g["bot"]
+
+        return {
+            "bullish_fvgs": bullish,
+            "bearish_fvgs": bearish,
+            "nearest_bullish_top": nearest_bullish_top,
+            "nearest_bearish_bot": nearest_bearish_bot,
+            "current_price": round(current_price, 4),
+        }
+    except Exception as e:
+        print(f"[FVG ERROR] {symbol}/{timeframe}: {e}")
+        return {}
+
+
 def detect_liquidity_sweep(symbol, timeframe='1h', lookback=20):
     """
     Spec 007 (2026-05-26 — NotebookLM 4): detecta barridas de liquidez recientes.

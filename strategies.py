@@ -520,6 +520,24 @@ def check_strategies(prices: dict):
                 tp1 = round(p + (sl_dist * 2.0), 2)
                 tp2 = round(p + (sl_dist * 3.5), 2)
 
+                # Spec 008 (2026-05-26): FVG bullish nearest como imán de precio.
+                # Si hay un FVG bullish por encima del precio + entre TP1 y TP2, considerarlo
+                # como TP más probable (Smart Money imán). NO override TP1 (mantenemos ATR-based)
+                # pero AGREGAMOS tag visual + posible target intermedio.
+                _fvg_tag = ""
+                _fvg_target = None
+                try:
+                    _fvg = indicators.detect_fair_value_gaps(sym, timeframe="1h", lookback=30, max_gaps=3)
+                    _nearest_bull = _fvg.get("nearest_bullish_top")
+                    if _nearest_bull is not None and tp1 <= _nearest_bull <= tp2:
+                        _fvg_target = round(_nearest_bull, 2)
+                        _fvg_tag = (
+                            f"🎯 <b>FVG imán</b> @ ${_fvg_target:,.2f} "
+                            f"(entre TP1 y TP2 — target probable)\n"
+                        )
+                except Exception as _e:
+                    print(f"[V3-Reversal] {sym} FVG detect skip: {_e}")
+
                 # Spec 007 (2026-05-26): liquidity sweep tag.
                 # Si swept_low activo + macro VERDE_BULL_DORMANT → smart money huella en LONG.
                 _sweep_tag = ""
@@ -535,6 +553,7 @@ def check_strategies(prices: dict):
 
                 msg = (f"🏛️ <b>SEÑAL V3: INTRADÍA REVERSAL (15m-1H)</b> 🏛️\n\n"
                        f"{_sweep_tag}"
+                       f"{_fvg_tag}"
                        f"🌊 Onda: {elliott}\n"
                        f"⭐ <b>Confiabilidad: {format_confidence(conf_score)}</b>\n\n"
                        f"💬 <i>Buscando el rebote a la media (EMA 200) tras agotamiento.</i>\n\n"
