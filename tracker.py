@@ -562,6 +562,40 @@ def update_trade_status(trade_id: int, status: str):
     conn.commit()
     conn.close()
 
+    # Spec 022.5 (2026-05-26): auto-update intel_outcomes outcome al cerrar trade.
+    # Mapping status → outcome:
+    #   FULL_WON / WON         → "WIN"
+    #   PARTIAL_CLOSED / PARTIAL_WON → "PARTIAL"
+    #   LOST                   → "LOSS"
+    # PnL queda None — Spec 022.6 candidato computar % real cuando tp/sl/entry disponibles.
+    try:
+        _outcome_map = {
+            "FULL_WON": "WIN",
+            "WON": "WIN",
+            "PARTIAL_CLOSED": "PARTIAL",
+            "PARTIAL_WON": "PARTIAL",
+            "LOST": "LOSS",
+        }
+        _outcome = _outcome_map.get(status)
+        if _outcome is None:
+            return
+        # alert_id en intel_outcomes = trade.id (Spec 022 wire en strategies.py V3-REVERSAL)
+        _conn = sqlite3.connect(DB_FILE)
+        _c = _conn.cursor()
+        # Solo update si todavía está sin outcome (evita sobreescribir update manual previo)
+        _c.execute('''
+            UPDATE intel_outcomes
+            SET outcome = ?, outcome_filled_at = CURRENT_TIMESTAMP
+            WHERE alert_id = ? AND outcome IS NULL
+        ''', (_outcome, trade_id))
+        _updated = _c.rowcount
+        _conn.commit()
+        _conn.close()
+        if _updated > 0:
+            print(f"📊 [intel_outcomes] auto-updated alert_id={trade_id} → {_outcome}")
+    except Exception as _e:
+        print(f"[intel_outcomes auto-update ERROR] trade_id={trade_id}: {_e}")
+
 def update_sl(trade_id: int, new_sl: float):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
