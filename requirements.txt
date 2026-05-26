@@ -32,6 +32,9 @@ google-auth-httplib2==0.3.0
 google-genai==1.69.0
 google-generativeai==0.8.6
 hmmlearn>=0.3.0
+praw>=7.7.0
+pytrends>=4.9.0
+vaderSentiment>=3.3.2
 googleapis-common-protos==1.73.1
 grpcio==1.78.0
 grpcio-status==1.71.2
