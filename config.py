@@ -391,6 +391,11 @@ SWING_EMA50_TREND_FILTER = True  # Only enter with EMA50 direction (4H)
 # ── Phase 2: Market Intelligence ─────────────────────────────────────────────
 FUNDING_EXTREME_LONG  = 0.0005   # 0.05% — ccxt devuelve decimal (longs crowded)
 FUNDING_EXTREME_SHORT = -0.0005  # -0.05% (shorts crowded)
+
+# Spec 006 (2026-05-26 — NotebookLM 4): Funding Rate gate para V3-REVERSAL.
+# Annualized % por encima del threshold = latigazo volatilidad inminente, apalancamiento extremo.
+# NotebookLM recomendó 10%. Empezamos en 30% conservador, bajar a 10 tras 1 semana de logs.
+FUNDING_REVERSAL_BLOCK_ANNUALIZED = 30.0  # % anualizado. > threshold = skip V3 reversal.
 ADX_TRENDING_THRESHOLD = 25      # ADX > 25 = trending
 BB_WIDTH_RANGING_PCT   = 0.01    # BB width < 2% = ranging (bajo edge)
 ATR_VOLATILE_PERCENTILE = 80     # ATR > percentil 80 = volatile

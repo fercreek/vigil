@@ -495,6 +495,20 @@ def check_strategies(prices: dict):
                     print(f"🥷 [Ninja] {sym} pre-alerta enviada RSI={rsi:.1f} (trigger≤{reversal_rsi})")
 
             if rsi <= reversal_rsi:
+                # Spec 006 (2026-05-26): Funding Rate gate — bloquear reversal si funding > threshold.
+                # NotebookLM 4: funding annualized > 10% persistente = latigazo volatilidad inminente.
+                # Apalancamiento extremo en longs = liquidaciones masivas precipitan colapso adverso.
+                try:
+                    from config import FUNDING_REVERSAL_BLOCK_ANNUALIZED as _FRB
+                    _sym_funding = (funding_data or {}).get(sym, {})
+                    _funding_ann = _sym_funding.get("annualized", 0.0)
+                    if _funding_ann > _FRB:
+                        print(f"⏸️ [V3-Reversal] {sym}: funding {_funding_ann:.1f}% > {_FRB}% — bloqueando (latigazo volatilidad inminente)")
+                        continue
+                except Exception as _e:
+                    # Si funding data no disponible, no bloquear — fallback al comportamiento previo
+                    pass
+
                 register_signal_event(sym.replace("/USDT", ""), prices)
                 side = "LONG"
                 funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
