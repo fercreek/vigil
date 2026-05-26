@@ -533,6 +533,94 @@ def api_metrics_signal_episodes_summary():
         return jsonify({"error": str(e)}), 500
 
 
+# Spec 020 (2026-05-26): nuevos endpoints para exponer los módulos intel
+# (regime HMM, CVD segmentado, whale netflow on-chain) al dashboard.
+
+@app.route('/api/metrics/regime')
+def api_metrics_regime():
+    """HMM régimen por símbolo. Spec 009 wire."""
+    symbols = request.args.get('symbols', 'BTC/USDT,ETH/USDT,SOL/USDT,ZEC/USDT,TAO/USDT').split(',')
+    out = {}
+    try:
+        import regime_hmm
+        for sym in symbols:
+            sym = sym.strip()
+            try:
+                r = regime_hmm.detect_regime(sym, timeframe="1h", lookback=200) or {}
+                out[sym] = {
+                    'regime': r.get('regime'),
+                    'confidence': r.get('confidence'),
+                    'current_state': r.get('current_state'),
+                }
+            except Exception as e:
+                out[sym] = {'error': str(e)}
+        return jsonify({
+            'regimes': out,
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
+    except ImportError:
+        return jsonify({'error': 'regime_hmm module not available'}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/metrics/cvd/<path:symbol>')
+def api_metrics_cvd(symbol: str):
+    """CVD segmentado para un símbolo Binance spot. Spec 012 wire.
+
+    Ejemplo: /api/metrics/cvd/BTC/USDT
+    """
+    try:
+        import cvd_segmented
+        cvd = cvd_segmented.compute_cvd_segmented(symbol, lookback_trades=1000) or {}
+        return jsonify({
+            **cvd,
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
+    except ImportError:
+        return jsonify({'error': 'cvd_segmented module not available'}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/metrics/onchain_eth')
+def api_metrics_onchain_eth():
+    """Whale netflow ETH on-chain (Etherscan). Spec 010 wire."""
+    lookback = int(request.args.get('lookback_hours', 24))
+    try:
+        import onchain
+        whale = onchain.get_whale_netflow(token_symbol='ETH', chain='eth',
+                                          lookback_hours=lookback) or {}
+        return jsonify({
+            **whale,
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
+    except ImportError:
+        return jsonify({'error': 'onchain module not available'}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/metrics/social/<path:symbol>')
+def api_metrics_social(symbol: str):
+    """Social sentiment Reddit+Trends por símbolo. Spec 013 wire.
+
+    Ejemplo: /api/metrics/social/BTC
+    """
+    lookback = int(request.args.get('lookback_hours', 24))
+    try:
+        import social_quant
+        s = social_quant.get_social_sentiment(symbol, lookback_hours=lookback) or {}
+        return jsonify({
+            **s,
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
+    except ImportError:
+        return jsonify({'error': 'social_quant module not available'}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     print("🚀 Dashboard de Scalping UI iniciado en http://localhost:5001")
     app.run(debug=True, port=5001)
