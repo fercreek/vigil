@@ -621,6 +621,23 @@ def api_metrics_social(symbol: str):
         return jsonify({"error": str(e)}), 500
 
 
+# Spec 022 (2026-05-26): A/B test stats — WR boost > 0 vs boost = 0 + gates blocked.
+@app.route('/api/metrics/intel_ab')
+def api_metrics_intel_ab():
+    """Estadísticas A/B test gates + boost intel modules vs baseline."""
+    try:
+        import tracker
+        stats = tracker.get_intel_ab_stats()
+        return jsonify({
+            **stats,
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
+    except ImportError:
+        return jsonify({'error': 'tracker module not available'}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     print("🚀 Dashboard de Scalping UI iniciado en http://localhost:5001")
     app.run(debug=True, port=5001)

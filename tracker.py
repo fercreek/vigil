@@ -90,8 +90,183 @@ def init_db():
         c.execute("ALTER TABLE backtest_sessions ADD COLUMN elliott_wave TEXT DEFAULT 'Analizando...'")
     except:
         pass
+
+    # Spec 022 (2026-05-26): A/B test framework para gates + boost intel.
+    # Captura datos por cada alert enviada para correlacionar con outcome posterior.
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS intel_outcomes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT DEFAULT CURRENT_TIMESTAMP,
+            alert_id INTEGER,
+            symbol TEXT,
+            strategy TEXT,
+            side TEXT,
+            intel_json TEXT,
+            gates_blocked_json TEXT,
+            boost_applied REAL DEFAULT 0.0,
+            boost_reasons TEXT,
+            conf_score_pre REAL,
+            conf_score_post REAL,
+            entry_price REAL,
+            sl_price REAL,
+            tp1_price REAL,
+            outcome TEXT DEFAULT NULL,
+            outcome_pnl REAL DEFAULT NULL,
+            outcome_filled_at TEXT DEFAULT NULL
+        )
+    ''')
     conn.commit()
     conn.close()
+
+
+def log_intel_event(alert_id: int, symbol: str, strategy: str, side: str,
+                    intel: dict, boost_applied: float = 0.0, boost_reasons: list | None = None,
+                    conf_score_pre: float = 0.0, conf_score_post: float = 0.0,
+                    entry: float = 0.0, sl: float = 0.0, tp1: float = 0.0,
+                    gates_blocked: list | None = None) -> int | None:
+    """Spec 022 (2026-05-26): registra evento de intel para A/B testing.
+
+    Llamado POST gates (alert pasó) o cuando un gate bloqueó (gates_blocked != []).
+    Outcome se rellena posteriormente via update_intel_outcome cuando trade cierra.
+
+    Args:
+        alert_id: ID del alert (msg_id Telegram o id de signal_episodes)
+        symbol: e.g. "BTC/USDT"
+        strategy: e.g. "v3_reversal", "v4", "swing"
+        side: "LONG" / "SHORT"
+        intel: dict completo del _extra_intel (HMM/CVD/Social/Whale)
+        boost_applied: total boost aplicado al confluence (Spec 021)
+        boost_reasons: lista de strings con razones del boost
+        conf_score_pre: score antes del boost
+        conf_score_post: score post boost
+        entry/sl/tp1: niveles del trade
+        gates_blocked: lista de nombres de gates que bloquearon (si la alerta no se envió)
+
+    Returns:
+        intel_outcomes.id si OK, None si error.
+    """
+    import json
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO intel_outcomes
+            (alert_id, symbol, strategy, side, intel_json, gates_blocked_json,
+             boost_applied, boost_reasons, conf_score_pre, conf_score_post,
+             entry_price, sl_price, tp1_price)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            alert_id, symbol, strategy, side,
+            json.dumps(intel or {}, ensure_ascii=False),
+            json.dumps(gates_blocked or [], ensure_ascii=False),
+            float(boost_applied or 0.0),
+            ", ".join(boost_reasons or []),
+            float(conf_score_pre or 0.0),
+            float(conf_score_post or 0.0),
+            float(entry or 0.0), float(sl or 0.0), float(tp1 or 0.0),
+        ))
+        new_id = c.lastrowid
+        conn.commit()
+        conn.close()
+        return new_id
+    except Exception as e:
+        print(f"[intel_outcomes ERROR] {e}")
+        return None
+
+
+def update_intel_outcome(intel_id: int, outcome: str, pnl: float | None = None) -> bool:
+    """Update outcome de un intel_outcomes row cuando trade cierra.
+
+    Args:
+        intel_id: id del row a actualizar
+        outcome: "WIN" | "LOSS" | "PARTIAL"
+        pnl: PnL del trade en USD o pct
+
+    Returns:
+        True si OK.
+    """
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('''
+            UPDATE intel_outcomes
+            SET outcome = ?, outcome_pnl = ?, outcome_filled_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (outcome, pnl, intel_id))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"[intel_outcomes UPDATE ERROR] {e}")
+        return False
+
+
+def get_intel_ab_stats() -> dict:
+    """Spec 022: estadísticas A/B test gates + boost vs baseline.
+
+    Returns dict:
+        {
+            'total': int,
+            'with_outcome': int,
+            'boost_segments': {
+                'boost_0': {'count': N, 'wr': X.X},
+                'boost_1+': {'count': N, 'wr': X.X},
+                'boost_3+': {'count': N, 'wr': X.X},
+            },
+            'gates_blocked_count': int,
+            'top_gates_blocking': [(gate_name, count), ...],
+        }
+    """
+    import json
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        # Total + outcomes
+        c.execute("SELECT COUNT(*) FROM intel_outcomes")
+        total = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM intel_outcomes WHERE outcome IS NOT NULL")
+        with_outcome = c.fetchone()[0]
+        # Gates blocked
+        c.execute("SELECT COUNT(*) FROM intel_outcomes WHERE gates_blocked_json NOT IN ('[]', '', NULL)")
+        gates_blocked_count = c.fetchone()[0]
+
+        # WR por bucket de boost
+        boost_segments = {}
+        for label, condition in [
+            ("boost_0", "boost_applied = 0"),
+            ("boost_1+", "boost_applied >= 1.0"),
+            ("boost_3+", "boost_applied >= 3.0"),
+        ]:
+            c.execute(f"SELECT COUNT(*) FROM intel_outcomes WHERE {condition}")
+            cnt = c.fetchone()[0]
+            c.execute(f"SELECT COUNT(*) FROM intel_outcomes WHERE {condition} AND outcome='WIN'")
+            wins = c.fetchone()[0]
+            wr = round(100.0 * wins / cnt, 1) if cnt > 0 else 0.0
+            boost_segments[label] = {'count': cnt, 'wr': wr}
+
+        # Top gates blocking
+        c.execute("SELECT gates_blocked_json FROM intel_outcomes WHERE gates_blocked_json NOT IN ('[]','',NULL)")
+        gate_counter: dict = {}
+        for (gj,) in c.fetchall():
+            try:
+                gates = json.loads(gj or "[]")
+                for g in gates:
+                    gate_counter[g] = gate_counter.get(g, 0) + 1
+            except Exception:
+                pass
+        top_gates = sorted(gate_counter.items(), key=lambda x: -x[1])[:5]
+
+        conn.close()
+        return {
+            'total': total,
+            'with_outcome': with_outcome,
+            'boost_segments': boost_segments,
+            'gates_blocked_count': gates_blocked_count,
+            'top_gates_blocking': top_gates,
+        }
+    except Exception as e:
+        print(f"[intel_ab_stats ERROR] {e}")
+        return {}
 
 def save_backtest_session(date_str: str, version: str, trades: list, starting_balance: float = 1000.0):
     """Persiste los resultados de una simulación en la BD."""

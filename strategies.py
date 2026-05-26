@@ -657,6 +657,7 @@ def check_strategies(prices: dict):
                 funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
                 conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), funding_signal=funding_signal)
                 conf_score = round(conf_score + social_adj, 2)
+                _conf_score_pre = conf_score  # Spec 022: snapshot pre-boost para A/B tracking
 
                 # Spec 021 (2026-05-26): boost confluence con signals BULLISH/FEAR del INTEL.
                 # Specs 016/019 ya filtraron como gates BEARISH. Aquí premiamos los signals
@@ -743,6 +744,19 @@ def check_strategies(prices: dict):
                     GLOBAL_CACHE.setdefault("pending_ep_ids", {})[_sid] = _ep_id
                     gemini_analyzer.log_alert_to_context(sym, "LONG", p, rsi, tp1, sl, "V1-TECH")
                     register_signal_event(sym.replace("/USDT", ""), prices)
+
+                    # Spec 022 (2026-05-26): A/B test logging — capturar intel + boost para análisis posterior
+                    try:
+                        import tracker as _trk
+                        _trk.log_intel_event(
+                            alert_id=_sid, symbol=sym, strategy="v3_reversal", side="LONG",
+                            intel=_extra_intel, boost_applied=_boost,
+                            boost_reasons=_boost_reasons,
+                            conf_score_pre=_conf_score_pre, conf_score_post=conf_score,
+                            entry=p, sl=sl, tp1=tp1, gates_blocked=[],
+                        )
+                    except Exception as _e:
+                        print(f"[V3-Reversal] {sym} intel_log skip: {_e}")
 
         # ═══════════════════════════════════════════════════════════════════
         # ESTRATEGIA V1: Long V1 (Trend Alcista + RSI 45 + RSI Rising)
