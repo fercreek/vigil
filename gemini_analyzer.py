@@ -252,6 +252,10 @@ def _format_extra_intel(intel: dict) -> str:
         rd = intel.get("social_reddit", 0)
         gt = intel.get("social_trends_delta", 0)
         lines.append(f"  • Social sentiment (Exodo): {intel['social_signal']} · Reddit {rd:+.2f} · Trends {gt:+.0f}%")
+    # Spec 019: on-chain whale netflow
+    if "whale_signal" in intel:
+        nf = intel.get("whale_net_flow_usd", 0)
+        lines.append(f"  • Whale netflow 24h ETH on-chain (Genesis): ${nf:+,.0f} · signal={intel['whale_signal']}")
     lines.append("")  # newline final
     return "\n".join(lines)
 

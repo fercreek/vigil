@@ -558,6 +558,17 @@ def check_strategies(prices: dict):
                 except Exception as _e:
                     pass
 
+                # Spec 019 (2026-05-26): on-chain whale netflow para tokens trackeables.
+                # ETH directo via Etherscan. Otros símbolos sin chain match → skip.
+                _whale = {}
+                _sym_base = sym.replace("/USDT", "")
+                if _sym_base == "ETH":
+                    try:
+                        import onchain
+                        _whale = onchain.get_whale_netflow(token_symbol="ETH", chain="eth", lookback_hours=24) or {}
+                    except Exception as _e:
+                        pass
+
                 # Spec 017: build extra_intel dict para inyectar en Cuadrilla Zenith prompt
                 _extra_intel = {}
                 if _hmm.get("regime"):
@@ -571,6 +582,10 @@ def check_strategies(prices: dict):
                     _extra_intel["social_signal"] = _social.get("signal")
                     _extra_intel["social_reddit"] = _social.get("reddit_compound", 0)
                     _extra_intel["social_trends_delta"] = _social.get("google_trends_delta", 0)
+                # Spec 019: whale netflow (solo ETH por ahora)
+                if _whale.get("signal"):
+                    _extra_intel["whale_signal"] = _whale.get("signal")
+                    _extra_intel["whale_net_flow_usd"] = _whale.get("net_flow_usd", 0)
 
                 register_signal_event(sym.replace("/USDT", ""), prices)
                 side = "LONG"
