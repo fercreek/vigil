@@ -1165,9 +1165,39 @@ def main():
                             print(f"🔕 Sentinel {_sym}: filtered — {reason}")
                             continue
 
-                        msg = _vc.render_sentinel_compact(_sym, parsed, _p, _rsi)
-                        send_telegram(msg)
+                        # Spec 022.6.1 (2026-05-26): inyectar INTEL en el Sentinel.
+                        # Sentinel es la strategy real que dispara alertas (V3-Reversal rara
+                        # vez se cumple). Sin esto, todo el wire de HMM/CVD/Whale/Social
+                        # construido en Specs 009/010/012/013/019 quedaba dormant.
+                        _intel_sentinel = {}
+                        try:
+                            from strategies import _build_extra_intel as _bei
+                            _intel_sentinel = _bei(f"{_sym}/USDT") or {}
+                        except Exception as _e:
+                            print(f"[sentinel intel build skip] {_e}")
+
+                        msg = _vc.render_sentinel_compact(_sym, parsed, _p, _rsi, intel=_intel_sentinel)
+                        mid = send_telegram(msg)
                         print(f"✅ Sentinel {_sym}: enviado · {_bias} {_score}/5")
+
+                        # Log al A/B framework (Spec 022) — antes solo V3-Reversal logueaba.
+                        try:
+                            import tracker as _trk
+                            _trk.log_intel_event(
+                                alert_id=int(mid) if mid and str(mid).isdigit() else 0,
+                                symbol=f"{_sym}/USDT",
+                                strategy="sentinel_compact",
+                                side=_bias,
+                                intel=_intel_sentinel,
+                                boost_applied=0.0,
+                                boost_reasons=[],
+                                conf_score_pre=float(_score),
+                                conf_score_post=float(_score),
+                                entry=_p, sl=0.0, tp1=0.0,
+                                gates_blocked=[],
+                            )
+                        except Exception as _e:
+                            print(f"[sentinel intel_log skip] {_e}")
                 
                 # --- ALTCOIN SENTINEL: REMOVED 2026-05-09 ---
                 # Audit Telegram: ruido sin acción accionable. Duplicaba info de PANORAMA.

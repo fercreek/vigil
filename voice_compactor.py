@@ -192,8 +192,64 @@ _VERDICT_EMOJI = {
 }
 
 
+def intel_compact_line(intel: dict | None) -> str:
+    """Spec 022.6.1 (2026-05-26): formato 1-2 líneas compactas para Telegram.
+
+    Lee dict de `_build_extra_intel` y produce string visible para el user.
+    Distinto de `gemini_analyzer._format_extra_intel` (que es verbose para prompt LLM).
+
+    Keys soportadas: hmm_regime, hmm_confidence, cvd_signal, cvd_whale_usd,
+    social_signal, social_reddit, whale_signal, whale_net_flow_usd, options_signal.
+
+    Retorna "" si intel vacío. Trunca a ~200 chars con "…" si excede.
+    """
+    if not intel:
+        return ""
+
+    parts: list[str] = []
+
+    if "hmm_regime" in intel:
+        conf = intel.get("hmm_confidence", 0.0)
+        parts.append(f"HMM {intel['hmm_regime']} {conf:.2f}")
+
+    if "cvd_signal" in intel:
+        w = intel.get("cvd_whale_usd", 0)
+        if abs(w) >= 1_000_000:
+            w_str = f"{w/1_000_000:+.1f}M"
+        elif abs(w) >= 1_000:
+            w_str = f"{w/1_000:+.0f}K"
+        else:
+            w_str = f"{w:+.0f}"
+        parts.append(f"CVD {intel['cvd_signal'].replace('_', ' ')} ${w_str}")
+
+    if "social_signal" in intel:
+        rd = intel.get("social_reddit", 0)
+        parts.append(f"Social {intel['social_signal']} {rd:+.2f}")
+
+    if "whale_signal" in intel:
+        nf = intel.get("whale_net_flow_usd", 0)
+        if abs(nf) >= 1_000_000:
+            nf_str = f"{nf/1_000_000:+.1f}M"
+        elif abs(nf) >= 1_000:
+            nf_str = f"{nf/1_000:+.0f}K"
+        else:
+            nf_str = f"{nf:+.0f}"
+        parts.append(f"Whale ${nf_str}")
+
+    if "options_signal" in intel:
+        parts.append(f"OI {intel['options_signal']}")
+
+    if not parts:
+        return ""
+
+    line = "🔬 " + " · ".join(parts)
+    if len(line) > 200:
+        line = line[:199] + "…"
+    return line
+
+
 def render_sentinel_compact(symbol: str, parsed: dict, price: float, rsi: float,
-                            extra: str = "") -> str:
+                            extra: str = "", intel: dict | None = None) -> str:
     """Build the 6-7 line Telegram message from parsed dict."""
     bias = parsed.get("bias", "NEUTRAL")
     score = parsed.get("score", 0)
@@ -211,6 +267,11 @@ def render_sentinel_compact(symbol: str, parsed: dict, price: float, rsi: float,
         lines.append(f"<code>{extra}</code>")
     else:
         lines.append(f"<code>RSI {rsi:.0f}</code>")
+
+    # Spec 022.6.1 (2026-05-26): bloque INTEL visible (HMM/CVD/Social/Whale).
+    intel_line = intel_compact_line(intel)
+    if intel_line:
+        lines.append(intel_line)
 
     lines.extend([
         f"🎩 {voices.get('genesis', '—')}",

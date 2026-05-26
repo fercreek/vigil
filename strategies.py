@@ -775,9 +775,19 @@ def check_strategies(prices: dict):
                 except Exception as _e:
                     print(f"[V3-Reversal] {sym} sweep detect skip: {_e}")
 
+                # Spec 022.6.1 (2026-05-26): INTEL visible en el mensaje (antes solo
+                # se inyectaba al prompt LLM, user no lo veía nunca).
+                try:
+                    from voice_compactor import intel_compact_line as _icl
+                    _intel_visible = _icl(_extra_intel)
+                except Exception:
+                    _intel_visible = ""
+                _intel_tag = f"{_intel_visible}\n" if _intel_visible else ""
+
                 msg = (f"🏛️ <b>SEÑAL V3: INTRADÍA REVERSAL (15m-1H)</b> 🏛️\n\n"
                        f"{_sweep_tag}"
                        f"{_fvg_tag}"
+                       f"{_intel_tag}"
                        f"🌊 Onda: {elliott}\n"
                        f"⭐ <b>Confiabilidad: {format_confidence(conf_score)}</b>\n\n"
                        f"💬 <i>Buscando el rebote a la media (EMA 200) tras agotamiento.</i>\n\n"
