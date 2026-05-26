@@ -269,13 +269,19 @@ def stock_watchdog():
             # Gate 2026-05-23: alertas stock solo Mon-Fri 09:30-16:00 ET. Sat/Sun + pre/after = mute.
             if not _is_nyse_market_open():
                 logger.info("👁️ Centinela: NYSE cerrado — skip ciclo (heartbeat OK, sleep 15min).")
-                time.sleep(900)
+                # Fix 2026-05-26: sleep chunked con heartbeat. Watchdog timeout=300s < 900s causaba reinicios.
+                for _ in range(15):
+                    time.sleep(60)
+                    thread_health.heartbeat("stock")
                 continue
             logger.info("👁️ Centinela: Analizando Reporte de Acciones + Watchlist estática...")
             report_signals, _ = extract_stock_signals()
             signals = _merge_signals(report_signals)
             if not signals:
-                time.sleep(900)
+                # Fix 2026-05-26: sleep chunked con heartbeat
+                for _ in range(15):
+                    time.sleep(60)
+                    thread_health.heartbeat("stock")
                 continue
 
             current_prices = _fetch_prices(signals)
