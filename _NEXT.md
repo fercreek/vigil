@@ -1,37 +1,35 @@
 # _NEXT.md — Scalp Bot / Zenith
 
-> Update: 2026-05-26 · Prev: `33205b9`
-> **Sesión cerrada — 37+ specs implementados hoy. Pipeline NotebookLM 4 completo + wires + boosts + A/B framework.**
+> Update: 2026-05-26 · Último commit: `25a9140`
+> **Sesión extendida — audit wires dormant + 5 fixes críticos post-deploy. Ver `docs/SPEC_WIRE_AUDIT.md`.**
 
 ---
 
 ## ⚡ En proceso (retomar aquí)
 
-### Verificaciones operativas pendientes
+### P0 — Fernando hace estos manualmente (15 min total)
 
-- [ ] Schedule task 13:35 UTC fired? Verificar `docs/specs/004-notebooklm-findings-integration/VERIFICATION_2026-05-26.md` post-trigger.
-- [ ] Producción Railway: trades cerrando → `sqlite3 trades.db "SELECT id, alert_id, outcome, outcome_pnl FROM intel_outcomes WHERE outcome IS NOT NULL ORDER BY id DESC LIMIT 10"` muestra rows con outcome + pnl
-- [ ] `curl https://[railway]/api/metrics/intel_ab` → `with_outcome > 0`, boost_segments WR populated
-- [ ] Tras 30+ trades cerrados V3: validar `boost_3+ WR > boost_0 WR + 5pp` (Spec 021 boost helps?)
-- [ ] NotebookLM 3 Performance Audit (`docs/research/notebook-lm-3/`) — Fernando ejecuta prompts manualmente
+- [ ] **Env vars Railway** — `ETHERSCAN_API_KEY` (Etherscan.io/myapikey) + `REDDIT_CLIENT_ID/SECRET/USER_AGENT` (reddit.com/prefs/apps). Desbloquea Specs 010/013/019.
+- [ ] **Test UX Telegram cel** — reiniciar Telegram desktop, mandar `/pos` → verificar 6 botones reply keyboard nuevos (📂 💰 📊 🔬 🛡️ 🏛️). Mandar `/status`, `/audit`, `/intel BTC` → confirmar responden.
 
-### Smoke tests post-deploy próximos días
+### P1 — Validaciones automáticas (esperar datos)
 
-- [ ] Próxima alerta V3 ETH/USDT → Telegram muestra INTEL block con whale netflow línea (Spec 019)
-- [ ] Próxima alerta stock NVDA/TSLA → Telegram muestra 5 tags acumulados (Specs 003+023+002.5+023.5+023.6)
-- [ ] `/bitlobomulti BTC` con 2 imágenes recientes → analiza cross-asset (Spec 011.5)
-- [ ] `/dashboard/live` muestra intel cards + Chart.js + tabla WR (Specs 015+020.5+020.6)
+- [ ] **A/B framework 7d** — `curl https://web-production-75508.up.railway.app/api/metrics/intel_ab` → `total > 0` después del primer ciclo Sentinel (~4h). `with_outcome > 0` después de un trade cerrado.
+- [ ] **Sentinel con intel visible** — próxima alerta ZEC/TAO debe incluir línea `🔬 HMM ... · CVD ... · Social ...` (fix `cbbfeb0`).
+- [ ] **Outcome auto-update funciona** — tras trade FULL_WON/LOST: `sqlite3 trades.db "SELECT alert_id, outcome, outcome_pnl FROM intel_outcomes WHERE outcome IS NOT NULL LIMIT 5;"` muestra rows (fix `25a9140`).
+- [ ] **Schedule task 13:35 UTC** — verificar `docs/specs/004-notebooklm-findings-integration/VERIFICATION_2026-05-26.md` post-trigger.
 
 ---
 
 ## 💡 Backlog Spec X.7+ — Próxima sesión
 
-Orden por valor + dependencias.
+Orden por valor + dependencias. Ver `docs/SPEC_WIRE_AUDIT.md` para estado completo de wires.
 
 ### Sprint A (alto valor, validación A/B)
 
 - [ ] **Spec 022.7** — Expected Value per boost bucket (`WR × avg_pnl + (1-WR) × avg_pnl_losses`). Métrica definitiva A/B. Sin esto, no se distingue boost que gana raro pero alto vs boost frecuente pequeño.
 - [ ] **Spec 002.7** — `intraday_drop_pct` real tracking en `GLOBAL_CACHE["intraday_high"]` por símbolo. Activa BARRIDA fire (hoy dormant en V3 cripto + futuro V2/V4 stocks).
+- [ ] **Spec 022.6.3** — `log_intel_event` en V1/V2/V4 strategies (17.5 ya inyecta intel al LLM, falta loguear para A/B).
 
 ### Sprint B (cobertura stocks)
 
