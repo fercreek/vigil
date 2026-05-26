@@ -64,15 +64,17 @@ def safe_html(text: str) -> str:
     return t
 
 
-def get_main_menu(symbol: str = "ZEC") -> dict:
+def get_main_menu(symbol: str = "BTC") -> dict:
     """
-    Genera el teclado de botones principal (ReplyKeyboardMarkup) con un diseño institucional.
-    V14.1: Diseño compacto y descriptivo.
+    Genera el teclado de botones principal (ReplyKeyboardMarkup).
+    V2.0 (2026-05-26 UX-copy redesign): 6 botones 80/20 — operación + intel + health.
+    Diseño TDAH-friendly: 2 filas × 3 cols, emojis + comandos.
     """
     keyboard = [
-        [{"text": "📂 /pos"}, {"text": "➕ /open"}, {"text": "🔍 Check"}],
-        [{"text": "📊 Mercado"}, {"text": "⛽ Commod"}, {"text": "🏦 PnL HOY"}],
-        [{"text": "🥷 Intel ZEC"}, {"text": "📊 WinRate"}, {"text": "🏛️ Audit"}]
+        # Fila 1 — Operación viva (multi-times/día)
+        [{"text": "📂 /pos"}, {"text": "💰 /pnl"}, {"text": "📊 /winrate"}],
+        # Fila 2 — Intel + Health (1-2x/día)
+        [{"text": "🔬 /intel BTC"}, {"text": "🛡️ /status"}, {"text": "🏛️ /audit"}],
     ]
 
     return {
@@ -89,28 +91,36 @@ def set_bot_commands():
     Se recomienda llamar a esta función una vez al iniciar el bot.
     """
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setMyCommands"
+    # V2.0 (2026-05-26): menú reordenado tras UX-copy redesign.
+    # Top 6 botones reply keyboard. Acá los slash commands completos.
     commands = [
-        # ── Diario (uso constante) ────────────────────────────────────────
-        {"command": "pos",         "description": "Ver posiciones abiertas (/pos full = detalle)"},
-        {"command": "check",       "description": "P&L + SL/TP recomendados por ATR"},
-        {"command": "open",        "description": "Abrir posición manual (picker inline)"},
-        {"command": "winrate",     "description": "Win rate global + Real vs SIM"},
-        {"command": "pnl",         "description": "Profit & Loss del día actual"},
-        # ── Mercado ───────────────────────────────────────────────────────
-        {"command": "macro",       "description": "Dominancia USDT + Macro Shield análisis"},
-        {"command": "funding",     "description": "Tasas de funding por símbolo"},
-        {"command": "commodities", "description": "Estado Gold, Oil, Nat Gas, Silver, Copper"},
-        {"command": "scalper_shorts", "description": "Scalper SHORT: DOGE/FIL/TAO — estado + WR"},
-        # ── Gestión manual de posición ────────────────────────────────────
-        {"command": "manual_add",  "description": "Registrar posición manual: /manual_add SYM ENTRY [LONG]"},
-        {"command": "manual_tp",   "description": "Tomar TP/parcial: /manual_tp SYM [pct]"},
-        {"command": "manual_sl",   "description": "Marcar SL tocado: /manual_sl SYM"},
-        {"command": "manual_be",   "description": "Mover SL a break even: /manual_be SYM"},
-        {"command": "manual_off",  "description": "Cerrar/desactivar posición manual"},
-        # ── Admin ─────────────────────────────────────────────────────────
-        {"command": "budget",      "description": "Consumo de IA y presupuesto mensual"},
-        # Comandos avanzados disponibles pero NO en menú:
-        # /status /regime /audit /agents /circuit /risk /intel /pause /resume /logs /stocks /bitlobo
+        # ── Top 6 (botones reply) — operación + intel + health ──────────
+        {"command": "pos",         "description": "Posiciones abiertas (/pos full = detalle)"},
+        {"command": "pnl",         "description": "Profit & Loss del día"},
+        {"command": "winrate",     "description": "Win Rate global + por símbolo"},
+        {"command": "intel",       "description": "Snapshot HMM+CVD+Social+Whale+OI (/intel BTC)"},
+        {"command": "status",      "description": "Threads + módulos intel + AI budget"},
+        {"command": "audit",       "description": "Kill switches NB3 + A/B Intel stats"},
+        # ── Intel adicional ──────────────────────────────────────────────
+        {"command": "regime",      "description": "HMM régimen por símbolo"},
+        {"command": "funding",     "description": "Funding rates por símbolo"},
+        {"command": "macro",       "description": "USDT.D + VIX + DXY análisis"},
+        {"command": "commodities", "description": "GOLD/OIL/NG/SLV/COPPER status"},
+        # ── Manual ───────────────────────────────────────────────────────
+        {"command": "open",        "description": "Abrir posición manual (picker)"},
+        {"command": "manual_add",  "description": "/manual_add SYM ENTRY [LONG]"},
+        {"command": "manual_tp",   "description": "/manual_tp SYM [pct]"},
+        {"command": "manual_sl",   "description": "/manual_sl SYM (SL tocado)"},
+        {"command": "manual_be",   "description": "/manual_be SYM (move BE)"},
+        {"command": "manual_off",  "description": "Cerrar/desactivar manual"},
+        # ── BitLobo análisis gráfico ────────────────────────────────────
+        {"command": "bitlobo",      "description": "Análisis 1 imagen (foto + caption /bitlobo SYM TF)"},
+        {"command": "bitlobomulti", "description": "Multi-image cross-asset (post /add_chart)"},
+        # ── Admin ────────────────────────────────────────────────────────
+        {"command": "budget",      "description": "Consumo IA mes vs $10 cap"},
+        {"command": "pause",       "description": "Pausa alerts"},
+        {"command": "resume",      "description": "Reanuda alerts"},
+        {"command": "help",        "description": "Lista completa comandos + explicación"},
     ]
     
     try:

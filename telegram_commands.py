@@ -401,6 +401,49 @@ def check_user_queries(prices: dict):
                     msg += f"🌊 Salmos: \"{sentiment.get('salmos', 'N/A')}\""
                     send_telegram(msg, keyboard=get_main_menu())
 
+                elif text.startswith("/help") or text.lower() == "ayuda":
+                    # Help menu completo — explica botones + comandos disponibles
+                    help_text = (
+                        "🔥 <b>ZENITH BOT — Guía Comandos</b>\n\n"
+                        "<b>📂 Menú botones (top 6):</b>\n"
+                        "  📂 <b>Pos</b> — Posiciones abiertas\n"
+                        "  💰 <b>PnL</b> — Profit & Loss del día\n"
+                        "  📊 <b>Win Rate</b> — WR global + por símbolo\n"
+                        "  🔬 <b>Intel BTC</b> — HMM+CVD+Social+Whale+OI snapshot\n"
+                        "  🛡️ <b>Status</b> — Threads + módulos intel + AI budget\n"
+                        "  🏛️ <b>Audit</b> — Kill switches NB3 + A/B stats\n\n"
+                        "<b>🔬 Intel adicional:</b>\n"
+                        "  <code>/intel SYM</code> — ej: /intel ETH, /intel NVDA\n"
+                        "  <code>/regime SYM</code> — HMM regime classifier\n"
+                        "  <code>/funding</code> — Funding rates cripto\n"
+                        "  <code>/macro</code> — USDT.D + VIX + DXY\n"
+                        "  <code>/commodities</code> — GOLD/OIL/NG/SLV status\n\n"
+                        "<b>🎯 Operación manual:</b>\n"
+                        "  <code>/open</code> — Picker inline\n"
+                        "  <code>/close SYM</code> — Cerrar posición\n"
+                        "  <code>/manual_add SYM ENTRY [LONG]</code>\n"
+                        "  <code>/manual_tp SYM [pct]</code> · /manual_sl · /manual_be · /manual_off\n\n"
+                        "<b>📈 BitLobo gráficas:</b>\n"
+                        "  <code>/bitlobo SYM TF</code> — 1 imagen (foto + caption)\n"
+                        "  <code>/bitlobomulti SYM</code> — multi-image cross-asset\n"
+                        "  <code>/add_chart SYM TF</code> + foto — guardar imagen\n\n"
+                        "<b>🔧 Admin:</b>\n"
+                        "  <code>/budget</code> — Consumo IA mes vs $10\n"
+                        "  <code>/pause</code> · <code>/resume</code> — Pausar alerts\n"
+                        "  <code>/circuit</code> · <code>/risk</code> — Circuit + risk params\n"
+                        "  <code>/mode</code> · <code>/verbose</code>\n"
+                        "  <code>/logs</code> — Últimos logs\n\n"
+                        "<b>🐛 Debug avanzado:</b>\n"
+                        "  /agents /scan /scalper_shorts /stocks /metrics /liquidations\n\n"
+                        "<b>📝 Quick actions (texto libre):</b>\n"
+                        "  <code>BTC LONG 100k</code> — abrir manual rápido\n"
+                        "  <code>CERRAR BTC</code> — cerrar manual\n"
+                        "  <code>/correct ID</code> · <code>/wrong ID</code> — feedback alert\n\n"
+                        "<b>💡 Tip TDAH:</b> los 6 botones cubren 80% del uso diario. "
+                        "Resto vía /comando o menú slash (/)."
+                    )
+                    send_telegram(help_text, keyboard=get_main_menu())
+
                 elif text.startswith("/status"):
                     # Health check completo del bot — threads, budget, último alert, módulos intel
                     import thread_health
