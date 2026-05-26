@@ -64,11 +64,29 @@ SOCIAL_CACHE_TTL = 1800               # 30min — praw/pytrends son lentos
 _DEFAULT_SUBREDDITS = ["CryptoCurrency", "Bitcoin", "ethereum", "wallstreetbets"]
 
 _SUBREDDITS_BY_SYMBOL: dict[str, list[str]] = {
+    # Cripto
     "BTC":  ["CryptoCurrency", "Bitcoin", "wallstreetbets"],
     "ETH":  ["CryptoCurrency", "ethereum", "wallstreetbets"],
     "SOL":  ["CryptoCurrency", "solana", "wallstreetbets"],
     "TAO":  ["TaoBittensor"],
     "ZEC":  ["zec"],
+    # Spec 023 (2026-05-26): stocks NYSE/NASDAQ — usar wallstreetbets + stocks generalistas
+    "NVDA": ["wallstreetbets", "stocks", "investing"],
+    "TSLA": ["wallstreetbets", "stocks", "teslainvestorsclub"],
+    "PLTR": ["wallstreetbets", "PLTR", "stocks"],
+    "SIL":  ["wallstreetbets", "Wallstreetsilver"],
+    "HOOD": ["wallstreetbets", "stocks"],
+    "COIN": ["wallstreetbets", "CryptoCurrency", "stocks"],
+    "RKLB": ["wallstreetbets", "RocketLab", "SpaceXMasterrace"],
+    "XBI":  ["wallstreetbets", "biotech_stocks"],
+    "OKLO": ["wallstreetbets", "nuclear", "stocks"],
+    "SMR":  ["wallstreetbets", "nuclear", "stocks"],
+    "UUUU": ["wallstreetbets", "uraniumsqueeze"],
+    "IONQ": ["wallstreetbets", "stocks"],
+    "MP":   ["wallstreetbets", "stocks"],
+    "SOFI": ["wallstreetbets", "sofi_stock"],
+    "CRWV": ["wallstreetbets", "stocks"],
+    "IREN": ["wallstreetbets", "stocks", "CryptoCurrency"],
 }
 
 _REDDIT_POSTS_PER_SUB = 10           # limit per subreddit

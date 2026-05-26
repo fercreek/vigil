@@ -381,8 +381,26 @@ def stock_watchdog():
                         sl_line = f"🛑 Stop Loss: <b>${sl:.2f}</b>\n" if sl else ""
                         tp_line = f"🎯 Target: <b>${tp:.2f}</b>\n" if tp else ""
                         be_line = f"🔒 Break Even: ${be:.2f}\n" if be else ""
+
+                        # Spec 023 (2026-05-26): social sentiment tag para stocks.
+                        # HMM stocks defer Spec 023.5 (requiere yfinance integration en regime_hmm).
+                        _social_tag = ""
+                        try:
+                            import social_quant
+                            _ss = social_quant.get_social_sentiment(t.upper(), lookback_hours=24) or {}
+                            _ss_signal = _ss.get("signal")
+                            if _ss_signal == "EUPHORIA":
+                                _rd = _ss.get("reddit_compound", 0)
+                                _social_tag = f"🔥 <b>Social: EUPHORIA</b> (Reddit {_rd:+.2f}) — fade crowd, top probable\n"
+                            elif _ss_signal == "FEAR":
+                                _rd = _ss.get("reddit_compound", 0)
+                                _social_tag = f"💀 <b>Social: FEAR</b> (Reddit {_rd:+.2f}) — capitulación retail, opportunity\n"
+                        except Exception:
+                            pass
+
                         msg = (
                             f"{_priority_tag}"
+                            f"{_social_tag}"
                             f"🚨 <b>ALERTA DE ENTRADA: {t}</b>\n"
                             f"📌 {direction} — Precio actual: <b>${p:.2f}</b>\n"
                             f"🎯 Entrada obj: <b>${entry:.2f}</b> (dist. {dist*100:.2f}%)\n"
