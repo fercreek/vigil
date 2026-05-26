@@ -432,7 +432,7 @@ KILL_SALMOS_PROPHECY    = True    # Mata trigger_salmos_prophecy() en main loop
 # ── v1.3.0: Buttons kill switch ──────────────────────────────────────────────
 # Período de análisis exhaustivo: sin botones inline ni menús reply en Telegram.
 # Reenchufar caso por caso bajando este flag o filtrando por tipo de alerta.
-ENABLE_TELEGRAM_BUTTONS = False
+ENABLE_TELEGRAM_BUTTONS = True  # UX redesign 2026-05-26: 6 botones reply keyboard activo
 
 # ── v1.3.0: Quiet mode (análisis exhaustivo) ─────────────────────────────────
 # Mata alertas NO accionables: PULSO NYSE, PANORAMA AI, NINJA pre-warning,
