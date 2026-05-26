@@ -441,3 +441,12 @@ ANALYSIS_MODE_QUIET = True
 # Storage unificado en trades.db (flag is_manual=1). Sin seed hardcoded.
 # Lista de símbolos preferidos para el picker de /open (inline keyboard).
 MANUAL_SYMBOLS = ["TAO", "ZEC", "DOGE", "SOL", "BTC", "ETH", "TON"]
+
+# ── Spec 010: Whale Netflows (on-chain tracker, NotebookLM 4 Prompt 3) ───────
+# Fuente: Etherscan + BscScan free APIs. Tracking transfers >$1M to/from exchanges.
+# Net inflow = bearish (whales depositan para vender). Net outflow = bullish (accum).
+# Thresholds basados en ranking NotebookLM (signal noise floor ~$10M para ETH).
+WHALE_NETFLOW_BEARISH_USD = 10_000_000   # net_flow > 10M = BEARISH (whale dump incoming)
+WHALE_NETFLOW_BULLISH_USD = -10_000_000  # net_flow < -10M = BULLISH (accumulation)
+WHALE_NETFLOW_CACHE_TTL = 300            # 5 min cache (Etherscan free tier: 5 calls/sec)
+WHALE_NETFLOW_TIMEOUT = 8.0              # seconds — HTTP request timeout
