@@ -401,18 +401,135 @@ def check_user_queries(prices: dict):
                     msg += f"🌊 Salmos: \"{sentiment.get('salmos', 'N/A')}\""
                     send_telegram(msg, keyboard=get_main_menu())
 
+                elif text.startswith("/status"):
+                    # Health check completo del bot — threads, budget, último alert, módulos intel
+                    import thread_health
+                    health = thread_health.get_health_summary() if hasattr(thread_health, "get_health_summary") else {}
+                    status_lines = ["🔥 <b>STATUS ZENITH</b>\n"]
+                    # Threads
+                    status_lines.append("<b>Threads:</b>")
+                    for tname, ts in (thread_health._heartbeats or {}).items():
+                        age = int(time.time() - ts)
+                        emoji = "✅" if age < 300 else "⚠️"
+                        status_lines.append(f"  {emoji} {tname}: {age}s")
+                    # Módulos intel
+                    status_lines.append("\n<b>Intel modules:</b>")
+                    for mod_name in ["regime_hmm", "cvd_segmented", "social_quant", "onchain", "options_oi", "grounded_search", "regime_transitions"]:
+                        try:
+                            __import__(mod_name)
+                            status_lines.append(f"  ✅ {mod_name}")
+                        except ImportError:
+                            status_lines.append(f"  ❌ {mod_name}")
+                    # Budget
+                    try:
+                        import ai_budget
+                        b = ai_budget.get_monthly_summary()
+                        status_lines.append(f"\n<b>AI Budget:</b> ${b.get('total_cost_usd', 0):.2f} / $10.00 ({b.get('budget_used_pct', 0):.0f}%)")
+                    except Exception:
+                        pass
+                    send_telegram("\n".join(status_lines))
+
+                elif text.startswith("/intel"):
+                    # /intel SYMBOL — snapshot intel modules para un símbolo
+                    parts = text.split()
+                    if len(parts) < 2:
+                        send_telegram("🔬 Uso: /intel SYMBOL\nEj: /intel BTC, /intel NVDA")
+                        continue
+                    sym_raw = parts[1].upper()
+                    sym_pair = f"{sym_raw}/USDT" if "/" not in sym_raw and sym_raw in ["BTC","ETH","SOL","ZEC","TAO","HBAR","DOGE","TON"] else sym_raw
+                    lines = [f"🔬 <b>INTEL {sym_raw}</b>\n"]
+                    # HMM
+                    try:
+                        import regime_hmm
+                        r = regime_hmm.detect_regime(sym_pair, "1h", 200 if "/" in sym_pair else 100)
+                        if r and r.get("regime"):
+                            lines.append(f"📊 <b>HMM:</b> {r['regime']} (conf {r.get('confidence', 0)*100:.0f}%)")
+                        else:
+                            lines.append("📊 HMM: sin datos")
+                    except Exception as _e:
+                        lines.append(f"📊 HMM: error ({_e})")
+                    # CVD (solo cripto)
+                    if "/USDT" in sym_pair:
+                        try:
+                            import cvd_segmented
+                            c = cvd_segmented.compute_cvd_segmented(sym_pair, 1000)
+                            if c and c.get("divergence_signal"):
+                                lines.append(f"🌊 <b>CVD:</b> {c['divergence_signal']} · Whale ${c.get('whale_cvd_usd', 0):+,.0f} · Retail ${c.get('retail_cvd_usd', 0):+,.0f}")
+                            else:
+                                lines.append("🌊 CVD: sin datos")
+                        except Exception as _e:
+                            lines.append(f"🌊 CVD: error")
+                    # Social
+                    try:
+                        import social_quant
+                        s = social_quant.get_social_sentiment(sym_raw, 24)
+                        if s and s.get("signal"):
+                            lines.append(f"💀 <b>Social:</b> {s['signal']} · Reddit {s.get('reddit_compound', 0):+.2f} · Trends {s.get('google_trends_delta', 0):+.0f}%")
+                        else:
+                            lines.append("💀 Social: sin datos (configura REDDIT_CLIENT_ID)")
+                    except Exception:
+                        lines.append("💀 Social: módulo no disponible")
+                    # Whale (solo ETH)
+                    if sym_raw == "ETH":
+                        try:
+                            import onchain
+                            w = onchain.get_whale_netflow("ETH", "eth", 24)
+                            if w and w.get("signal"):
+                                lines.append(f"🐋 <b>Whale ETH:</b> {w['signal']} · Net ${w.get('net_flow_usd', 0):+,.0f} ({w.get('tx_count', 0)} tx)")
+                            else:
+                                lines.append("🐋 Whale: sin datos (configura ETHERSCAN_API_KEY)")
+                        except Exception:
+                            lines.append("🐋 Whale: módulo no disponible")
+                    # Options OI (stocks)
+                    if "/" not in sym_pair and sym_raw not in ["BTC","ETH","SOL","ZEC","TAO","HBAR","DOGE","TON"]:
+                        try:
+                            import options_oi
+                            o = options_oi.get_options_oi_ratio(sym_raw, 2)
+                            if o and o.get("signal"):
+                                lines.append(f"📈 <b>Options OI:</b> {o['signal']} · ratio {o.get('call_put_ratio', 0):.2f}x")
+                            else:
+                                lines.append("📈 Options OI: sin datos")
+                        except Exception:
+                            lines.append("📈 Options OI: módulo no disponible")
+                    send_telegram("\n".join(lines))
+
                 elif text.startswith("/audit") or "Auditoría" in text:
+                    # Auditoría enhanced — incluye verificación findings NotebookLM 3
                     m = tracker.get_audit_metrics()
+                    lines = ["🏛️ <b>AUDITORÍA ZENITH + NB3</b>\n"]
                     if m["total_trades"] == 0:
-                        audit_msg = "🏛️ <b>AUDITORÍA ZENITH</b>\n\n📈 Nueva era. Sin trades aún.\n🎯 <i>Objetivo: Profit Factor > 1.75</i>"
+                        lines.append("📈 Nueva era. Sin trades aún.\n🎯 Objetivo: Profit Factor > 1.75")
                     else:
-                        audit_msg = (
-                            f"🏛️ <b>AUDITORÍA ZENITH</b>\n\n"
-                            f"• Trades: <b>{m['total_trades']}</b>  Wins: <b>{m['wins']}</b>  Losses: <b>{m['losses']}</b>\n"
-                            f"• Win Rate: <b>{m['win_rate']}</b>  Profit Factor: <b>{m['profit_factor']}</b>\n"
-                            f"• Status: <b>{m['status']}</b>"
+                        lines.append(f"<b>Trades:</b> {m['total_trades']} · W {m['wins']} · L {m['losses']}")
+                        lines.append(f"<b>WR:</b> {m['win_rate']} · PF: {m['profit_factor']} · Status: {m['status']}")
+                    # Kill switches NotebookLM 3 P0
+                    lines.append("\n<b>Kill Switches NB3 P0:</b>")
+                    try:
+                        from config import (
+                            COMMODITY_BLOCKLIST, BLOCK_SCORE_5, MIN_RSI_LONG,
+                            TAO_TRADING_ENABLED, SHORT_BLOCKED_IN_VERDE_BULL,
+                            SWING_BLOCKLIST, V4_BLOCKLIST,
                         )
-                    send_telegram(audit_msg, keyboard=get_main_menu())
+                        lines.append(f"  {'✅' if 'GOLD' in COMMODITY_BLOCKLIST else '❌'} GOLD blocklist: {COMMODITY_BLOCKLIST}")
+                        lines.append(f"  {'✅' if BLOCK_SCORE_5 else '❌'} BLOCK_SCORE_5: {BLOCK_SCORE_5}")
+                        lines.append(f"  {'✅' if MIN_RSI_LONG >= 50 else '⚠️'} MIN_RSI_LONG: {MIN_RSI_LONG}")
+                        lines.append(f"  {'✅' if not TAO_TRADING_ENABLED else '❌'} TAO kill: {not TAO_TRADING_ENABLED}")
+                        lines.append(f"  {'✅' if SHORT_BLOCKED_IN_VERDE_BULL else '❌'} SHORT block VERDE: {SHORT_BLOCKED_IN_VERDE_BULL}")
+                        lines.append(f"  SWING_BLOCKLIST: {SWING_BLOCKLIST}")
+                        lines.append(f"  V4_BLOCKLIST: {V4_BLOCKLIST}")
+                    except Exception as _e:
+                        lines.append(f"  ❌ error leyendo config: {_e}")
+                    # A/B stats si hay
+                    try:
+                        ab = tracker.get_intel_ab_stats()
+                        if ab.get("total", 0) > 0:
+                            lines.append(f"\n<b>A/B Intel (Spec 022):</b>")
+                            lines.append(f"  total: {ab['total']} · with_outcome: {ab.get('with_outcome', 0)}")
+                            for bk, bs in ab.get("boost_segments", {}).items():
+                                lines.append(f"  {bk}: {bs.get('count', 0)} ops · WR {bs.get('wr', 0):.1f}%")
+                    except Exception:
+                        pass
+                    send_telegram("\n".join(lines), keyboard=get_main_menu())
 
                 elif text.startswith("/open") or "/open" in text or text.lower() == "open":
                     msg, kb = cmd_open(prices)

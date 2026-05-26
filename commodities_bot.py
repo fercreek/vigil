@@ -360,6 +360,16 @@ def analyze_commodity(key: str, inst: dict):
     dec = inst["decimals"]
     logger.info("  Commodities: analizando %s (%s)...", key, yf_ticker)
 
+    # Spec NB3 P0 (2026-05-26 NotebookLM 3): COMMODITY_BLOCKLIST kill switch.
+    # GOLD WR 14.3% (5/15 Top Losers). NotebookLM audit P1 confirmó kill.
+    try:
+        from config import COMMODITY_BLOCKLIST as _CBL
+        if key in _CBL:
+            logger.info("    %s: COMMODITY_BLOCKLIST activo (NotebookLM 3 audit) — skip", key)
+            return
+    except Exception:
+        pass
+
     # Market hours guard
     if not _is_commodity_open(key):
         logger.info("    %s: mercado cerrado (horario CME/NYSE), omitiendo", key)

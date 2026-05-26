@@ -728,6 +728,17 @@ def check_strategies(prices: dict):
                     conf_score = round(conf_score + _boost, 2)
                     print(f"⭐ [V3-Reversal] {sym}: boost +{_boost:.1f} ({' · '.join(_boost_reasons)}) → conf_score={conf_score:.2f}")
 
+                # Spec NB3 P0 (2026-05-26): kill conf_score >= 5 (paradoja overfit 0% WR).
+                # NotebookLM 3 P2: 7 ops históricas score=5 todas LONG GOLD COMMODITY perdedoras.
+                # Hasta refactor calculate_confluence_score, este gate evita repetir el bug.
+                try:
+                    from config import BLOCK_SCORE_5 as _B5
+                    if _B5 and conf_score >= 5:
+                        print(f"⏸️ [V3-Reversal] {sym}: conf_score={conf_score} ≥ 5 → kill (NotebookLM 3 paradoja overfit)")
+                        continue
+                except Exception:
+                    pass
+
                 sl_dist = max(atr * 2.0, p * 0.008)
                 sl = round(p - sl_dist, 2)
                 tp1 = round(p + (sl_dist * 2.0), 2)

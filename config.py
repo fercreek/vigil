@@ -275,6 +275,10 @@ V5_ENABLED           = False   # 0 trades en backtest 365d → bug o filtro muy 
 TAO_TRADING_ENABLED  = False   # Spec 001 (May-22-2026): bot-generated TAO 0/31 (0% WR). rsi_entry=50 placeholder = pipeline indicadores roto. Kill.
 TAO_SHORT_ENABLED    = False   # Spec 001 (May-22-2026): 75% de SHORT losses son TAO-SHORT. Kill explícito.
 SWING_BLOCKLIST      = ["TAO", "ZEC"]  # Spec 001 (May-22-2026): ZEC Q3+Q4 WR=0% chase del top. V4_BLOCKLIST no aplica porque vienen por SWING channel.
+# Spec NB3 P0 (2026-05-26 NotebookLM 3 audit): GOLD WR 14.3%, 5/15 Top Losers, paradoja conf_score=5 todas LONG ORO.
+COMMODITY_BLOCKLIST  = ["GOLD"]        # Bloquear COMMODITY trades en estos símbolos
+BLOCK_SCORE_5        = True            # Kill switch conf_score=5 (0% WR overfitted)
+MIN_RSI_LONG         = 50.0            # NotebookLM: 15/17 wins en RSI 50-60, RSI 40-50 = 11.1% WR
 SHORT_BLOCKED_IN_VERDE_BULL = True     # Spec 001: cuando SP500>7000 + VIX<22 (VERDE_BULL_DORMANT), no abrir shorts en cripto.
 
 # ── Confluence Score ──────────────────────────────────────────────────────────
