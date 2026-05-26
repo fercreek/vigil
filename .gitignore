@@ -28,3 +28,4 @@ __pycache__/
 last_update_id.txt
 phase.txt
 .claude/worktrees/
+.DS_Store
