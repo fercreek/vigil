@@ -292,9 +292,29 @@
         </div>
     </div>
 
+    <!-- Spec 020.5 (2026-05-26): Intel Modules cards — HMM regime + CVD + Whale + Social -->
+    <div class="card" style="margin-bottom: 1rem;">
+        <h2>📡 Intel en Vivo (Spec 020.5)</h2>
+        <div id="intel-status" style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">cargando...</div>
+
+        <h3 style="margin-top: 1rem;font-size:1rem;color:var(--muted);">HMM Régimen por Símbolo</h3>
+        <div id="regime-cards" class="grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(160px,1fr));gap:0.5rem;"></div>
+
+        <h3 style="margin-top: 1rem;font-size:1rem;color:var(--muted);">CVD Spot (BTC / ETH)</h3>
+        <div id="cvd-cards" class="grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px,1fr));gap:0.5rem;"></div>
+
+        <h3 style="margin-top: 1rem;font-size:1rem;color:var(--muted);">Whale Netflow ETH 24h</h3>
+        <div id="whale-card" style="padding:0.75rem;background:rgba(255,255,255,0.04);border-radius:6px;"></div>
+
+        <h3 style="margin-top: 1rem;font-size:1rem;color:var(--muted);">Social Sentiment</h3>
+        <div id="social-cards" class="grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px,1fr));gap:0.5rem;"></div>
+    </div>
+
     <div class="footer-note">
-        Spec 015 · Live Metrics Dashboard · auto-refresh 60s ·
-        <a href="/api/metrics/wr" style="color:var(--blue);">API</a>
+        Spec 015 + 020.5 · Live Metrics Dashboard · auto-refresh 60s ·
+        <a href="/api/metrics/wr" style="color:var(--blue);">API WR</a> ·
+        <a href="/api/metrics/regime" style="color:var(--blue);">API Regime</a> ·
+        <a href="/api/metrics/intel_ab" style="color:var(--blue);">API Intel A/B</a>
     </div>
 </div>
 
@@ -312,6 +332,134 @@
             }, REFRESH_MS);
         }
         scheduleReload();
+    })();
+
+    // Spec 020.5: Intel cards fetcher (async, no block page render)
+    (function loadIntel() {
+        const SYMBOLS_CRYPTO = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'ZEC/USDT', 'TAO/USDT'];
+        const SYMBOLS_SOCIAL = ['BTC', 'ETH', 'SOL'];
+
+        function regimeColor(r) {
+            if (!r) return 'var(--muted)';
+            if (r === 'STRONG_TREND') return '#48BB78';
+            if (r === 'RANGE') return '#F6E05E';
+            if (r === 'VOLATILE_SQUEEZE') return '#FC8181';
+            return 'var(--muted)';
+        }
+
+        function signalColor(s) {
+            if (!s) return 'var(--muted)';
+            if (s === 'BULLISH' || s === 'FEAR') return '#48BB78';
+            if (s === 'BEARISH' || s === 'EUPHORIA') return '#FC8181';
+            return 'var(--muted)';
+        }
+
+        async function fetchJson(url) {
+            try {
+                const r = await fetch(url);
+                if (!r.ok) return null;
+                return await r.json();
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function loadRegimes() {
+            const data = await fetchJson('/api/metrics/regime?symbols=' + SYMBOLS_CRYPTO.join(','));
+            const el = document.getElementById('regime-cards');
+            if (!data || !data.regimes) {
+                el.innerHTML = '<div style="color:var(--muted);">—</div>';
+                return;
+            }
+            let html = '';
+            for (const [sym, r] of Object.entries(data.regimes)) {
+                const regime = r.regime || '—';
+                const conf = r.confidence ? (r.confidence * 100).toFixed(0) + '%' : '—';
+                html += `<div style="padding:0.5rem;background:rgba(255,255,255,0.04);border-radius:6px;">
+                    <div style="font-size:0.75rem;color:var(--muted);">${sym}</div>
+                    <div style="font-weight:bold;color:${regimeColor(regime)};">${regime}</div>
+                    <div style="font-size:0.75rem;color:var(--muted);">conf ${conf}</div>
+                </div>`;
+            }
+            el.innerHTML = html;
+        }
+
+        async function loadCVD() {
+            const el = document.getElementById('cvd-cards');
+            let html = '';
+            for (const sym of ['BTC/USDT', 'ETH/USDT']) {
+                const data = await fetchJson('/api/metrics/cvd/' + encodeURIComponent(sym));
+                if (!data || !data.divergence_signal) {
+                    html += `<div style="padding:0.5rem;background:rgba(255,255,255,0.04);border-radius:6px;">
+                        <div style="font-size:0.75rem;color:var(--muted);">${sym}</div>
+                        <div style="color:var(--muted);">—</div>
+                    </div>`;
+                    continue;
+                }
+                const whale = (data.whale_cvd_usd >= 0 ? '+' : '') + data.whale_cvd_usd.toLocaleString();
+                const retail = (data.retail_cvd_usd >= 0 ? '+' : '') + data.retail_cvd_usd.toLocaleString();
+                html += `<div style="padding:0.5rem;background:rgba(255,255,255,0.04);border-radius:6px;">
+                    <div style="font-size:0.75rem;color:var(--muted);">${sym}</div>
+                    <div style="font-weight:bold;color:${signalColor(data.divergence_signal)};">${data.divergence_signal}</div>
+                    <div style="font-size:0.75rem;">🐋 $${whale}</div>
+                    <div style="font-size:0.75rem;">👤 $${retail}</div>
+                </div>`;
+            }
+            el.innerHTML = html;
+        }
+
+        async function loadWhale() {
+            const data = await fetchJson('/api/metrics/onchain_eth?lookback_hours=24');
+            const el = document.getElementById('whale-card');
+            if (!data || !data.signal) {
+                el.innerHTML = '<span style="color:var(--muted);">— (configura ETHERSCAN_API_KEY)</span>';
+                return;
+            }
+            const flow = (data.net_flow_usd >= 0 ? '+' : '') + data.net_flow_usd.toLocaleString();
+            el.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span style="font-weight:bold;color:${signalColor(data.signal)};">${data.signal}</span>
+                        <span style="margin-left:0.5rem;color:var(--muted);font-size:0.85rem;">${data.tx_count || 0} tx</span>
+                    </div>
+                    <div style="font-size:1.1rem;">$${flow}</div>
+                </div>`;
+        }
+
+        async function loadSocial() {
+            const el = document.getElementById('social-cards');
+            let html = '';
+            for (const sym of SYMBOLS_SOCIAL) {
+                const data = await fetchJson('/api/metrics/social/' + sym);
+                if (!data || !data.signal) {
+                    html += `<div style="padding:0.5rem;background:rgba(255,255,255,0.04);border-radius:6px;">
+                        <div style="font-size:0.75rem;color:var(--muted);">${sym}</div>
+                        <div style="color:var(--muted);">—</div>
+                    </div>`;
+                    continue;
+                }
+                const reddit = (data.reddit_compound >= 0 ? '+' : '') + (data.reddit_compound || 0).toFixed(2);
+                const trends = (data.google_trends_delta >= 0 ? '+' : '') + (data.google_trends_delta || 0).toFixed(0) + '%';
+                html += `<div style="padding:0.5rem;background:rgba(255,255,255,0.04);border-radius:6px;">
+                    <div style="font-size:0.75rem;color:var(--muted);">${sym}</div>
+                    <div style="font-weight:bold;color:${signalColor(data.signal)};">${data.signal}</div>
+                    <div style="font-size:0.75rem;">Reddit ${reddit}</div>
+                    <div style="font-size:0.75rem;">Trends ${trends}</div>
+                </div>`;
+            }
+            el.innerHTML = html;
+        }
+
+        async function loadAll() {
+            const el = document.getElementById('intel-status');
+            el.textContent = 'fetching...';
+            await Promise.all([loadRegimes(), loadCVD(), loadWhale(), loadSocial()]);
+            el.textContent = 'updated ' + new Date().toLocaleTimeString();
+        }
+
+        loadAll();
+        // Re-fetch intel cada 30s (más frecuente que page reload 60s)
+        setInterval(loadAll, 30000);
     })();
 </script>
 
