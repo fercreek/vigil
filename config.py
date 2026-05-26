@@ -191,6 +191,21 @@ SECTOR_CLUSTERS = {
 }
 MAX_PER_CLUSTER = 2   # Max 2 posiciones simultáneas por cluster
 
+# ── Semana 26-30 May 2026 — PTS dinámico (Daniel Marin 25-May 23:00) ─────────
+# Reporte rápido apertura semana. SP500 gap alcista, plan semanal:
+#   Prioridad alta: AI-infra (CRWV/CORZ/CIFR) + COIN
+#   Media: nucleares aún en zona entrada (UUUU/OKLO/SMR)
+#   Baja: petroleras/defensivas estables
+#   SUPRIMIDAS: cuánticas (IONQ/RGTI) sobreextendidas → solo alertar si retroceso ≥10%
+WEEK_PRIORITY_HIGH = ["COIN", "CRWV", "CORZ", "CIFR"]
+WEEK_PRIORITY_MEDIUM = ["UUUU", "OKLO", "SMR"]
+WEEK_PRIORITY_LOW = ["XOM", "CVX", "XLE", "VAL", "JNJ", "KO", "CL", "MO"]
+QUANTUM_SUPPRESSED = ["IONQ", "RGTI"]   # No alertar reentry hasta corrección ≥10% desde max
+QUANTUM_REENTRY_PULLBACK_PCT = 10.0      # Threshold corrección mínima para reactivar
+PRIORITY_BOOST_CLUSTER = "ai_infra"     # Esta semana: permite hasta 3 (vs 2 default) si SP500>7000
+PRIORITY_BOOST_MAX_PER_CLUSTER = 3
+WEEK_REVIEW_DATE = "2026-05-25"          # Última actualización PTS — invalidar después de 7 días
+
 
 # ── Thresholds RSI ────────────────────────────────────────────────────────────
 RSI_LONG_ENTRY       = 40.0   # Entrada Long estándar (was 42 — too restrictive)

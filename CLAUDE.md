@@ -765,6 +765,68 @@ Dos reportes de Daniel Marin durante semana post-NVDA earnings. Mercado tuvo bar
 
 ---
 
+### 8k. PTS Update — Análisis Rápido Semana 26-30 May 2026 (Daniel Marin, 25-May 23:00)
+
+Apertura de semana. SP500 sube en futuros Asia/Europa el lunes, gap alcista probable. Mensaje corto pero con dirección clara para esta semana.
+
+**Régimen SP500 confirmado VERDE_BULL (sin cambios):**
+
+- SP500 muy arriba de 7000 (soporte clave). Mientras se mantenga >7000 = entorno alcista.
+- Mínimos semana pasada = piso defendible. Si sostiene → camino al alza con paciencia.
+- Barridas SIEMPRE pueden ocurrir → son oportunidades de entrada, no panic.
+
+**Plan semanal PTS — sectores a vigilar lunes-viernes:**
+
+| Sector | Símbolos | Status | Acción bot |
+|--------|----------|--------|-----------|
+| Crypto proxy | COIN | Vigilar movimientos | Alertas long activas, entry $178-200 sigue válido |
+| Nuclear | UUUU, OKLO, SMR | Aún en zona entrada | Alertas long válidas, NO sobreextender (max 2/cluster) |
+| AI Infra | CRWV, CORZ, CIFR | Próximos movimientos alcistas | **Prioridad alta esta semana** — alertas long aggressive |
+| Petroleras | XOM, CVX, XLE, VAL | Estables, suben despacio | Alertas long defensivas, no urgentes |
+| Defensivas | JNJ, KO, CL, MO, MOO | Estables, suben despacio | Alertas long válidas, baja prioridad |
+| Cuánticas | IONQ, RGTI | **SOBREEXTENDIDAS** | ⛔ NO emitir reentry signals hasta corrección |
+| Aeroespacial | ASTS | Ya tuvo movimiento la semana pasada | Hold ganadores, no nueva entrada |
+
+**Catalizadores macro:**
+- Bonos 20Y: posible máximo en rendimiento → retrocesos = beneficio para equities. Vigilar TLT/TBT.
+- Jueves: 2da clase Taller Psicología Trading (no afecta bot).
+- Junio: SEC levanta restricción day trading options → Taller Day Trading PTS próximamente.
+
+**Implicaciones inmediatas para el bot esta semana:**
+
+1. **`QUANTUM_SUPPRESSED_UNTIL = "2026-06-01"`** — IONQ + RGTI sobreextendidas. Bot debe suprimir reentry signals hasta corrección. Solo alertar si precio retrocede ≥10% desde máximo.
+
+2. **Prioridad alta AI Infra** — agregar `PRIORITY_BOOST_CLUSTER = "ai_infra"` para esta semana. Bot debe:
+   - Reducir threshold confluencia para CRWV/CORZ/CIFR (alertar antes que default)
+   - Permitir hasta 3 posiciones en cluster ai_infra (vs 2 default) si SP500 > 7000
+
+3. **Barridas = oportunidad** — bot NO debe filtrar longs en spikes bajistas intraday mientras SP500 > 7000 y VIX < 22. Patrón ya implementado (8j) — confirmar que está activo.
+
+4. **Petroleras como rebalance** — XOM en BE, CVX subiendo. Si bot detecta entry zone reentry XOM o pullback CVX → alertar como "DEFENSIVA_ESTABLE" tag (no agresiva).
+
+5. **Watchlist priorizada esta semana (orden de monitoreo bot):**
+   ```python
+   WEEK_PRIORITY_25MAY = [
+       # ALTA — vigilancia activa Daniel Marin
+       "COIN", "CRWV", "CORZ", "CIFR",
+       # MEDIA — nucleares zona entrada
+       "UUUU", "OKLO", "SMR",
+       # BAJA — defensivas estables
+       "XOM", "CVX", "XLE", "VAL", "JNJ", "KO", "CL", "MO",
+       # SUPRIMIDAS
+       # "IONQ", "RGTI" — sobreextendidas, esperar corrección
+   ]
+   ```
+
+6. **Sin nuevos entries formales** — reporte fue "análisis rápido", PTS repasa instrucciones existentes esta semana. Bot mantiene watchlist 8i+8j vigente, prioridad según tabla arriba.
+
+**Plan operativo bot 26-30 May:**
+- Lunes apertura: confirmar SP500 > 7000 y gap alcista. Si confirma → habilitar todas alertas long del cluster ai_infra + crypto_proxy + nuclear.
+- Si SP500 pierde mínimos semana pasada (vigilar nivel exacto) → reducir tamaño 50% en todos los longs.
+- Si SP500 pierde 7000 → MACRO_REGIME = "AMARILLA_INDECISA" → suprimir nuevas longs.
+
+---
+
 ## Cómo Aplicar Estos Insights al Algoritmo
 
 ### Filtros a Implementar

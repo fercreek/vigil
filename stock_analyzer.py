@@ -295,6 +295,21 @@ def stock_watchdog():
             if _suppressed_today:
                 logger.info("👁️ Centinela: earnings suppression activa para %s", _suppressed_today)
 
+            # Spec 003 (May-25-2026): week priority + quantum suppression — PTS Daniel Marin
+            try:
+                from config import (
+                    QUANTUM_SUPPRESSED, WEEK_PRIORITY_HIGH, WEEK_PRIORITY_LOW,
+                    WEEK_REVIEW_DATE,
+                )
+                _wr_date = _dt.strptime(WEEK_REVIEW_DATE, "%Y-%m-%d")
+                _priorities_stale = (_today - _wr_date).days > 7
+                if _priorities_stale:
+                    logger.warning("👁️ Centinela: WEEK_PRIORITY stale (>7d desde %s) — ignorando tags. Actualiza con nuevo reporte PTS.", WEEK_REVIEW_DATE)
+            except Exception as _e:
+                logger.warning("👁️ Centinela: spec-003 constants no disponibles (%s) — default behavior", _e)
+                QUANTUM_SUPPRESSED, WEEK_PRIORITY_HIGH, WEEK_PRIORITY_LOW = [], [], []
+                _priorities_stale = True
+
             for s in signals:
                 t = s.get('ticker')
                 if not t:
@@ -303,6 +318,21 @@ def stock_watchdog():
                 # Spec 001: skip si dentro de ventana 24h de earnings
                 if t in _suppressed_today:
                     continue
+
+                # Spec 003: skip cuánticas sobreextendidas hasta reentry PTS
+                if t in QUANTUM_SUPPRESSED:
+                    logger.info("👁️ Centinela: %s SUPRIMIDA (sobreextendida PTS — esperar corrección)", t)
+                    continue
+
+                # Spec 003: tag prioridad semanal (HIGH = 🔥, LOW = 🟢)
+                if _priorities_stale:
+                    _priority_tag = ""
+                elif t in WEEK_PRIORITY_HIGH:
+                    _priority_tag = "🔥 <b>PRIORIDAD ALTA</b> (PTS semana)\n"
+                elif t in WEEK_PRIORITY_LOW:
+                    _priority_tag = "🟢 <b>DEFENSIVA</b> — estable, sube despacio\n"
+                else:
+                    _priority_tag = ""
 
                 p = current_prices.get(t, 0.0)
                 if not p:
@@ -321,6 +351,7 @@ def stock_watchdog():
                     in_zone = sl <= p <= entry
                     if in_zone and "ZONE_ALERT" not in _alert_cache.get(t, []):
                         _send_alert(
+                            f"{_priority_tag}"
                             f"🐺 <b>ZONA VERDE ACTIVADA: {t}</b>\n"
                             f"Precio actual: <b>${p:.2f}</b> — dentro de zona acumulación\n"
                             f"🟢 Zona: ${sl:.2f} – ${entry:.2f}\n"
@@ -338,6 +369,7 @@ def stock_watchdog():
                         tp_line = f"🎯 Target: <b>${tp:.2f}</b>\n" if tp else ""
                         be_line = f"🔒 Break Even: ${be:.2f}\n" if be else ""
                         msg = (
+                            f"{_priority_tag}"
                             f"🚨 <b>ALERTA DE ENTRADA: {t}</b>\n"
                             f"📌 {direction} — Precio actual: <b>${p:.2f}</b>\n"
                             f"🎯 Entrada obj: <b>${entry:.2f}</b> (dist. {dist*100:.2f}%)\n"
