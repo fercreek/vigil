@@ -22,6 +22,7 @@ Hooks pendientes (Spec 009.5):
 
 from __future__ import annotations
 
+import time
 import numpy as np
 import pandas as pd
 
@@ -34,6 +35,31 @@ except ImportError:
 
 
 REGIME_LABELS = ("STRONG_TREND", "RANGE", "VOLATILE_SQUEEZE")
+
+# Spec 009.6 (2026-05-26): TTL cache para detect_regime.
+# HMM fit toma 100-500ms. Spec 017.5 llama 4x por símbolo por ciclo (sin cache = ~2s/sym).
+# Cache 15min: 1 fit/15min/sym/tf. Significantes savings cuando bot loop corre c/5-10min.
+_CACHE: dict = {}
+HMM_CACHE_TTL = 900  # 15 min en segundos
+
+
+def _cache_get(key: tuple) -> dict | None:
+    entry = _CACHE.get(key)
+    if entry is None:
+        return None
+    if time.time() - entry["ts"] > HMM_CACHE_TTL:
+        del _CACHE[key]
+        return None
+    return entry["data"]
+
+
+def _cache_set(key: tuple, data: dict):
+    _CACHE[key] = {"ts": time.time(), "data": data}
+    # Cleanup: max 64 entries (LRU-ish via oldest ts eviction)
+    if len(_CACHE) > 64:
+        oldest = sorted(_CACHE.items(), key=lambda x: x[1]["ts"])[:8]
+        for k, _ in oldest:
+            del _CACHE[k]
 
 
 def _build_features(df: pd.DataFrame) -> np.ndarray | None:
@@ -129,6 +155,12 @@ def detect_regime(symbol: str, timeframe: str = "1h", lookback: int = 200) -> di
         print("[HMM ERROR] hmmlearn no instalado. pip install hmmlearn>=0.3.0")
         return {}
 
+    # Spec 009.6: cache TTL 15min por (symbol, timeframe, lookback)
+    _key = (symbol, timeframe, lookback)
+    _cached = _cache_get(_key)
+    if _cached is not None:
+        return _cached
+
     try:
         # Lazy import para que el módulo sea importable sin ccxt local
         from indicators import get_df
@@ -180,13 +212,16 @@ def detect_regime(symbol: str, timeframe: str = "1h", lookback: int = 200) -> di
         # Historia últimos 10
         history = [mapping[int(s)] for s in states[-10:]]
 
-        return {
+        result = {
             "regime": current_regime,
             "confidence": confidence,
             "current_state": current_state,
             "training_loss": training_loss,
             "regime_history_last_10": history,
         }
+        # Spec 009.6: cachear resultado exitoso
+        _cache_set(_key, result)
+        return result
 
     except Exception as e:
         print(f"[HMM ERROR] {symbol}/{timeframe}: {e}")
