@@ -24,9 +24,23 @@ Archivos clave:
 - `app.py` — servidor Flask / dashboard web
 - `social_analyzer.py` — análisis de sentimiento social
 - `ai_budget.py` — control de presupuesto de APIs de IA (máx $10/mes)
-- `tracker.py` — base de datos SQLite de trades
+- `tracker.py` — base de datos SQLite de trades + tabla `intel_outcomes` (A/B framework Spec 022)
 - `config.py` — thresholds y configuración centralizada
+- `voice_compactor.py` — compacta output Cuadrilla Zenith para Telegram (Sentinel compact + `intel_compact_line`)
+- `strategies.py` — todas las strategies V1/V2/V3/V4/SWING con gates, boosts, intel injection
 - `docs/STRATEGY_RULES.md` — reglas operativas del bot
+- `docs/SPEC_WIRE_AUDIT.md` — estado de cada spec: wired/logged/dormant (actualizar cuando cambien wires)
+
+**Módulos intel (Specs 009-023, sesión 2026-05-26):**
+- `regime_hmm.py` — Spec 009 · HMM 3-state (STRONG_TREND/RANGE/VOLATILE_SQUEEZE). Gate V3 en STRONG_TREND. Cache TTL 15min. Requiere `hmmlearn`.
+- `regime_transitions.py` — Spec 002.5 · state machine SP500 (VERDE_BULL/AMARILLA/NARANJA). Detecta EXPLOSIVE_CORRECTION + BARRIDA_OPPORTUNITY. Persiste en `data/macro_state.json`.
+- `onchain.py` — Spec 010 · whale netflows Etherscan/BscScan. Inflow=BEARISH, outflow=BULLISH. Requiere `ETHERSCAN_API_KEY`.
+- `cvd_segmented.py` — Spec 012 · CVD por bucket tamaño (retail/<$1k, mid, whale/>$100k). Divergencia whale vs retail predice tops/bottoms.
+- `social_quant.py` — Spec 013 · sentimiento Reddit+Google Trends (VADER, cache 30min). Requiere `REDDIT_CLIENT_ID/SECRET/USER_AGENT`.
+- `grounded_search.py` — Spec 014 · Gemini Flash 2.5 Grounding para contexto macro real (FOMC, geo). Cap `GROUNDED_SEARCH_DAILY_CAP=5` queries/día.
+- `options_oi.py` — Spec 023.6 · OI call/put ratio via yfinance para stocks. Ratio ≥2.0 = CALL_HEAVY.
+- `models/sentinel.py` — Pydantic v2 `SentinelResponse` para `get_sentinel_report_compact`.
+- `models/panorama.py` — Pydantic v2 `PanoramaPersonaResponse` para `get_hourly_panorama`.
 
 ---
 

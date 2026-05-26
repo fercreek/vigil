@@ -55,6 +55,19 @@ AI Router detecta ausencia de ANTHROPIC y loguea `[AI Router] ANTHROPIC_API_KEY 
 
 ---
 
+## On-chain + Social (Specs 010/013/019/023)
+
+| Var | Requerida | Default | Dónde | Descripción |
+|-----|-----------|---------|-------|-------------|
+| `ETHERSCAN_API_KEY` 🔒 | ⚠️ | — | Railway + .env local | Etherscan free API. Sin key: `onchain.py` falla silencioso, `whale_signal` ausente del intel dict. Obtener: etherscan.io/myapikey |
+| `REDDIT_CLIENT_ID` 🔒 | ⚠️ | — | Railway + .env local | Reddit app Client ID (PRAW). `social_quant.py`. Sin key: solo Google Trends funciona. Obtener: reddit.com/prefs/apps |
+| `REDDIT_CLIENT_SECRET` 🔒 | ⚠️ | — | Railway + .env local | Reddit app Client Secret (PRAW). Misma app que CLIENT_ID. |
+| `REDDIT_USER_AGENT` | ⚠️ | `scalp_bot/1.0` | Railway + .env local | Formato recomendado: `scalp_bot/1.0 by u/tu_usuario`. Identifica app ante Reddit API. |
+
+Sin estas vars el bot funciona igual — solo no aparece `whale_signal` ni `social_reddit` en la línea `🔬` de alertas.
+
+---
+
 ## Loop + rate limits
 
 | Var | Requerida | Default | Dónde | Descripción |
