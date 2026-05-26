@@ -420,6 +420,70 @@ def get_fibonacci_levels(symbol, timeframe='4h', lookback=100):
         print(f"[Fibonacci ERROR] {symbol}/{timeframe}: {e}")
         return {}
 
+def detect_liquidity_sweep(symbol, timeframe='1h', lookback=20):
+    """
+    Spec 007 (2026-05-26 — NotebookLM 4): detecta barridas de liquidez recientes.
+
+    Una "sweep" ocurre cuando el precio rompe momentáneamente el swing high/low previo
+    (wick) pero cierra de vuelta dentro del rango — clásica trampa para stops + huella
+    de Smart Money capturando liquidez.
+
+    Args:
+        symbol: e.g. "BTC/USDT"
+        timeframe: e.g. "1h", "15m"
+        lookback: número de velas previas a la actual donde buscar swing high/low.
+
+    Returns dict:
+        {
+            "swept_high": bool,        # precio rompió swing_high pero cerró debajo
+            "swept_low": bool,         # precio rompió swing_low pero cerró encima
+            "swing_high_level": float, # nivel del swing high de las velas previas
+            "swing_low_level": float,
+            "current_high": float,
+            "current_low": float,
+            "current_close": float,
+        }
+
+    Si no hay datos suficientes o falla, retorna dict vacío.
+
+    Uso típico: combinar con macro VERDE_BULL_DORMANT (VIX<22 + SP500>7000) para
+    confirmar que el swept_low es oportunidad de entrada LONG (no panic) o
+    swept_high es entrada SHORT en bear regime.
+    """
+    try:
+        df = get_df(symbol, timeframe=timeframe, limit=lookback + 5)
+        if df.empty or len(df) < lookback + 1:
+            return {}
+
+        # Última vela = actual; previas = rango para swing high/low
+        current = df.iloc[-1]
+        previous = df.iloc[-(lookback + 1):-1]
+
+        swing_high = float(previous['high'].max())
+        swing_low = float(previous['low'].min())
+        current_high = float(current['high'])
+        current_low = float(current['low'])
+        current_close = float(current['close'])
+
+        # Sweep high: wick rompe swing_high pero cierre vuelve dentro
+        swept_high = current_high > swing_high and current_close <= swing_high
+        # Sweep low: wick rompe swing_low pero cierre vuelve dentro
+        swept_low = current_low < swing_low and current_close >= swing_low
+
+        return {
+            "swept_high": swept_high,
+            "swept_low": swept_low,
+            "swing_high_level": round(swing_high, 4),
+            "swing_low_level": round(swing_low, 4),
+            "current_high": round(current_high, 4),
+            "current_low": round(current_low, 4),
+            "current_close": round(current_close, 4),
+        }
+    except Exception as e:
+        print(f"[LiquiditySweep ERROR] {symbol}/{timeframe}: {e}")
+        return {}
+
+
 def detect_head_and_shoulders(symbol, timeframe='1d', lookback=200):
     """
     Detección simplificada de Head & Shoulders (PHY) en TF alto.

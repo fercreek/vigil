@@ -520,7 +520,21 @@ def check_strategies(prices: dict):
                 tp1 = round(p + (sl_dist * 2.0), 2)
                 tp2 = round(p + (sl_dist * 3.5), 2)
 
+                # Spec 007 (2026-05-26): liquidity sweep tag.
+                # Si swept_low activo + macro VERDE_BULL_DORMANT → smart money huella en LONG.
+                _sweep_tag = ""
+                try:
+                    _sweep = indicators.detect_liquidity_sweep(sym, timeframe="1h", lookback=20)
+                    if _sweep.get("swept_low"):
+                        _sweep_tag = (
+                            f"🌊 <b>SWEEP LOW activo</b> — wick rompió ${_sweep['swing_low_level']:.2f} "
+                            f"+ cerró arriba (huella Smart Money)\n"
+                        )
+                except Exception as _e:
+                    print(f"[V3-Reversal] {sym} sweep detect skip: {_e}")
+
                 msg = (f"🏛️ <b>SEÑAL V3: INTRADÍA REVERSAL (15m-1H)</b> 🏛️\n\n"
+                       f"{_sweep_tag}"
                        f"🌊 Onda: {elliott}\n"
                        f"⭐ <b>Confiabilidad: {format_confidence(conf_score)}</b>\n\n"
                        f"💬 <i>Buscando el rebote a la media (EMA 200) tras agotamiento.</i>\n\n"
