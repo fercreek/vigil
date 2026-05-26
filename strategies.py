@@ -593,6 +593,28 @@ def check_strategies(prices: dict):
                 conf_score = calculate_confluence_score(p, rsi, bb_u, bb_l, ema_200, usdt_d, side, elliott, spy=prices.get("SPY"), oil=prices.get("OIL"), funding_signal=funding_signal)
                 conf_score = round(conf_score + social_adj, 2)
 
+                # Spec 021 (2026-05-26): boost confluence con signals BULLISH/FEAR del INTEL.
+                # Specs 016/019 ya filtraron como gates BEARISH. Aquí premiamos los signals
+                # opuestos que indican confluencia adicional para V3 LONG (bottom probable).
+                _boost = 0.0
+                _boost_reasons = []
+                if _cvd.get("divergence_signal") == "BULLISH":
+                    _boost += 1.0
+                    _boost_reasons.append("CVD BULLISH (whales acumulan)")
+                if _social.get("signal") == "FEAR":
+                    _boost += 1.0
+                    _boost_reasons.append("Social FEAR (capitulación retail)")
+                if _whale.get("signal") == "BULLISH":
+                    _boost += 1.0
+                    _boost_reasons.append("Whale BULLISH (outflow exchange)")
+                if _hmm.get("regime") == "RANGE":
+                    # RANGE es ideal para V3-Reversal (mean reversion) — boost suave
+                    _boost += 0.5
+                    _boost_reasons.append("HMM RANGE (mean reversion ideal)")
+                if _boost > 0:
+                    conf_score = round(conf_score + _boost, 2)
+                    print(f"⭐ [V3-Reversal] {sym}: boost +{_boost:.1f} ({' · '.join(_boost_reasons)}) → conf_score={conf_score:.2f}")
+
                 sl_dist = max(atr * 2.0, p * 0.008)
                 sl = round(p - sl_dist, 2)
                 tp1 = round(p + (sl_dist * 2.0), 2)
