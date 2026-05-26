@@ -512,10 +512,12 @@ def check_strategies(prices: dict):
                 # Spec 016 (2026-05-26): HMM Regime gate — bloquear V3 reversal si STRONG_TREND.
                 # V3 es reversal play (RSI extremo). En STRONG_TREND el "cuchillo cayendo" suele
                 # seguir cayendo. Salmos delega decisión al HMM por símbolo, no al macro gate SP500.
+                # Spec 017: guardamos _hmm para inyectar en prompt Cuadrilla Zenith después.
+                _hmm = {}
                 try:
                     import regime_hmm
-                    _hmm = regime_hmm.detect_regime(sym, timeframe="1h", lookback=200)
-                    _regime = _hmm.get("regime") if _hmm else None
+                    _hmm = regime_hmm.detect_regime(sym, timeframe="1h", lookback=200) or {}
+                    _regime = _hmm.get("regime")
                     if _regime == "STRONG_TREND":
                         _conf = _hmm.get("confidence", 0.0)
                         print(f"⏸️ [V3-Reversal] {sym}: HMM regime=STRONG_TREND (conf {_conf:.2f}) — bloqueando reversal contra tendencia")
@@ -526,10 +528,12 @@ def check_strategies(prices: dict):
 
                 # Spec 016: CVD Segmented divergence gate — bloquear V3 LONG si BEARISH divergence
                 # (ballenas vendiendo + retail comprando = top inminente).
+                # Spec 017: guardamos _cvd para inyectar en prompt.
+                _cvd = {}
                 try:
                     import cvd_segmented
-                    _cvd = cvd_segmented.compute_cvd_segmented(sym, lookback_trades=1000)
-                    _cvd_signal = _cvd.get("divergence_signal") if _cvd else None
+                    _cvd = cvd_segmented.compute_cvd_segmented(sym, lookback_trades=1000) or {}
+                    _cvd_signal = _cvd.get("divergence_signal")
                     if _cvd_signal == "BEARISH":
                         _whale = _cvd.get("whale_cvd_usd", 0)
                         _retail = _cvd.get("retail_cvd_usd", 0)
@@ -540,10 +544,12 @@ def check_strategies(prices: dict):
 
                 # Spec 016: Social Sentiment gate — si EUPHORIA, fade crowd (skip).
                 # FEAR no skip pero se loguea (boost confluence se hace inline después).
+                # Spec 017: guardamos _social para inyectar en prompt.
+                _social = {}
                 try:
                     import social_quant
-                    _social = social_quant.get_social_sentiment(sym.replace("/USDT", ""), lookback_hours=24)
-                    _social_signal = _social.get("signal") if _social else None
+                    _social = social_quant.get_social_sentiment(sym.replace("/USDT", ""), lookback_hours=24) or {}
+                    _social_signal = _social.get("signal")
                     if _social_signal == "EUPHORIA":
                         _rc = _social.get("reddit_compound", 0)
                         _gt = _social.get("google_trends_delta", 0)
@@ -551,6 +557,20 @@ def check_strategies(prices: dict):
                         continue
                 except Exception as _e:
                     pass
+
+                # Spec 017: build extra_intel dict para inyectar en Cuadrilla Zenith prompt
+                _extra_intel = {}
+                if _hmm.get("regime"):
+                    _extra_intel["hmm_regime"] = _hmm.get("regime")
+                    _extra_intel["hmm_confidence"] = _hmm.get("confidence", 0.0)
+                if _cvd.get("divergence_signal"):
+                    _extra_intel["cvd_signal"] = _cvd.get("divergence_signal")
+                    _extra_intel["cvd_whale_usd"] = _cvd.get("whale_cvd_usd", 0)
+                    _extra_intel["cvd_retail_usd"] = _cvd.get("retail_cvd_usd", 0)
+                if _social.get("signal"):
+                    _extra_intel["social_signal"] = _social.get("signal")
+                    _extra_intel["social_reddit"] = _social.get("reddit_compound", 0)
+                    _extra_intel["social_trends_delta"] = _social.get("google_trends_delta", 0)
 
                 register_signal_event(sym.replace("/USDT", ""), prices)
                 side = "LONG"
@@ -605,7 +625,7 @@ def check_strategies(prices: dict):
                        f"🎯 TP2: <b>${tp2:,.2f}</b> (3.5:1)\n"
                        f"🛑 SL: <b>${sl:,.2f}</b>\n\n"
                        f"🎙️ <b>DEBATE DEL CUADRANTE ZENITH:</b>\n"
-                       f"{gemini_analyzer.get_ai_consensus(sym, p, 'LONG', rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias)}")
+                       f"{gemini_analyzer.get_ai_consensus(sym, p, 'LONG', rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias, extra_intel=_extra_intel)}")
 
                 if is_position_open(sym, "LONG"):
                     print(f"⏸️ [Position Guard] {sym} LONG (Reversal) ya está abierto — omitiendo señal duplicada")

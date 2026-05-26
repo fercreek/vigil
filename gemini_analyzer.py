@@ -228,13 +228,49 @@ Usa términos como 'Expansion', 'Retracement', 'POIs' (Points of Interest).""",
     }
 }
 
-def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: float, spy: float = 0.0, oil: float = 0.0, nvda: float = 0.0, pltr: float = 0.0, risk_pulse: str = "", vix: float = 0.0, dxy: float = 0.0, trade_type: str = "SWING", phy_bias: str = "NONE") -> str:
-    """Genera un debate de consenso entre la CUADRILLA ZENITH (Genesis, Exodo, Salmos y Apocalipsis)."""
+def _format_extra_intel(intel: dict) -> str:
+    """Spec 017 (2026-05-26): formatea bloque INTEL EN VIVO para inyectar al prompt Cuadrilla Zenith.
+
+    Recibe dict con keys opcionales:
+        hmm_regime, hmm_confidence — Salmos lo lee (régimen técnico)
+        cvd_signal, cvd_whale_usd, cvd_retail_usd — Genesis lo lee (smart money)
+        social_signal, social_reddit, social_trends_delta — Exodo lo lee (narrativa)
+
+    Retorna string vacío si intel es None/empty. De lo contrario, bloque con header.
+    """
+    if not intel:
+        return ""
+    lines = ["\n📡 INTEL EN VIVO (datos pasaron todos los gates, úsalos para refinar opinión):"]
+    if "hmm_regime" in intel:
+        conf = intel.get("hmm_confidence", 0.0)
+        lines.append(f"  • HMM régimen técnico (Salmos): {intel['hmm_regime']} (conf {conf:.2f})")
+    if "cvd_signal" in intel:
+        w = intel.get("cvd_whale_usd", 0)
+        r = intel.get("cvd_retail_usd", 0)
+        lines.append(f"  • CVD spot 1000 trades (Genesis): WHALE ${w:+,.0f} · RETAIL ${r:+,.0f} · signal={intel['cvd_signal']}")
+    if "social_signal" in intel:
+        rd = intel.get("social_reddit", 0)
+        gt = intel.get("social_trends_delta", 0)
+        lines.append(f"  • Social sentiment (Exodo): {intel['social_signal']} · Reddit {rd:+.2f} · Trends {gt:+.0f}%")
+    lines.append("")  # newline final
+    return "\n".join(lines)
+
+
+def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: float, spy: float = 0.0, oil: float = 0.0, nvda: float = 0.0, pltr: float = 0.0, risk_pulse: str = "", vix: float = 0.0, dxy: float = 0.0, trade_type: str = "SWING", phy_bias: str = "NONE", extra_intel: dict | None = None) -> str:
+    """Genera un debate de consenso entre la CUADRILLA ZENITH (Genesis, Exodo, Salmos y Apocalipsis).
+
+    Spec 017 (2026-05-26): acepta `extra_intel` dict opcional con datos en vivo
+    (HMM régimen, CVD divergence, social sentiment). Si presente, se inyecta al prompt
+    como bloque "INTEL EN VIVO" para que las 4 voces lo referencien en sus opiniones.
+    """
     learnings = get_neural_memory()
     memory_ctx = f"\n⚠️ LECCIONES DE LA MEMORIA NEURONAL:\n{learnings}\n" if learnings else ""
-    
+
     risk_ctx = f"\n💀 PULSO DE RIESGO GLOBAL (Apocalipsis Radar):\n{risk_pulse}\n" if risk_pulse else ""
-    
+
+    # Spec 017: bloque INTEL EN VIVO (HMM + CVD + Social) si llegan datos
+    intel_ctx = _format_extra_intel(extra_intel)
+
     global _gemini_fail_count, _gemini_backoff_until
     if not _gemini_is_available():
         remaining = int(_gemini_backoff_until - _time.time())
@@ -248,7 +284,8 @@ def get_ai_consensus(symbol: str, price: float, side: str, rsi: float, usdt_d: f
               f"- S&P 500: ${spy:,.2f} | Petróleo: ${oil:,.2f}\n"
               f"- Tech Sentinel: NVDA ${nvda:,.2f} | PLTR ${pltr:,.2f}\n"
               f"- Estructura PHY (1D): {phy_bias}\n"
-              f"- {FOMC_CONTEXT}\n\n"
+              f"- {FOMC_CONTEXT}\n"
+              f"{intel_ctx}"
               f"{risk_ctx}"
               f"{memory_ctx}\n"
               f"Instrucciones:\n"
