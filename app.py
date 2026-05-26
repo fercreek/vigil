@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, request
 import tracker
 import scalp_alert_bot
 import ai_budget
+import dashboard_metrics  # Spec 015 — live metrics
 from datetime import datetime, timedelta
 import time
 from webhook_security import require_tv_auth
@@ -474,6 +475,62 @@ def tradingview_webhook():
     except Exception as e:
         print(f"❌ [TradingView Webhook] Error: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Spec 015 — Live Metrics Dashboard
+# Panel server-side rendered + endpoints JSON granulares.
+# Helper SQL en dashboard_metrics.py (sin coupling con scalp_alert_bot).
+# ─────────────────────────────────────────────────────────────────────
+
+@app.route('/dashboard/live')
+def dashboard_live():
+    """Panel HTML server-side rendered con snapshot agregado de métricas."""
+    try:
+        snapshot = dashboard_metrics.get_dashboard_snapshot()
+        return render_template('dashboard_live.html', snapshot=snapshot)
+    except Exception as e:
+        return f"<h1>Error</h1><pre>{e}</pre>", 500
+
+
+@app.route('/api/metrics/wr')
+def api_metrics_wr():
+    """Win rate global + breakdown por símbolo + estrategia."""
+    try:
+        return jsonify({
+            'global': dashboard_metrics.compute_global_wr(),
+            'by_symbol': dashboard_metrics.compute_wr_by_symbol(),
+            'by_strategy': dashboard_metrics.compute_wr_by_strategy(),
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/metrics/recent_trades')
+def api_metrics_recent_trades():
+    """Últimos N trades (default 20, max 200)."""
+    try:
+        n = int(request.args.get('n', 20))
+        return jsonify({
+            'trades': dashboard_metrics.get_recent_trades(n),
+            'count_requested': n,
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/metrics/signal_episodes_summary')
+def api_metrics_signal_episodes_summary():
+    """Resumen de signal_episodes (Spec 002 — alertas huérfanas)."""
+    try:
+        return jsonify({
+            **dashboard_metrics.get_signal_episodes_summary(),
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
