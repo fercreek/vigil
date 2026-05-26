@@ -30,3 +30,22 @@ Auto-reflexión por sesión. Objetivo: cómo prompteamos a Claude mejor la próx
 ### 2026-05-22 · Bot Recovery Spec 001 (ref)
 
 Ver [docs/specs/001-bot-recovery/](docs/specs/001-bot-recovery/). Cubrió: kill switches V1/V5, FOMC gates, macro régimen wiring. Resultado: bot mudo confirmado, prep para spec-002.
+
+### 2026-05-26 · Sesión continuación — audit wires + UX fixes
+
+**Pros:**
+- Audit reveló intel_outcomes=0 en prod → identificó que Sentinel (no V3-Reversal) es la strategy real
+- Fix Sentinel intel wire fue de alto impacto: todas las specs 009-023 ahora conectadas al flujo real
+- Kill switch ENABLE_TELEGRAM_BUTTONS=False encontrado — explica por qué keyboard nunca actualizó
+- `t.split()` pattern para capturar botones sin `/` es limpio y seguro
+
+**Cons:**
+- Kill switch llevaba tiempo activo sin que nadie lo notara — falta un audit de config flags al inicio de sesión
+- alert_id mismatch (counter vs trade.id) es el tipo de bug que pasa cuando dos features se implementan en sprints distintos sin integration test
+
+**Consejo Claude Code:**
+- Antes de implementar features de logging, verificar que el ID usado para correlacionar tablas sea el mismo en sender y receiver — no asumir que `_sid` == `trade.id`
+- Cuando keyboard no actualiza en Telegram: siempre verificar kill switches en config.py ANTES de debuggear API/cliente
+
+**Patrón nuevo capturado:**
+- `"palabra" in t.split()` = match word-boundary seguro para botones Telegram sin activar falsos positivos en mensajes de texto libre
