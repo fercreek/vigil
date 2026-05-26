@@ -72,9 +72,9 @@ def get_main_menu(symbol: str = "BTC") -> dict:
     """
     keyboard = [
         # Fila 1 — Operación viva (multi-times/día)
-        [{"text": "📂 /pos"}, {"text": "💰 /pnl"}, {"text": "📊 /winrate"}],
+        [{"text": "📂 Pos"}, {"text": "💰 PnL"}, {"text": "📊 WinRate"}],
         # Fila 2 — Intel + Health (1-2x/día)
-        [{"text": "🔬 /intel BTC"}, {"text": "🛡️ /status"}, {"text": "🏛️ /audit"}],
+        [{"text": "🔬 Intel BTC"}, {"text": "🛡️ Status"}, {"text": "🏛️ Audit"}],
     ]
 
     return {

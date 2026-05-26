@@ -444,7 +444,7 @@ def check_user_queries(prices: dict):
                     )
                     send_telegram(help_text, keyboard=get_main_menu())
 
-                elif text.startswith("/status"):
+                elif text.startswith("/status") or "status" in t.split():
                     # Health check completo del bot — threads, budget, último alert, módulos intel
                     import thread_health
                     health = thread_health.get_health_summary() if hasattr(thread_health, "get_health_summary") else {}
@@ -536,7 +536,7 @@ def check_user_queries(prices: dict):
                             lines.append("📈 Options OI: módulo no disponible")
                     send_telegram("\n".join(lines))
 
-                elif text.startswith("/audit") or "Auditoría" in text:
+                elif text.startswith("/audit") or "Auditoría" in text or "audit" in t.split():
                     # Auditoría enhanced — incluye verificación findings NotebookLM 3
                     m = tracker.get_audit_metrics()
                     lines = ["🏛️ <b>AUDITORÍA ZENITH + NB3</b>\n"]
@@ -578,8 +578,8 @@ def check_user_queries(prices: dict):
                     msg, kb = cmd_open(prices)
                     send_telegram(msg, keyboard=kb)
 
-                elif text.startswith("/pos") or "/pos" in text or text.lower().startswith("pos "):
-                    # Acepta "/pos", "/pos full", o el botón "📂 /pos"
+                elif text.startswith("/pos") or "/pos" in text or "pos" in t.split():
+                    # Acepta "/pos", "/pos full", botón "📂 /pos" o "📂 Pos"
                     args = "full" if "full" in text.lower() else ""
                     send_telegram(cmd_pos(args, prices), keyboard=get_main_menu())
 
