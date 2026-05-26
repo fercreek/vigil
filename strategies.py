@@ -509,6 +509,49 @@ def check_strategies(prices: dict):
                     # Si funding data no disponible, no bloquear — fallback al comportamiento previo
                     pass
 
+                # Spec 016 (2026-05-26): HMM Regime gate — bloquear V3 reversal si STRONG_TREND.
+                # V3 es reversal play (RSI extremo). En STRONG_TREND el "cuchillo cayendo" suele
+                # seguir cayendo. Salmos delega decisión al HMM por símbolo, no al macro gate SP500.
+                try:
+                    import regime_hmm
+                    _hmm = regime_hmm.detect_regime(sym, timeframe="1h", lookback=200)
+                    _regime = _hmm.get("regime") if _hmm else None
+                    if _regime == "STRONG_TREND":
+                        _conf = _hmm.get("confidence", 0.0)
+                        print(f"⏸️ [V3-Reversal] {sym}: HMM regime=STRONG_TREND (conf {_conf:.2f}) — bloqueando reversal contra tendencia")
+                        continue
+                except Exception as _e:
+                    # HMM no disponible (hmmlearn missing) → fallback comportamiento previo
+                    pass
+
+                # Spec 016: CVD Segmented divergence gate — bloquear V3 LONG si BEARISH divergence
+                # (ballenas vendiendo + retail comprando = top inminente).
+                try:
+                    import cvd_segmented
+                    _cvd = cvd_segmented.compute_cvd_segmented(sym, lookback_trades=1000)
+                    _cvd_signal = _cvd.get("divergence_signal") if _cvd else None
+                    if _cvd_signal == "BEARISH":
+                        _whale = _cvd.get("whale_cvd_usd", 0)
+                        _retail = _cvd.get("retail_cvd_usd", 0)
+                        print(f"⏸️ [V3-Reversal] {sym}: CVD divergence=BEARISH (whale ${_whale:+,.0f} / retail ${_retail:+,.0f}) — top inminente, skip LONG")
+                        continue
+                except Exception as _e:
+                    pass
+
+                # Spec 016: Social Sentiment gate — si EUPHORIA, fade crowd (skip).
+                # FEAR no skip pero se loguea (boost confluence se hace inline después).
+                try:
+                    import social_quant
+                    _social = social_quant.get_social_sentiment(sym.replace("/USDT", ""), lookback_hours=24)
+                    _social_signal = _social.get("signal") if _social else None
+                    if _social_signal == "EUPHORIA":
+                        _rc = _social.get("reddit_compound", 0)
+                        _gt = _social.get("google_trends_delta", 0)
+                        print(f"⏸️ [V3-Reversal] {sym}: Social=EUPHORIA (reddit {_rc:+.2f}, trends {_gt:+.0f}%) — fading crowd, top probable")
+                        continue
+                except Exception as _e:
+                    pass
+
                 register_signal_event(sym.replace("/USDT", ""), prices)
                 side = "LONG"
                 funding_signal = market_intel.get_funding_signal(sym, side, funding_data)
