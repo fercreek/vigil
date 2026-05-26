@@ -598,6 +598,10 @@ def get_hourly_panorama(prices_dict: dict) -> dict:
     """
     Genera el panorama horario desde AMBOS agentes de forma independiente.
     Incluye una solicitud de optimización si detectan patrones.
+
+    Spec 018 (2026-05-26): inyecta bloque "MACRO NEWS HOY" via grounded_search
+    (Gemini + Google Search). Cache 1h interno evita queries duplicadas — Panorama
+    corre c/2h, solo 1 query real/día (las demás son cache hits, no consumen cap).
     """
     if not _gemini_is_available():
         return {}
@@ -612,10 +616,25 @@ def get_hourly_panorama(prices_dict: dict) -> dict:
         rsi = (prices_dict.get(f"{sym}_RSI") or 50.0)
         context_line += f"- {sym}: ${ (price or 0.0):,.2f} (RSI: { (rsi or 0.0):.1f})\n"
 
+    # Spec 018: macro grounded search context (best-effort, cache 1h)
+    macro_news_block = ""
+    try:
+        import grounded_search as _gs
+        _news = _gs.query_grounded_search(
+            query="latest macro news today: FOMC decision rate, US inflation CPI, geopolitical risk affecting crypto and S&P 500. Resumen 4 oraciones.",
+            intent_label="apocalipsis_panorama",
+            daily_cap=5,
+        )
+        if _news:
+            macro_news_block = f"\n📡 MACRO NEWS HOY (grounded search):\n{_news}\n"
+    except Exception as _e:
+        # grounded_search fail no bloquea panorama
+        pass
+
     prompt = f"""PANORAMA [{ts}]:
 {context_line}- USDT.D: {(usdt_d or 0.0):.2f}%
 - SPY: ${(prices_dict.get('SPY') or 0.0):,.2f} | OIL: ${(prices_dict.get('OIL') or 0.0):,.2f}
-
+{macro_news_block}
 FORMATO OBLIGATORIO — responde exactamente en este esquema, sin añadir nada más:
 BIAS: [ALCISTA/BAJISTA/NEUTRAL]
 CLAVE: [1 línea — dato más relevante ahora mismo]
