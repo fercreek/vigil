@@ -560,6 +560,29 @@ def check_strategies(prices: dict):
                     print(f"🥷 [Ninja] {sym} pre-alerta enviada RSI={rsi:.1f} (trigger≤{reversal_rsi})")
 
             if rsi <= reversal_rsi:
+                # Spec 002.6 (2026-05-26): BARRIDA_OPPORTUNITY check — relaja gates si activo.
+                # Cripto V3 NUNCA tendrá cluster ai_infra/nuclear (BTC/ETH/SOL/ZEC/TAO no son
+                # tickers stock) → dormant para cripto. Wire ready cuando 017.5 extienda a stocks.
+                _barrida_active = False
+                _barrida_cluster = None
+                try:
+                    import regime_transitions
+                    _sb = sym.replace("/USDT", "")
+                    _spy = prices.get("SPY", 0.0) or 0.0
+                    _sp500_proxy = _spy * 10 if _spy > 0 else 0.0
+                    _barrida_cluster = regime_transitions.get_cluster_for_symbol(_sb)
+                    # drop_pct=0 por ahora (Spec 002.7 backlog: tracking real)
+                    # is_barrida_opportunity requiere drop≥2 → con drop=0 siempre False
+                    # PERO si se extiende, este es el punto de wire.
+                    _barrida_active = regime_transitions.is_barrida_opportunity(
+                        _barrida_cluster, _sp500_proxy, vix, intraday_drop_pct=0.0
+                    )
+                    if _barrida_active:
+                        print(f"⚡ [V3-Reversal] {sym}: BARRIDA_OPPORTUNITY active "
+                              f"(cluster={_barrida_cluster}) — relajando HMM+CVD gates")
+                except Exception as _e:
+                    pass
+
                 # Spec 006 (2026-05-26): Funding Rate gate — bloquear reversal si funding > threshold.
                 # NotebookLM 4: funding annualized > 10% persistente = latigazo volatilidad inminente.
                 # Apalancamiento extremo en longs = liquidaciones masivas precipitan colapso adverso.
@@ -585,8 +608,13 @@ def check_strategies(prices: dict):
                     _regime = _hmm.get("regime")
                     if _regime == "STRONG_TREND":
                         _conf = _hmm.get("confidence", 0.0)
-                        print(f"⏸️ [V3-Reversal] {sym}: HMM regime=STRONG_TREND (conf {_conf:.2f}) — bloqueando reversal contra tendencia")
-                        continue
+                        # Spec 002.6: BARRIDA relax — barridas verticales clasifican STRONG_TREND falso
+                        if _barrida_active:
+                            print(f"⚡ [V3-Reversal] {sym}: HMM STRONG_TREND (conf {_conf:.2f}) "
+                                  f"override por BARRIDA_OPPORTUNITY")
+                        else:
+                            print(f"⏸️ [V3-Reversal] {sym}: HMM regime=STRONG_TREND (conf {_conf:.2f}) — bloqueando reversal contra tendencia")
+                            continue
                 except Exception as _e:
                     # HMM no disponible (hmmlearn missing) → fallback comportamiento previo
                     pass
@@ -602,8 +630,14 @@ def check_strategies(prices: dict):
                     if _cvd_signal == "BEARISH":
                         _whale = _cvd.get("whale_cvd_usd", 0)
                         _retail = _cvd.get("retail_cvd_usd", 0)
-                        print(f"⏸️ [V3-Reversal] {sym}: CVD divergence=BEARISH (whale ${_whale:+,.0f} / retail ${_retail:+,.0f}) — top inminente, skip LONG")
-                        continue
+                        # Spec 002.6: BARRIDA relax — venta retail panic = bottom, no top
+                        if _barrida_active:
+                            print(f"⚡ [V3-Reversal] {sym}: CVD BEARISH "
+                                  f"(whale ${_whale:+,.0f} / retail ${_retail:+,.0f}) "
+                                  f"override por BARRIDA_OPPORTUNITY")
+                        else:
+                            print(f"⏸️ [V3-Reversal] {sym}: CVD divergence=BEARISH (whale ${_whale:+,.0f} / retail ${_retail:+,.0f}) — top inminente, skip LONG")
+                            continue
                 except Exception as _e:
                     pass
 
@@ -677,6 +711,19 @@ def check_strategies(prices: dict):
                     # RANGE es ideal para V3-Reversal (mean reversion) — boost suave
                     _boost += 0.5
                     _boost_reasons.append("HMM RANGE (mean reversion ideal)")
+                # Spec 002.6 (2026-05-26): EXPLOSIVE_CORRECTION boost (post AMARILLA→VERDE).
+                # +1.5 (vs +1.0 del resto) porque setup raro. Cripto V3 no matches por default
+                # (tickers no en EXPLOSIVE_TICKERS set), pero wire ready si se extiende.
+                try:
+                    import regime_transitions
+                    _sb2 = sym.replace("/USDT", "")
+                    _spy2 = prices.get("SPY", 0.0) or 0.0
+                    _sp500_proxy2 = _spy2 * 10 if _spy2 > 0 else 0.0
+                    if regime_transitions.is_explosive_correction_setup(_sb2, _sp500_proxy2, vix):
+                        _boost += 1.5
+                        _boost_reasons.append("EXPLOSIVE_CORRECTION (post régimen AMARILLA→VERDE)")
+                except Exception:
+                    pass
                 if _boost > 0:
                     conf_score = round(conf_score + _boost, 2)
                     print(f"⭐ [V3-Reversal] {sym}: boost +{_boost:.1f} ({' · '.join(_boost_reasons)}) → conf_score={conf_score:.2f}")

@@ -221,6 +221,35 @@ def is_barrida_opportunity(symbol_cluster: Optional[str], sp500_price: float, vi
     return True
 
 
+def get_cluster_for_symbol(sym_base: str) -> Optional[str]:
+    """Spec 002.6: lookup reverso SECTOR_CLUSTERS → cluster name del símbolo.
+
+    Args:
+        sym_base: ticker sin sufijo (e.g. "UUUU", "IREN", "BTC"). Cripto pairs
+                  deben pasar `sym.replace("/USDT", "")` antes.
+
+    Returns:
+        Nombre cluster (e.g. "ai_infra", "nuclear", "crypto_proxy") o None
+        si símbolo no está en ningún cluster.
+
+    Notas:
+        - Si símbolo en múltiples clusters → retorna el PRIMERO (orden config).
+        - Fallback silencioso a None si SECTOR_CLUSTERS no importable.
+    """
+    if not sym_base:
+        return None
+    try:
+        from config import SECTOR_CLUSTERS
+    except ImportError:
+        return None
+
+    sym_upper = sym_base.upper()
+    for cluster_name, tickers in SECTOR_CLUSTERS.items():
+        if sym_upper in tickers:
+            return cluster_name
+    return None
+
+
 def get_state_summary() -> dict:
     """Helper para dashboard/telemetría: estado actual + transition history."""
     state = _load_previous_state()

@@ -310,13 +310,33 @@
         <div id="social-cards" class="grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px,1fr));gap:0.5rem;"></div>
     </div>
 
+    <!-- Spec 020.6 (2026-05-26): Chart.js time-series — Equity Curve + Boost Segments -->
+    <div class="card" style="margin-bottom: 1rem;">
+        <h2>📊 Histórico Performance (Spec 020.6)</h2>
+        <div id="chart-status" style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">cargando charts...</div>
+
+        <h3 style="margin-top: 1rem;font-size:1rem;color:var(--muted);">Equity Curve — WR diario últimos 30 días</h3>
+        <div style="position:relative;width:100%;max-width:100%;height:280px;">
+            <canvas id="equity-curve-chart"></canvas>
+        </div>
+
+        <h3 style="margin-top: 1.5rem;font-size:1rem;color:var(--muted);">Boost Segments — WR por bucket A/B (Spec 022)</h3>
+        <div style="position:relative;width:100%;max-width:100%;height:240px;">
+            <canvas id="boost-segments-chart"></canvas>
+        </div>
+    </div>
+
     <div class="footer-note">
-        Spec 015 + 020.5 · Live Metrics Dashboard · auto-refresh 60s ·
+        Spec 015 + 020.5 + 020.6 · Live Metrics Dashboard · auto-refresh 60s ·
         <a href="/api/metrics/wr" style="color:var(--blue);">API WR</a> ·
+        <a href="/api/metrics/wr_timeseries" style="color:var(--blue);">API Timeseries</a> ·
         <a href="/api/metrics/regime" style="color:var(--blue);">API Regime</a> ·
         <a href="/api/metrics/intel_ab" style="color:var(--blue);">API Intel A/B</a>
     </div>
 </div>
+
+<!-- Spec 020.6: Chart.js CDN (library, no framework — vanilla JS compatible) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
     // Auto-refresh simple cada 60s. Pausa si la tab no está visible.
@@ -460,6 +480,210 @@
         loadAll();
         // Re-fetch intel cada 30s (más frecuente que page reload 60s)
         setInterval(loadAll, 30000);
+    })();
+
+    // Spec 020.6: Chart.js time-series — Equity Curve + Boost Segments
+    (function loadCharts() {
+        const REFRESH_MS = 5 * 60 * 1000; // 5min — historical data no cambia rápido
+
+        function wrColor(wr) {
+            if (wr < 30) return '#FC8181';
+            if (wr < 50) return '#F6E05E';
+            return '#48BB78';
+        }
+
+        function trendColor(daily) {
+            if (!daily || daily.length < 2) return '#48BB78';
+            const n = daily.length;
+            const first5 = daily.slice(0, Math.min(5, n));
+            const last5 = daily.slice(Math.max(0, n - 5));
+            const avgFirst = first5.reduce((a, d) => a + (d.wr || 0), 0) / first5.length;
+            const avgLast = last5.reduce((a, d) => a + (d.wr || 0), 0) / last5.length;
+            return avgLast >= avgFirst ? '#48BB78' : '#FC8181';
+        }
+
+        function formatDDMM(isoDate) {
+            // isoDate "YYYY-MM-DD" → "DD/MM"
+            if (!isoDate || isoDate.length < 10) return isoDate || '—';
+            const parts = isoDate.split('-');
+            return parts[2] + '/' + parts[1];
+        }
+
+        async function fetchJson(url) {
+            try {
+                const r = await fetch(url);
+                if (!r.ok) return null;
+                return await r.json();
+            } catch (e) {
+                return null;
+            }
+        }
+
+        let equityChart = null;
+        let boostChart = null;
+
+        async function loadEquityCurve() {
+            const data = await fetchJson('/api/metrics/wr_timeseries?days=30');
+            const canvas = document.getElementById('equity-curve-chart');
+            if (!canvas || !data || !data.daily || !Array.isArray(data.daily) || data.daily.length === 0) {
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '14px sans-serif';
+                    ctx.fillText('— sin datos', 20, 40);
+                }
+                return;
+            }
+            // Filtrar rows con _error
+            const daily = data.daily.filter(d => d && d.date && typeof d.wr === 'number');
+            if (daily.length === 0) return;
+
+            const labels = daily.map(d => formatDDMM(d.date));
+            const wrValues = daily.map(d => d.wr);
+            const totals = daily.map(d => d.total);
+            const lineColor = trendColor(daily);
+
+            if (equityChart) {
+                try { equityChart.destroy(); } catch (e) { /* noop */ }
+                equityChart = null;
+            }
+            equityChart = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'WR %',
+                        data: wrValues,
+                        borderColor: lineColor,
+                        backgroundColor: lineColor + '33',
+                        fill: true,
+                        tension: 0.25,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: lineColor,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8' } },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    const i = ctx.dataIndex;
+                                    const d = daily[i];
+                                    return `${formatDDMM(d.date)} · ${d.total} trades · ${d.wr}% WR`;
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: 100,
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function (v) { return v + '%'; },
+                            },
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                        },
+                    },
+                },
+            });
+        }
+
+        async function loadBoostSegments() {
+            const data = await fetchJson('/api/metrics/intel_ab');
+            const canvas = document.getElementById('boost-segments-chart');
+            if (!canvas) return;
+            if (!data || !data.boost_segments) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '14px sans-serif';
+                ctx.fillText('— sin data A/B', 20, 40);
+                return;
+            }
+            const buckets = ['boost_0', 'boost_1+', 'boost_3+'];
+            const labels = buckets;
+            const wrValues = buckets.map(b => (data.boost_segments[b] || {}).wr || 0);
+            const counts = buckets.map(b => (data.boost_segments[b] || {}).count || 0);
+            const colors = wrValues.map(wrColor);
+
+            if (boostChart) {
+                try { boostChart.destroy(); } catch (e) { /* noop */ }
+                boostChart = null;
+            }
+            boostChart = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'WR % por bucket',
+                        data: wrValues,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    const i = ctx.dataIndex;
+                                    return `${counts[i]} trades · WR ${wrValues[i]}%`;
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: 100,
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function (v) { return v + '%'; },
+                            },
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                        },
+                    },
+                },
+            });
+        }
+
+        async function loadAllCharts() {
+            const el = document.getElementById('chart-status');
+            if (typeof Chart === 'undefined') {
+                if (el) el.textContent = '— Chart.js CDN no disponible';
+                return;
+            }
+            if (el) el.textContent = 'fetching charts...';
+            try {
+                await Promise.all([loadEquityCurve(), loadBoostSegments()]);
+                if (el) el.textContent = 'charts updated ' + new Date().toLocaleTimeString();
+            } catch (e) {
+                if (el) el.textContent = '— error rendering charts';
+                console.error('[charts error]', e);
+            }
+        }
+
+        // Wait one tick para que Chart.js CDN cargue antes del primer render
+        setTimeout(loadAllCharts, 100);
+        setInterval(loadAllCharts, REFRESH_MS);
     })();
 </script>
 

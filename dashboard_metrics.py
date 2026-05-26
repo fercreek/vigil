@@ -203,6 +203,53 @@ def get_signal_episodes_summary() -> Dict[str, Any]:
         return {'total': 0, 'outcome_breakdown': {}, 'by_source': {}, 'orphans': 0, 'error': str(e)}
 
 
+def compute_wr_over_time(days: int = 30) -> List[Dict[str, Any]]:
+    """Spec 020.6: WR diario para últimos `days` días.
+
+    Agrupa trades cerrados (WIN/LOST) por DATE(open_time) y calcula WR diario.
+    Días sin trades NO aparecen en el resultado (gaps en línea aceptables).
+
+    Returns: list of dicts ordenado ASC por fecha:
+        [{'date': 'YYYY-MM-DD', 'wr': 50.0, 'total': 4, 'wins': 2}, ...]
+    """
+    try:
+        with _conn() as c:
+            if c is None:
+                return []
+            days = max(1, min(int(days), 365))  # hard cap 1 año
+            cur = c.execute("""
+                SELECT
+                    DATE(open_time) AS day,
+                    SUM(CASE WHEN status IN ('FULL_WON','WON','PARTIAL_CLOSED') THEN 1 ELSE 0 END) AS wins,
+                    SUM(CASE WHEN status='LOST' THEN 1 ELSE 0 END) AS losses,
+                    COUNT(*) AS total
+                FROM trades
+                WHERE open_time IS NOT NULL
+                  AND open_time >= date('now', ?)
+                GROUP BY day
+                ORDER BY day ASC
+                LIMIT 60
+            """, (f'-{days} days',))
+            out = []
+            for row in cur.fetchall():
+                wins = row['wins'] or 0
+                losses = row['losses'] or 0
+                total = row['total'] or 0
+                # WR sobre cerrados (wins+losses), no total — open trades no aportan.
+                closed = wins + losses
+                wr = _wr_pct(wins, losses) if closed > 0 else 0.0
+                out.append({
+                    'date': row['day'],
+                    'wr': wr,
+                    'total': total,
+                    'wins': wins,
+                    'losses': losses,
+                })
+            return out
+    except Exception as e:
+        return [{'_error': str(e)}]
+
+
 def get_dashboard_snapshot() -> Dict[str, Any]:
     """Helper agregado — todo lo que el HTML server-side render necesita."""
     return {

@@ -564,6 +564,54 @@ def api_metrics_regime():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/metrics/regime_transitions')
+def api_metrics_regime_transitions():
+    """Spec 002.6: macro régimen state machine + EXPLOSIVE/BARRIDA helpers status.
+
+    Lee SP500/VIX desde GLOBAL_CACHE (con fallbacks robustos si bot no inicializado),
+    llama detect_transition + get_state_summary, retorna estado actual + tickers
+    explosive + clusters barrida disponibles para el dashboard.
+    """
+    try:
+        import regime_transitions
+        # SP500 proxy desde SPY (fallback default 7000 si no hay data)
+        sp500 = 7000.0
+        vix = 0.0
+        source = "default"
+        try:
+            from scalp_alert_bot import GLOBAL_CACHE
+            _mm = GLOBAL_CACHE.get("macro_metrics", {}) if isinstance(GLOBAL_CACHE, dict) else {}
+            _spy = _mm.get("spy", 0.0) or 0.0
+            _vix_live = _mm.get("vix", 0.0) or 0.0
+            if _spy > 0:
+                sp500 = _spy * 10.0
+                source = "spy_proxy"
+            if _vix_live > 0:
+                vix = _vix_live
+        except Exception:
+            pass
+
+        transition = regime_transitions.detect_transition(sp500, vix)
+        summary = regime_transitions.get_state_summary()
+
+        return jsonify({
+            **summary,
+            'transition': transition.get('transition'),
+            'is_bullish_transition': transition.get('is_bullish_transition'),
+            'is_bearish_transition': transition.get('is_bearish_transition'),
+            'sp500_used': round(sp500, 2),
+            'vix_used': round(vix, 2),
+            'sp500_source': source,
+            'explosive_tickers': sorted(regime_transitions.EXPLOSIVE_TICKERS),
+            'barrida_clusters': sorted(regime_transitions.BARRIDA_CLUSTERS),
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
+    except ImportError:
+        return jsonify({'error': 'regime_transitions module not available'}), 503
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/metrics/cvd/<path:symbol>')
 def api_metrics_cvd(symbol: str):
     """CVD segmentado para un símbolo Binance spot. Spec 012 wire.
@@ -617,6 +665,21 @@ def api_metrics_social(symbol: str):
         })
     except ImportError:
         return jsonify({'error': 'social_quant module not available'}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Spec 020.6 (2026-05-26): WR timeseries diario para Chart.js equity curve.
+@app.route('/api/metrics/wr_timeseries')
+def api_metrics_wr_timeseries():
+    """WR agrupado por día (últimos N días, default 30, max 365)."""
+    try:
+        days = int(request.args.get('days', 30))
+        return jsonify({
+            'daily': dashboard_metrics.compute_wr_over_time(days),
+            'days_requested': days,
+            'generated_at': datetime.now().isoformat(timespec='seconds'),
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
