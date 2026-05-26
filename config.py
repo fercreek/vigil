@@ -189,7 +189,26 @@ SECTOR_CLUSTERS = {
     "petroleras": ["XOM", "CVX", "XLE", "VAL"],
     "defensivos": ["JNJ", "KO", "CL", "MO", "MOO"],
 }
-MAX_PER_CLUSTER = 2   # Max 2 posiciones simultáneas por cluster
+MAX_PER_CLUSTER = 2   # Max 2 posiciones simultáneas por cluster (default fallback)
+
+# ── Spec 004 (NotebookLM 2026-05-26): MAX por cluster específico ─────────────
+# Justificación detallada en docs/research/notebook-lm/RESULTS.md (Prompt 3).
+# Lookup: MAX_PER_CLUSTER_BY_CLUSTER.get(cluster_name, MAX_PER_CLUSTER)
+# Notas:
+#   nuclear=2: barridas conjuntas, regla explícita Daniel
+#   ai_infra=2: default; PRIORITY_BOOST_CLUSTER lo sube a 3 esta semana
+#   quantum=0: suprimido hasta QUANTUM_SUPPRESSED_UNTIL (auto-expire)
+#   crypto_proxy=1: restringido hasta BTC > CRYPTO_PROXY_BTC_GATE
+#   petroleras=3: cobertura descorrelacionada, riesgo bajo
+#   defensivos=3: baja volatilidad, riesgo bajo
+MAX_PER_CLUSTER_BY_CLUSTER = {
+    "nuclear": 2,
+    "ai_infra": 2,
+    "quantum": 0,
+    "crypto_proxy": 1,
+    "petroleras": 3,
+    "defensivos": 3,
+}
 
 # ── Semana 26-30 May 2026 — PTS dinámico (Daniel Marin 25-May 23:00) ─────────
 # Reporte rápido apertura semana. SP500 gap alcista, plan semanal:
@@ -202,6 +221,16 @@ WEEK_PRIORITY_MEDIUM = ["UUUU", "OKLO", "SMR"]
 WEEK_PRIORITY_LOW = ["XOM", "CVX", "XLE", "VAL", "JNJ", "KO", "CL", "MO"]
 QUANTUM_SUPPRESSED = ["IONQ", "RGTI"]   # No alertar reentry hasta corrección ≥10% desde max
 QUANTUM_REENTRY_PULLBACK_PCT = 10.0      # Threshold corrección mínima para reactivar
+QUANTUM_SUPPRESSED_UNTIL = "2026-06-01"  # Spec 004: auto-expire date. Stock analyzer ignora QUANTUM_SUPPRESSED si _today >= esta fecha. Si PTS no reactiva para entonces, Fernando debe extender manual.
+
+# Spec 004: gate de crypto proxies — pipeline solo activa si BTC > este nivel
+# PTS reporte 8h: "trigger pendiente de activación si SP500 pierde 6,728" + "Crypto breakout
+# pending, trigger si supera $74k". Enforcement real es backlog (requiere fetch BTC en stock_watchdog).
+CRYPTO_PROXY_BTC_GATE = 74000.0
+
+# Spec 004: bonos macro vigilancia (PTS reporte 8k jueves 29). Sin alertas directas,
+# solo etiqueta cuando aparezcan en signal feed. TLT = bonos 20Y largos; TBT = inverso.
+MACRO_BONDS_WATCH = ["TLT", "TBT"]
 PRIORITY_BOOST_CLUSTER = "ai_infra"     # Esta semana: permite hasta 3 (vs 2 default) si SP500>7000
 PRIORITY_BOOST_MAX_PER_CLUSTER = 3
 WEEK_REVIEW_DATE = "2026-05-25"          # Última actualización PTS — invalidar después de 7 días

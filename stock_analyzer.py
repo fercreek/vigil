@@ -296,17 +296,24 @@ def stock_watchdog():
                 logger.info("👁️ Centinela: earnings suppression activa para %s", _suppressed_today)
 
             # Spec 003 (May-25-2026): week priority + quantum suppression — PTS Daniel Marin
+            # Spec 004 (May-26-2026): QUANTUM_SUPPRESSED_UNTIL auto-expire
             try:
                 from config import (
                     QUANTUM_SUPPRESSED, WEEK_PRIORITY_HIGH, WEEK_PRIORITY_LOW,
-                    WEEK_REVIEW_DATE,
+                    WEEK_REVIEW_DATE, QUANTUM_SUPPRESSED_UNTIL,
                 )
                 _wr_date = _dt.strptime(WEEK_REVIEW_DATE, "%Y-%m-%d")
                 _priorities_stale = (_today - _wr_date).days > 7
                 if _priorities_stale:
                     logger.warning("👁️ Centinela: WEEK_PRIORITY stale (>7d desde %s) — ignorando tags. Actualiza con nuevo reporte PTS.", WEEK_REVIEW_DATE)
+                # Spec 004: auto-expire de quantum suppression
+                _quantum_expire = _dt.strptime(QUANTUM_SUPPRESSED_UNTIL, "%Y-%m-%d")
+                if _today >= _quantum_expire:
+                    if QUANTUM_SUPPRESSED:  # solo log si había algo que expirar
+                        logger.info("👁️ Centinela: QUANTUM auto-expired (UNTIL=%s) — re-habilitando %s.", QUANTUM_SUPPRESSED_UNTIL, QUANTUM_SUPPRESSED)
+                    QUANTUM_SUPPRESSED = []
             except Exception as _e:
-                logger.warning("👁️ Centinela: spec-003 constants no disponibles (%s) — default behavior", _e)
+                logger.warning("👁️ Centinela: spec-003/004 constants no disponibles (%s) — default behavior", _e)
                 QUANTUM_SUPPRESSED, WEEK_PRIORITY_HIGH, WEEK_PRIORITY_LOW = [], [], []
                 _priorities_stale = True
 
