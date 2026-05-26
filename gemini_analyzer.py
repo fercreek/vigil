@@ -1113,7 +1113,7 @@ def get_sentinel_report_compact(symbol: str, current_price: float, rsi: float, e
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.5,
-                max_output_tokens=1500,  # bumped from 600 — was truncating mid-JSON
+                max_output_tokens=2500,  # 2026-05-26: 1500→2500. voices empty en alerts ZEC (truncación recovery sin voices).
                 response_mime_type="application/json",
                 system_instruction="Genera SOLO el JSON pedido. Cada voz ≤8 palabras. Sin prosa adicional.",
             ),
@@ -1121,6 +1121,13 @@ def get_sentinel_report_compact(symbol: str, current_price: float, rsi: float, e
         raw = (resp.text or "").strip()
         parsed = voice_compactor.parse_sentinel_json(raw)
         if parsed:
+            # 2026-05-26: validar que voices tenga contenido real, no solo placeholders "—"
+            # de _repair_partial. Sin voices, la alert es inútil ("🟢 ZEC 4/5 LONG / 🎩 — / ⚡ —").
+            voices = parsed.get("voices", {})
+            has_voices = bool(voices) and any(v and v != "—" for v in voices.values())
+            if not has_voices:
+                logger.warning(f"[Sentinel Compact] {symbol}: voices empty (JSON truncated recovery). Skipping alert. raw_len={len(raw)}")
+                return None
             return parsed
         # Log full raw (no truncation) so we can debug parse failures end-to-end
         logger.warning(f"[Sentinel Compact] JSON unparseable for {symbol} (len={len(raw)}): {raw!r}")
