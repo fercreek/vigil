@@ -1,13 +1,28 @@
 # _NEXT.md — Scalp Bot / Zenith
 
-> Update: 2026-05-26 · Último commit: `25a9140`
-> **Sesión extendida — audit wires dormant + 5 fixes críticos post-deploy. Ver `docs/SPEC_WIRE_AUDIT.md`.**
+> Update: 2026-05-27 · Último commit: `a2fd110`
+> **Sesión: bot muerto 5 semanas → resucitado + spec kit pro + monitor ZEC/TAO/TON + señales working.**
 
 ---
 
 ## ⚡ En proceso (retomar aquí)
 
-### P0 — Fernando hace estos manualmente (15 min total)
+### P0 — Sesión 2026-05-27 — Pendientes Fernando
+
+- [ ] **Env vars Railway** — `ETHERSCAN_API_KEY` + `REDDIT_CLIENT_ID/SECRET/USER_AGENT` (specs 010/013)
+- [ ] **PTS article auth** — `protradingskills.com/analysis/...` requiere login para WebFetch. Pegar texto manualmente si quieres más actualizaciones en CLAUDE.md
+- [ ] **Posiciones portfolio** — revisar SUI (-$486) y FIL (-$103): sin catalizador PTS. Definir si cortar o hold
+- [ ] **ZEC SL $520** — monitor activo, próxima alerta si cae bajo $521
+- [ ] **Validar reportes Telegram** — 16:00 UTC llega Market Status con ZEC/TAO/TON, verificar formato en cel
+
+### P1 — Validaciones automáticas (heredadas)
+
+- [ ] **A/B framework 7d** — `curl /api/metrics/intel_ab` → `total > 0` tras primer ciclo Sentinel
+- [ ] **Outcome auto-update** — `sqlite3 trades.db "SELECT alert_id, outcome FROM intel_outcomes WHERE outcome IS NOT NULL LIMIT 5;"`
+
+---
+
+### P0 — Fernando hace estos manualmente (heredado)
 
 - [ ] **Env vars Railway** — `ETHERSCAN_API_KEY` (Etherscan.io/myapikey) + `REDDIT_CLIENT_ID/SECRET/USER_AGENT` (reddit.com/prefs/apps). Desbloquea Specs 010/013/019.
 - [ ] **Test UX Telegram cel** — reiniciar Telegram desktop, mandar `/pos` → verificar 6 botones reply keyboard nuevos (📂 💰 📊 🔬 🛡️ 🏛️). Mandar `/status`, `/audit`, `/intel BTC` → confirmar responden.

@@ -4,6 +4,28 @@ Auto-reflexión por sesión. Objetivo: cómo prompteamos a Claude mejor la próx
 
 ---
 
+### 2026-05-27 · Bot resucitado + spec kit pro + monitor ZEC/TAO/TON
+
+**Pros (qué salió bien):**
+- Diagnóstico del freeze rápido: `social_analyzer.py` Gemini sin timeout → thread frozen en TON. Debug con prints `flush=True` fue clave.
+- Spec kit en una sesión: 15 checks smoke test + integration test + SPEC_KIT_TRADING.md + signal_logger + market_status_report.py — sistema pasó de 0 visibilidad a monitoreo real.
+- Sentinel mejorado: campos entry_zone/sl/tp1/tp2 + voces con roles distintos — alerta mucho más accionable.
+- PTS intel integrado bien: web search confirmó datos (OKLO META deal, IREN targets, USDT.D datos) antes de guardar en neural memory.
+
+**Cons (qué se atoró o sobrecomplicó):**
+- El fix de timeout tuvo dos bugs consecutivos: primero `with ThreadPoolExecutor` (bloquea en exit), luego indentación mal copiada. Mejor haber escrito la solución daemon thread correcta de entrada.
+- Explore agents lanzados en plan mode no pudieron usar herramientas — tuvieron que reintentarse. Perder 2-3 turnos.
+- El `GEMINI_TIMEOUT` bug tomó 3 reinicios para confirmar porque los logs no mostraban el timeout warning (usé logger en vez de print flush). Si hubiera puesto print flush desde el principio → 1 reinicio.
+
+**Consejo Claude Code (cómo promptear mejor):**
+- Para bugs de threading: pedir primero `print(flush=True)` en el punto sospechoso antes de cualquier "fix" — los logs de `logger` pueden perderse si el thread está colgado.
+- Para session larga con múltiples features: dividir en "fix crítico primero, commit, luego features" — esta sesión mezcló todo y costó más context.
+
+**Patrón nuevo capturado:**
+- `daemon=True` + `t.join(timeout=N)` → forma correcta de timeout para llamadas Gemini bloqueantes. `ThreadPoolExecutor` con `with` bloquea en `__exit__` si future no terminó.
+
+---
+
 ### 2026-05-23 · Alert noise audit + 4 failure modes silenciosos
 
 **Pros (qué salió bien):**
