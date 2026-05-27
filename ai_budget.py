@@ -36,7 +36,7 @@ BUDGET_WARN_PCT = 80
 COST_PER_TOKEN = {
     "claude-haiku-4-5-20251001": {"in": 0.80 / 1_000_000, "out": 4.00 / 1_000_000},
     "claude-haiku-4-5":          {"in": 0.80 / 1_000_000, "out": 4.00 / 1_000_000},
-    "gemini-2.5-flash":          {"in": 0.0,               "out": 0.0},
+    "gemini-2.5-flash":          {"in": 0.15 / 1_000_000,  "out": 0.60 / 1_000_000},
 }
 
 # call_type que cuentan para el límite diario de "decisiones críticas"

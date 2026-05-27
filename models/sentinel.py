@@ -58,6 +58,26 @@ class SentinelResponse(BaseModel):
         max_length=160,
         description="Qué hacer YA o esperar a qué nivel",
     )
+    entry_zone: str = Field(
+        default="—",
+        max_length=60,
+        description="Zona de entrada con precio, ej: '$540-$550'",
+    )
+    sl: str = Field(
+        default="—",
+        max_length=40,
+        description="Stop loss, ej: '$518'",
+    )
+    tp1: str = Field(
+        default="—",
+        max_length=40,
+        description="Primer target, ej: '$590'",
+    )
+    tp2: str = Field(
+        default="—",
+        max_length=40,
+        description="Segundo target, ej: '$640'",
+    )
 
     @field_validator("bias", mode="before")
     @classmethod
@@ -111,4 +131,8 @@ class SentinelResponse(BaseModel):
                 "apocalipsis": self.voices.apocalipsis,
             },
             "action": self.action,
+            "entry_zone": self.entry_zone,
+            "sl": self.sl,
+            "tp1": self.tp1,
+            "tp2": self.tp2,
         }

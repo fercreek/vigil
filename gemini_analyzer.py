@@ -1249,6 +1249,16 @@ def get_sentinel_report_compact(symbol: str, current_price: float, rsi: float, e
             )
             # response.parsed = instancia SentinelResponse o None
             parsed_obj: SentinelResponse | None = getattr(resp, "parsed", None)
+            # Log cost to ai_budget
+            try:
+                import ai_budget as _ab
+                _usage = getattr(resp, "usage_metadata", None)
+                _tin  = getattr(_usage, "prompt_token_count", 0) or len(prompt) // 4
+                _tout = getattr(_usage, "candidates_token_count", 0) or 100
+                _ab.log_ai_call("gemini", "gemini-2.5-flash", "sentinel_compact",
+                                tokens_in=_tin, tokens_out=_tout, symbol=symbol)
+            except Exception:
+                pass
             if parsed_obj is not None:
                 # Spec 003 fix: validar que voices tengan contenido real (no solo defaults "—")
                 if not parsed_obj.has_real_voices():

@@ -28,6 +28,7 @@ import scalp_alert_bot
 import swing_bot
 import stock_analyzer
 import daily_report
+import market_status_report
 # Threads desactivados (loopean sin disparar señales — ver logs May 2026):
 # import commodities_bot          # posiciones stuck "ya hay posicion abierta"
 # import manual_positions_monitor # "sin posiciones activas" siempre
@@ -103,6 +104,7 @@ if __name__ == "__main__":
     # _start_thread("manual_monitor", manual_positions_monitor.run_manual_monitor)
     # _start_thread("scalper_shorts", scalper_shorts_bot.run_scalper_shorts_bot)
     _start_thread("daily_report", daily_report.run_daily_report)
+    _start_thread("market_report", market_status_report.run_market_status_reports)
 
     # 4. Hilo principal para Flask (Keep-Alive)
     run_flask()

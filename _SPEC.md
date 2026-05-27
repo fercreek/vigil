@@ -53,7 +53,7 @@ Watchdog (`thread_health.py`) auto-restart con MAX_RESTARTS=5.
 V1_LONG_ENABLED      = False   # killed: 15.4% WR / -34% PnL
 V1_SHORT_ENABLED     = False   # killed: 0% WR / 16 trades
 V5_ENABLED           = False   # killed: 0 trades en 365d
-TAO_TRADING_ENABLED  = True
+TAO_TRADING_ENABLED  = False   # Spec 001 (May-22-2026): 0/31 WR — killed
 V4_BLOCKLIST         = ["ETH", "ZEC"]  # walk-forward overfit confirmado
 
 # === V3-REVERSAL per-symbol RSI ===

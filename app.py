@@ -406,6 +406,29 @@ def get_ai_budget():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/signals/recent')
+def api_signals_recent():
+    """Últimas N decisiones de señal (SENT/SUPPRESSED/BLOCKED)."""
+    try:
+        import signal_logger
+        n = int(request.args.get("n", 100))
+        sym = request.args.get("symbol")
+        dec = request.args.get("decision")
+        rows = signal_logger.get_recent_signals(n=n, symbol=sym, decision=dec)
+        return jsonify({"count": len(rows), "signals": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/signals/summary')
+def api_signals_summary():
+    """Resumen de señales últimas 24h."""
+    try:
+        import signal_logger
+        hours = int(request.args.get("hours", 24))
+        return jsonify(signal_logger.get_signal_summary(hours=hours))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/shadow_intel')
 def get_shadow_intel():
     """Retorna mensajes reales de monitoreo neural (Shadow Sentinel)."""

@@ -77,19 +77,23 @@ Devuelve SOLO un JSON válido (sin markdown, sin \\\\`\\\\`\\\\`):
   "score": 1-5 (5 = setup impecable, 1 = tesis invalidada),
   "verdict": "ACUMULAR | ESPERAR | REDUCIR",
   "voices": {{
-    "genesis":   "max 8 palabras — capital institucional / acumulacion",
-    "exodo":     "max 8 palabras — narrativa / tecnología",
-    "salmos":    "max 8 palabras — confluencia tecnica RSI/EMA/BB",
-    "apocalipsis": "max 8 palabras — riesgo macro principal"
+    "genesis":     "max 8 palabras — ¿flujo institucional / smart money visible?",
+    "exodo":       "max 8 palabras — catalizador narrativo o evento próximo",
+    "salmos":      "max 8 palabras — nivel técnico EXACTO clave (soporte/resistencia/EMA)",
+    "apocalipsis": "max 8 palabras — nivel o evento que INVALIDA el trade"
   }},
-  "action": "max 12 palabras — qué hacer YA o esperar a qué nivel"
+  "action":     "max 12 palabras — qué hacer YA o a qué señal esperar",
+  "entry_zone": "zona de precio de entrada, ej: $540-$550 o esperar $XXX",
+  "sl":         "nivel de stop loss con precio exacto, ej: $518",
+  "tp1":        "primer target con precio, ej: $590",
+  "tp2":        "segundo target con precio, ej: $640"
 }}
 
 Reglas estrictas:
-- JSON en una sola linea o multilinea, pero PARSEABLE.
-- NO uses comillas curvas, NO \\\\`\\\\`\\\\`json, NO comentarios.
-- Cada voz: ≤8 palabras, sin nombrar al ticker (ya está en bias/score).
-- action: con un nivel de precio si aplica."""
+- JSON parseable, sin comillas curvas, sin ```json.
+- Cada voz ≤8 palabras, perspectiva DISTINTA a las otras tres.
+- genesis habla de flujo de capital, exodo de catalizador, salmos de nivel técnico, apocalipsis de invalidación.
+- entry_zone/sl/tp1/tp2: precios concretos basados en ATR y soportes del gráfico. NO poner "—" si hay datos suficientes."""
 
 
 # ───────────────────────────── JSON parser ───────────────────────────────────
@@ -273,13 +277,32 @@ def render_sentinel_compact(symbol: str, parsed: dict, price: float, rsi: float,
     if intel_line:
         lines.append(intel_line)
 
+    entry_zone = parsed.get("entry_zone", "—")
+    sl         = parsed.get("sl", "—")
+    tp1        = parsed.get("tp1", "—")
+    tp2        = parsed.get("tp2", "—")
+
     lines.extend([
         f"🎩 {voices.get('genesis', '—')}",
         f"⚡ {voices.get('exodo', '—')}",
         f"🌊 {voices.get('salmos', '—')}",
         f"💀 {voices.get('apocalipsis', '—')}",
-        f"{vemoji} <b>{action}</b>",
     ])
+
+    # Línea de niveles — solo si tenemos datos reales
+    levels_parts = []
+    if entry_zone and entry_zone != "—":
+        levels_parts.append(f"Entrada: {entry_zone}")
+    if sl and sl != "—":
+        levels_parts.append(f"SL: {sl}")
+    if tp1 and tp1 != "—":
+        levels_parts.append(f"TP1: {tp1}")
+    if tp2 and tp2 != "—":
+        levels_parts.append(f"TP2: {tp2}")
+    if levels_parts:
+        lines.append(f"📍 <code>{' | '.join(levels_parts)}</code>")
+
+    lines.append(f"{vemoji} <b>{action}</b>")
     return "\n".join(lines)
 
 

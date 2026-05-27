@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 import indicators_swing
 import gemini_analyzer
 import tracker
+import signal_logger as _sl
 
 load_dotenv()
 
@@ -231,6 +232,8 @@ def analyze_symbol(symbol: str):
     # 5. Consenso: técnico + IA deben coincidir, no NEUTRAL
     if ai_bias != kumo_status or ai_bias == "NEUTRAL":
         print(f"    ⏩ Sin consenso ({kumo_status} vs {ai_bias}) — omitiendo")
+        _sl.log_signal(sym, "SWING", "SUPPRESSED", f"Sin consenso: kumo={kumo_status} ai={ai_bias}",
+                       price=price, rsi=prices.get(f"{sym}_RSI", 0), kumo=kumo_status, ai_bias=ai_bias)
         return
 
     side = "LONG" if ai_bias == "BULL" else "SHORT"
@@ -238,11 +241,13 @@ def analyze_symbol(symbol: str):
     # 5b. NO_SHORT filter — block SHORT signals for chronically losing symbols
     if side == "SHORT" and symbol in NO_SHORT:
         print(f"    ⛔ {symbol} SHORT bloqueado (NO_SHORT list — WR < 10%)")
+        _sl.log_signal(sym, "SWING", "BLOCKED", "NO_SHORT list (WR<10%)", price=price, side=side)
         return
 
     # 6. Direction flip guard — no LONG→SHORT within 24h
     if not _can_flip_direction(symbol, side):
         print(f"    ⏸️  Direction flip blocked ({side}) — 24h cooldown activo")
+        _sl.log_signal(sym, "SWING", "BLOCKED", "direction flip 24h cooldown", price=price, side=side)
         return
 
     # 7. Construir alerta
@@ -254,6 +259,7 @@ def analyze_symbol(symbol: str):
     # 8. Cooldown check (memoria local + DIRECTION_FLIP_CD ya cubre reinicios)
     if _in_cooldown(symbol):
         print(f"    ⏸️  En cooldown — omitiendo")
+        _sl.log_signal(sym, "SWING", "BLOCKED", "cooldown activo", price=price, side=side)
         return
 
     # 9. Enviar con keyboard Activar/Skip (mismo flujo que commodities/scalper_shorts)
@@ -283,6 +289,9 @@ def analyze_symbol(symbol: str):
         _set_cooldown(symbol)
         _set_direction(symbol, side)
         print(f"    ✅ SWING alerta con keyboard — {side} @ ${price:,.2f} | TP3: ${tp3:,.2f}")
+        _sl.log_signal(sym, "SWING", "SENT", f"{side} @ ${price:,.2f} TP3=${tp3:,.2f}",
+                       price=price, side=side, sl=sl, tp1=tp1, tp2=tp2, tp3=tp3,
+                       ai_bias=ai_bias, kumo=kumo_status)
     except Exception as _e:
         # Fallback: send sin keyboard (preserva alerta visible) — NO auto-log a DB
         # User decide manualmente vía /open o /manual_add si quiere registrar

@@ -6,6 +6,8 @@ from logger_core import logger, log_ai_decision
 from google import genai
 from google.genai import types
 
+_GEMINI_TIMEOUT_SEC = 45  # max wait for Gemini social call
+
 # Configuración
 CRYPTOPANIC_API_KEY = os.getenv("CRYPTOPANIC_API_KEY", "") # Opcional
 TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN", "") # Opcional
@@ -163,14 +165,38 @@ def _analyze_sentiment_with_gemini(ticker: str, news: str, social: str, sentinel
     """
 
     try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.7,
-                max_output_tokens=600
-            )
-        )
+        import threading as _th
+        _holder = [None]
+        def _gemini_call():
+            try:
+                _holder[0] = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                    config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=600),
+                )
+            except Exception as _e:
+                _holder[0] = _e
+        print(f"[social_analyzer] {ticker}: lanzando Gemini thread...", flush=True)
+        _t = _th.Thread(target=_gemini_call, daemon=True)
+        _t.start()
+        _t.join(timeout=_GEMINI_TIMEOUT_SEC)
+        if _holder[0] is None:
+            print(f"[social_analyzer] {ticker}: TIMEOUT {_GEMINI_TIMEOUT_SEC}s — skip", flush=True)
+            logger.warning(f"[social_analyzer] Gemini timeout ({_GEMINI_TIMEOUT_SEC}s) para {ticker} — skip")
+            return ("Sin análisis (timeout).", 0.0)
+        if isinstance(_holder[0], Exception):
+            raise _holder[0]
+        print(f"[social_analyzer] {ticker}: Gemini OK", flush=True)
+        response = _holder[0]
+        try:
+            import ai_budget as _ab
+            _usage = getattr(response, "usage_metadata", None)
+            _tin  = getattr(_usage, "prompt_token_count", 0) or len(prompt) // 4
+            _tout = getattr(_usage, "candidates_token_count", 0) or 50
+            _ab.log_ai_call("gemini", "gemini-2.5-flash", "social_intel",
+                            tokens_in=_tin, tokens_out=_tout, symbol=ticker)
+        except Exception:
+            pass
         result = response.text.strip()
         log_ai_decision("SOCIAL_SENTINEL", prompt, result)
 

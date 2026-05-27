@@ -841,6 +841,94 @@ Apertura de semana. SP500 sube en futuros Asia/Europa el lunes, gap alcista prob
 
 ---
 
+### 8l. Análisis Lobo + PTS Context (27 Mayo 2026)
+
+**Fuente:** YouTube Live LoboCrypto + contexto PTS semana 26-30 May (sección 8k)
+
+**BTC setup activo (Lobo):**
+- Weekly: bajista, bulltrap fase 26-27. Flip bullish solo con cierre daily > $79k.
+- Key support: $73,800 (100MA + canal + zona onchain). Si pierde → $71k → $69k → $64k.
+- Sospecha short squeeze: volumen bajando en caída + todo el mundo tiene el canal bajista → market maker puede limpiar cortos primero.
+- Opciones viernes: $7B, max pain $75k, put $70k, call $80k.
+- Dos largos activos: entry $74,692, stop $73k, TP $78,500.
+
+**ETH:** Tom Lee (Bitmine) acumulando $5.4M ETH. Target superciclo $9k-12k en 2029-30.
+
+**USDT.D:** Cayendo → favorece altcoins. "Acumular spot cuando llegue a zona clave inferior."
+
+**SP500:** Doble techo ("McDonald's") en máximos históricos + Nasdaq pullback → riesgo correlación con BTC.
+
+**Implicaciones para ZEC / TAO / TON (monitor manual):**
+
+| Escenario | ZEC/TAO/TON |
+|-----------|-------------|
+| BTC sostiene $73,800 + USDT.D sigue cayendo | ✅ Long válido — alts rebotan |
+| Short squeeze BTC hacia $78-79k | ✅ Acelera alts |
+| SP500 corrige + BTC pierde $73k | 🔴 Invalidación — esperar $68-64k |
+| USDT.D rebota desde zona clave | ⚠️ Pausa en alts — reducir exposición |
+
+**Niveles de invalidación del setup LONG ZEC:**
+- SL: ZEC pierde $520 (correlado con BTC perdiendo $73k)
+- Si BTC cierra daily > $79k → señal de confirmación adicional para ZEC
+
+**PTS article** (protradingskills.com/analysis/analisis-de-mercado-riesgos-y-oportunidades/) — requiere auth, no accesible. Ver sección 8k para el plan semanal vigente (COIN, CRWV, CORZ, nucleares prioritarios esta semana).
+
+---
+
+---
+
+### 8m. PTS Update — "Análisis de Mercado: Riesgos y Oportunidades" (Daniel Marin, 27-May-2026 15:49)
+
+**Macro SP500:**
+- SP500 lateral sobre 7500. Soporte corto plazo: **7300** (lejos aún).
+- RSP en máximos (amplitud positiva). Volatilidad intradiaria históricamente alta (acciones mueven 6%+ intraday).
+- **Regla operativa**: posiciones pequeñas, paciencia, tolerancia a volatilidad extrema.
+
+**Bitcoin — CRÍTICO:**
+- Estuvo en $82k, perdiendo soporte **$76k** → borde de ruptura bajista.
+- Confirmación bajista: pérdida del mínimo del sábado (mínimo: ~$73,800).
+- **Recuperación requiere**: cierre daily > $76k en miércoles o jueves.
+- **USDT.D al borde de ruptura alcista** → "últimas horas previas a decisión de mercado".
+- SP500/NASDAQ/DOW/RUSSELL en máximos pero BTC no rebota → "debilidad extrema del crypto".
+
+**Watchlist actualizado (27-May-2026) — por prioridad:**
+
+| Prioridad | Sector | Símbolos | Status PTS |
+|-----------|--------|----------|-----------|
+| 🔥 Más alcista | AI Infra | IREN ($61), CORZ, CIFR, CRWV (>$94) | CORZ target $100 fin 2026 · IREN target $250+ LP |
+| 🔥 Muy alcista | Cuántico | IONQ, RGTI | En BE, continúan a targets. No nueva entrada (esperar barrida) |
+| ✅ Alcista | Nuclear | OKLO, SMR | Post-barrida, consolidando. OKLO: acuerdo META (catalizador) |
+| ✅ Alcista | Tierras raras | MP | Activó entrada. USAR: pasó oportunidad — esperar barrida |
+| 🔄 Suelo | Fintech | SOFI (>$17), HOOD (>$78) | Formando suelo. Trigger: romper esos niveles |
+| 🔄 Barrida CP | Petroleras | CVX, VAL, OXY | Barrida a corto plazo, tendencia alcista intacta. XLE/XOM en BE |
+| 🐢 Lento | Defensivos | JNJ, MO, CL, KO | Baja volatilidad, zona entrada. "Tortugas fuertes" |
+| 🚀 Escapada | AI Infra | CLSK | No para de subir. No operar ahora — esperar retroceso. Target $30+ 2026, $60 2027 |
+| ⚠️ Riesgo | Crypto stock | COIN | ZR última barrera. Stop/tolerancia: **$169-172**. Si pierde → reduce exposición crypto |
+| 🔴 Débil | Crypto | BTC, alts | Peor sector. USDT.D puede romper al alza = presión en alts |
+
+**Catalizadores destacados:**
+- OKLO: acuerdo comercial META + sector nuclear muy fuerte
+- CLSK: AI infra + minería BTC, "cohete que va a niveles muy altos"
+- **SEC Junio 2026**: levanta restricción day trading options → habilitado comprar/vender contratos el mismo día
+
+**Implicaciones para el bot (ZEC/TAO/TON):**
+1. USDT.D en borde de ruptura alcista → si rompe: presión bajista en altcoins
+2. BTC pierde $76k → confirma bajista → ZEC/TON/TAO invalidación
+3. BTC vuelve > $76k (cierre daily) → setup long alts válido otra vez
+4. Crypto es "el peor sector" según PTS → keep ZEC monitor conservador, no agresivo
+5. COIN stop $172 → si COIN cae es indicador de crypto debilidad sistémica
+
+**Updates config.py necesarios:**
+```python
+BTC_CRITICAL_SUPPORT = 76000   # 8m: pérdida = confirmación bajista
+COIN_STOP_TOLERANCE  = 172     # 8m: última barrera COIN
+USDT_D_RUPTURA_THRESHOLD = 4.0 # 8m: ruptura alcista USDT.D = presión alts
+QUANTUM_SUPPRESSED_UNTIL = "2026-06-15"  # 8m: IONQ/RGTI en BE, esperar barrida para nueva entrada
+WEEK_PRIORITY_HIGH = ["IREN", "CORZ", "CIFR", "CRWV"]  # 8m: AI infra es la prioridad
+```
+
+---
+
 ## Cómo Aplicar Estos Insights al Algoritmo
 
 ### Filtros a Implementar

@@ -701,7 +701,7 @@ def get_prices() -> dict:
     
     # 1. ¿Necesitamos actualizar precios? (Optimizado: 1 sola llamada)
     if now - GLOBAL_CACHE["last_update"]["prices"] > TTL_PRICES:
-        symbols = ['ETH/USDT', 'BTC/USDT', 'TAO/USDT', 'ZEC/USDT', 'SOL/USDT', 'PAXG/USDT', 'HBAR/USDT', 'DOGE/USDT', 'TON/USDT']
+        symbols = ['ETH/USDT', 'BTC/USDT', 'TAO/USDT', 'ZEC/USDT', 'SOL/USDT', 'PAXG/USDT', 'HBAR/USDT', 'DOGE/USDT', 'TON/USDT', 'SUI/USDT', 'FIL/USDT']
         try:
             # OPTIMIZACIÓN V3.2: fetch_tickers (Plural) es más eficiente que 4 llamadas separadas
             tickers = binance_ex.fetch_tickers(symbols)
@@ -715,6 +715,8 @@ def get_prices() -> dict:
             res["HBAR"] = tickers.get('HBAR/USDT', {}).get('last', res.get("HBAR"))
             res["DOGE"] = tickers.get('DOGE/USDT', {}).get('last', res.get("DOGE"))
             res["TON"]  = tickers.get('TON/USDT',  {}).get('last', res.get("TON"))
+            res["SUI"]  = tickers.get('SUI/USDT',  {}).get('last', res.get("SUI"))
+            res["FIL"]  = tickers.get('FIL/USDT',  {}).get('last', res.get("FIL"))
 
             # Monitoreo de Carga (Opcional: X-MBX-USED-WEIGHT)
             weight = binance_ex.last_response_headers.get('X-MBX-USED-WEIGHT-1M', 'N/A')
@@ -745,6 +747,8 @@ def get_prices() -> dict:
                 res["HBAR"] = cg_r.get("hedera-hashgraph", {}).get("usd", res.get("HBAR", 0.0))
                 res["DOGE"] = cg_r.get("dogecoin", {}).get("usd", res.get("DOGE", 0.0))
                 res["TON"]  = cg_r.get("the-open-network", {}).get("usd", res.get("TON", 0.0))
+                res["SUI"]  = cg_r.get("sui", {}).get("usd", res.get("SUI", 0.0))
+                res["FIL"]  = cg_r.get("filecoin", {}).get("usd", res.get("FIL", 0.0))
                 
                 GLOBAL_CACHE["prices"].update(res)
                 GLOBAL_CACHE["last_update"]["prices"] = now
@@ -1102,9 +1106,9 @@ def main():
                     import runtime_state as _rs
                     _open_syms = {t["symbol"] for t in _tracker.get_open_trades()}
                     _verbose = _rs.is_verbose()
-                    # Audit C+D (2026-05-23): TAO trading off → no Sentinel TAO (67% AI cost desperdiciado).
-                    from config import TAO_TRADING_ENABLED as _TAO_OK
-                    _sentinel_syms = ["ZEC"] + (["TAO"] if _TAO_OK else [])
+                    # Monitor manual: ZEC siempre, TAO + TON como análisis read-only
+                    # (TAO_TRADING_ENABLED controla V3/V4 auto-trades, no el Sentinel)
+                    _sentinel_syms = ["ZEC", "TAO", "TON"]
                     for _sym in _sentinel_syms:
                         if _sym in _open_syms:
                             print(f"⏭️ Sentinel {_sym}: Posición abierta — reporte omitido.")
@@ -1149,6 +1153,9 @@ def main():
                         )
                         if not parsed:
                             print(f"🔕 Sentinel {_sym}: parse failed, skipping (use /verbose on para forzar texto).")
+                            import signal_logger as _slog
+                            _slog.log_signal(_sym, "SENTINEL", "ERROR", "parse failed / voices empty",
+                                             price=_p, rsi=_rsi)
                             continue
 
                         _bias = parsed.get("bias", "NEUTRAL")
@@ -1156,13 +1163,22 @@ def main():
                         # Filtro contradicción RSI vs dirección — evita LONG @ RSI overbought / SHORT @ RSI oversold
                         if _bias == "LONG" and _rsi >= 72.0:
                             print(f"🔕 Sentinel {_sym}: contradicción LONG @ RSI {_rsi:.0f} ≥72 — alerta omitida (esperar pullback).")
+                            import signal_logger as _slog
+                            _slog.log_signal(_sym, "SENTINEL", "SUPPRESSED", f"LONG contradicción RSI={_rsi:.0f}≥72",
+                                             price=_p, rsi=_rsi, bias=_bias, score=_score)
                             continue
                         if _bias == "SHORT" and _rsi <= 28.0:
                             print(f"🔕 Sentinel {_sym}: contradicción SHORT @ RSI {_rsi:.0f} ≤28 — alerta omitida (esperar bounce).")
+                            import signal_logger as _slog
+                            _slog.log_signal(_sym, "SENTINEL", "SUPPRESSED", f"SHORT contradicción RSI={_rsi:.0f}≤28",
+                                             price=_p, rsi=_rsi, bias=_bias, score=_score)
                             continue
                         ok, reason = _vc.should_send_sentinel(_sym, _bias, _score)
                         if not ok:
                             print(f"🔕 Sentinel {_sym}: filtered — {reason}")
+                            import signal_logger as _slog
+                            _slog.log_signal(_sym, "SENTINEL", "SUPPRESSED", f"voice_compactor: {reason}",
+                                             price=_p, rsi=_rsi, bias=_bias, score=_score)
                             continue
 
                         # Spec 022.6.1 (2026-05-26): inyectar INTEL en el Sentinel.
@@ -1179,6 +1195,9 @@ def main():
                         msg = _vc.render_sentinel_compact(_sym, parsed, _p, _rsi, intel=_intel_sentinel)
                         mid = send_telegram(msg)
                         print(f"✅ Sentinel {_sym}: enviado · {_bias} {_score}/5")
+                        import signal_logger as _slog
+                        _slog.log_signal(_sym, "SENTINEL", "SENT", f"{_bias} score={_score}/5",
+                                         price=_p, rsi=_rsi, bias=_bias, score=_score)
 
                         # Log al A/B framework (Spec 022) — antes solo V3-Reversal logueaba.
                         try:

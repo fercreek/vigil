@@ -212,16 +212,23 @@ MAX_PER_CLUSTER_BY_CLUSTER = {
 
 # ── Semana 26-30 May 2026 — PTS dinámico (Daniel Marin 25-May 23:00) ─────────
 # Reporte rápido apertura semana. SP500 gap alcista, plan semanal:
-#   Prioridad alta: AI-infra (CRWV/CORZ/CIFR) + COIN
-#   Media: nucleares aún en zona entrada (UUUU/OKLO/SMR)
-#   Baja: petroleras/defensivas estables
-#   SUPRIMIDAS: cuánticas (IONQ/RGTI) sobreextendidas → solo alertar si retroceso ≥10%
-WEEK_PRIORITY_HIGH = ["COIN", "CRWV", "CORZ", "CIFR"]
-WEEK_PRIORITY_MEDIUM = ["UUUU", "OKLO", "SMR"]
-WEEK_PRIORITY_LOW = ["XOM", "CVX", "XLE", "VAL", "JNJ", "KO", "CL", "MO"]
-QUANTUM_SUPPRESSED = ["IONQ", "RGTI"]   # No alertar reentry hasta corrección ≥10% desde max
-QUANTUM_REENTRY_PULLBACK_PCT = 10.0      # Threshold corrección mínima para reactivar
-QUANTUM_SUPPRESSED_UNTIL = "2026-06-01"  # Spec 004: auto-expire date. Stock analyzer ignora QUANTUM_SUPPRESSED si _today >= esta fecha. Si PTS no reactiva para entonces, Fernando debe extender manual.
+# PTS 8m (27-May-2026): prioridad por sector actualizada
+#   MÁXIMA: AI Infra (IREN activa en $61, CORZ/CIFR subiendo, CRWV>94 válido)
+#   ALTA: cuánticas EN BE — esperar BARRIDA para reentrada, no nueva entrada ahora
+#   MEDIA: nuclear (OKLO+META acuerdo), tierras raras (MP activa)
+#   BAJA: fintech suelo (SOFI>17, HOOD>78), petroleras (barrida CP)
+#   SUPRIMIDO: COIN (ZR 172 = última barrera — si pierde = crypto sistémico débil)
+WEEK_PRIORITY_HIGH   = ["IREN", "CORZ", "CIFR", "CRWV"]   # AI Infra — más alcista
+WEEK_PRIORITY_MEDIUM = ["OKLO", "SMR", "MP", "UUUU"]       # Nuclear + tierras raras
+WEEK_PRIORITY_LOW    = ["SOFI", "HOOD", "CVX", "VAL", "XLE", "JNJ", "KO", "CL", "MO"]
+QUANTUM_SUPPRESSED   = ["IONQ", "RGTI"]   # En BE — esperar retroceso para nueva entrada
+QUANTUM_REENTRY_PULLBACK_PCT = 10.0
+QUANTUM_SUPPRESSED_UNTIL = "2026-06-15"   # 8m: extendido (en BE, no sobreextendido — pero esperar barrida)
+
+# PTS 8m: niveles críticos BTC y COIN
+BTC_CRITICAL_SUPPORT_8M  = 76000.0   # Pérdida = confirmación bajista → alts bajo presión
+COIN_STOP_TOLERANCE_8M   = 172.0     # Última ZR COIN — si pierde = crypto debilidad sistémica
+CLSK_WATCH_PULLBACK      = True      # CLSK escapada, no operar ahora — esperar retroceso
 
 # Spec 004: gate de crypto proxies — pipeline solo activa si BTC > este nivel
 # PTS reporte 8h: "trigger pendiente de activación si SP500 pierde 6,728" + "Crypto breakout
