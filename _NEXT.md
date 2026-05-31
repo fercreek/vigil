@@ -1,11 +1,19 @@
 # _NEXT.md — Scalp Bot / Zenith
 
-> Update: 2026-05-27 · Último commit: `a2fd110`
-> **Sesión: bot muerto 5 semanas → resucitado + spec kit pro + monitor ZEC/TAO/TON + señales working.**
+> Update: 2026-05-31 · Último commit: `c502b42`
+> **Sesión 05-31: bot caído silencioso (Gemini 429 spend cap) → key nueva + Binance 451 fix + API watchdog.**
 
 ---
 
 ## ⚡ En proceso (retomar aquí)
+
+### P0 — Sesión 2026-05-31
+
+- [x] **Gemini 429 spend cap** — bot vivo en Railway pero IA muerta (spend cap Google agotado). Key nueva `AQ.Ab8R…aqxA` (formato nuevo Google) en `.env` + Railway. Bot resucitado, Cuadrilla Zenith corriendo.
+- [x] **Binance 451 geo-block** — IP Railway restringida. Reorden fallback `OKX→KuCoin→Bybit→Binance` en `exchange_singleton.py`. OKX primario keyless. Mata spam por ciclo. (`dfa68d3`)
+- [x] **API watchdog** — `api_health.py` + `/apihealth`. Alerta Telegram cuando Gemini/data feed se vence o cae (cada 30min, dedup por cambio de estado). Habría avisado del 429 de hoy. (`c502b42`)
+- [ ] **Validar `/apihealth` en cel** — mandar comando al bot tras deploy, confirmar todo 🟢
+- [ ] **Subir cap Google AI Studio** — a ≥$10 en ai.studio/spend (cuenta de la key `AQ.Ab8R…`) para no repetir el silencio. Bot ya se auto-topa en $10 (`ai_budget.py`).
 
 ### P0 — Sesión 2026-05-27 — Pendientes Fernando
 

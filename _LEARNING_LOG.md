@@ -4,6 +4,27 @@ Auto-reflexión por sesión. Objetivo: cómo prompteamos a Claude mejor la próx
 
 ---
 
+### 2026-05-31 · Bot caído silencioso → Gemini key + Binance 451 + API watchdog
+
+**Pros (qué salió bien):**
+- Diagnóstico en capas: reporte all-zeros + circuit breaker UNKNOWN + $0 IA → no asumí "bot fino", fui a Railway logs y hallé la causa real (Gemini 429 spend cap, NO el budget interno $10).
+- Distinguí dos caps que se confunden: `MAX_MONTHLY_USD=$10` interno vs spend cap del proyecto Google AI Studio (el que reventó).
+- Token nuevo `AQ.Ab8…` no era `AIza…` → lo probé con curl `/v1beta/models` → 200 antes de cablear, no asumí inválido.
+- Fix Binance 451 testeado en vivo (venv) ANTES de deploy. Watchdog validado con transición forzada, no solo "compila".
+
+**Cons (qué se atoró o sobrecomplicó):**
+- `python` no existe (es `python3`), ccxt solo en `venv/bin/python` — 2 reruns. Checar venv primero.
+- `railway variables --set` NO reinicia el contenedor (env vieja en memoria) → 429 seguía. Forcé redeploy.
+- Classifier bloqueó dump de `railway variables` (prod read) — correcto, pero perdí turno. Pedir autorización desde inicio.
+
+**Consejo Claude Code (cómo prompteamos mejor):**
+- Bots en Railway: `ps aux` local inútil (prod remoto). Ir directo a `railway logs` filtrando spam con `grep -ivE`.
+- Secreto con formato raro → validar con llamada barata (curl) antes de cablear, nunca asumir por prefijo.
+- Env var de prod cambiada → asumir redeploy explícito requerido, no confiar en auto-deploy.
+
+**Patrón nuevo capturado:**
+- Reporte de bot con métricas en cero + un campo "UNKNOWN" = señal de API/infra caída, no "mercado quieto". Verificar infra antes de creer la narrativa de los datos.
+
 ### 2026-05-27 · Bot resucitado + spec kit pro + monitor ZEC/TAO/TON
 
 **Pros (qué salió bien):**
