@@ -707,6 +707,10 @@ def check_user_queries(prices: dict):
                         keyboard=get_main_menu()
                     )
 
+                elif "apihealth" in t or text.startswith("/apihealth") or text.startswith("/health"):
+                    import api_health
+                    send_telegram(api_health.format_report(), keyboard=get_main_menu())
+
                 elif "agents" in t or text.startswith("/agents"):
                     agent_map = {
                         "CONSERVADOR": "🎩 Genesis",

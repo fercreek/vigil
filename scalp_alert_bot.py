@@ -1011,6 +1011,7 @@ def main():
     last_sentinel_time = 0
     last_zec_sentinel_time = 0
     last_coordinator_cleanup = 0.0
+    last_health_check = 0.0
     keyboard = get_main_menu()
     try:
         from config import ANALYSIS_MODE_QUIET as _QUIET
@@ -1035,6 +1036,15 @@ def main():
                     last_coordinator_cleanup = now
                     import signal_coordinator as _sc
                     _sc.cleanup_stale()
+                # API health watchdog (cada 30min) — alerta a Telegram si una API
+                # crítica (Gemini, data feed) se vence o se cae. Dedup por estado.
+                if now - last_health_check > 1800:
+                    last_health_check = now
+                    try:
+                        import api_health
+                        api_health.watchdog(send_telegram)
+                    except Exception as _e:
+                        print(f"⚠️ [api_health] watchdog error: {_e}")
                 # monitor_open_trades ya maneja el seguimiento de posiciones
                 monitor_open_trades(prices)
                 
