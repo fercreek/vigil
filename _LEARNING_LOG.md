@@ -4,6 +4,27 @@ Auto-reflexión por sesión. Objetivo: cómo prompteamos a Claude mejor la próx
 
 ---
 
+### 2026-06-01 · Monitoreo HYPE (Hyperliquid) — add símbolo + fix loop hardcoded
+
+**Pros (qué salió bien):**
+- Probé acceso OKX (ticker + candles vía curl) antes de asumir soporte de exchange → HYPE/USDT confirmado sin perder tiempo con Binance/ccxt local.
+- Detecté que `stock_watchlist.py` usa yfinance (acciones) = inútil para HYPE cripto, pivoteé a la ruta `SYMBOLS` sin insistir.
+- Fix raíz en vez de parche: cambié el loop a `config.SYMBOLS` en vez de appendear "HYPE" a la lista hardcoded → mata el drift a futuro.
+- Precio HYPE vía OKX aislado, sin tocar el batch frágil de `binance_ex.fetch_tickers` (habría roto todos los precios).
+
+**Cons (qué se atoró o sobrecomplicó):**
+- 4 deploys + ~4 checks por wakeup persiguiendo "¿por qué HYPE no aparece en el scan?" — el fix real era 1 línea (`scalp_alert_bot.py:851` tenía lista hardcoded, no leía `config.SYMBOLS`).
+- Commit 1 agregó HYPE a config asumiendo que el scan lo lee. No lo leía. No tracé al consumidor antes de escribir.
+
+**Consejo Claude Code (cómo prompteamos mejor):**
+- Antes de agregar un símbolo/valor a un config: `grep -rn "SYMBOLS\|for sym in" *.py` para ver quién lo CONSUME. Si hay lista hardcoded paralela, esa es la fuente de verdad real.
+- Ordenar commits por dependencia (fix plumbing primero), no por orden de descubrimiento → 1 deploy en vez de 4.
+
+**Patrón nuevo capturado:**
+- **Trace-the-consumer**: una lista hardcoded paralela a un config es la fuente de verdad real; el config es decorativo hasta reconectarla. Grep el consumidor antes del primer commit.
+
+---
+
 ### 2026-05-31 · Bot caído silencioso → Gemini key + Binance 451 + API watchdog
 
 **Pros (qué salió bien):**

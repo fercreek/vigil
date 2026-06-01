@@ -1,11 +1,20 @@
 # _NEXT.md — Scalp Bot / Zenith
 
-> Update: 2026-05-31 · Último commit: `c502b42`
-> **Sesión 05-31: bot caído silencioso (Gemini 429 spend cap) → key nueva + Binance 451 fix + API watchdog.**
+> Update: 2026-06-01 · Último commit: `bafc5fa`
+> **Sesión 06-01: HYPE (Hyperliquid) agregado al monitoreo — scan + level alerts + pulse 4H. Fix raíz del loop hardcoded.**
 
 ---
 
 ## ⚡ En proceso (retomar aquí)
+
+### P0 — Sesión 2026-06-01 — Monitoreo HYPE
+
+- [x] **HYPE agregado al bot** — `config.SYMBOLS` + `MANUAL_SYMBOLS`. Scan vivo en Railway (RSI 53, EMA200 $69.47). Commits `e797843`→`bafc5fa`.
+- [x] **Level monitor HYPE** — breakout $74.31 (→ targets $84/97/110) + reentrada $67. Alerta Telegram en cruce. (`95f1e3d`)
+- [x] **HYPE en reporte diario + pulse 4H** — línea en Market Status 16/21 UTC + `build_hype_pulse()`. (`c20dfc9`)
+- [x] **FIX raíz: loop scan leía lista hardcoded** — `scalp_alert_bot.py:851` ahora lee `config.SYMBOLS`. Precio de símbolos fuera del batch Binance vía OKX. (`bafc5fa`)
+- [ ] **Confirmar 1er pulse HYPE 4H** — verificar que llega al cel dentro de las próx 4h
+- [ ] **Confirmar alerta breakout** — si HYPE cruza $74.31 debe disparar alerta (validar en vivo)
 
 ### P0 — Sesión 2026-05-31
 
