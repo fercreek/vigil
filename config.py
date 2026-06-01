@@ -6,7 +6,7 @@ Importar en cualquier módulo con: from config import RSI_LONG_ENTRY, SYMBOLS, .
 """
 
 # ── Símbolos operados ─────────────────────────────────────────────────────────
-SYMBOLS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "HBAR", "DOGE", "TON"]
+SYMBOLS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "HBAR", "DOGE", "TON", "HYPE"]
 MACRO_WATCH = []  # Todos los símbolos ahora son operables
 
 # ── Watchlist estática de acciones (siempre monitoreada, independiente del reporte)
@@ -451,7 +451,7 @@ ANALYSIS_MODE_QUIET = True
 # ── Manual Positions ─────────────────────────────────────────────────────────
 # Storage unificado en trades.db (flag is_manual=1). Sin seed hardcoded.
 # Lista de símbolos preferidos para el picker de /open (inline keyboard).
-MANUAL_SYMBOLS = ["TAO", "ZEC", "DOGE", "SOL", "BTC", "ETH", "TON"]
+MANUAL_SYMBOLS = ["TAO", "ZEC", "DOGE", "SOL", "BTC", "ETH", "TON", "HYPE"]
 
 # ── Spec 010: Whale Netflows (on-chain tracker, NotebookLM 4 Prompt 3) ───────
 # Fuente: Etherscan + BscScan free APIs. Tracking transfers >$1M to/from exchanges.
