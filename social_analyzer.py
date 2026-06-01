@@ -119,7 +119,8 @@ def _analyze_sentiment_with_gemini(ticker: str, news: str, social: str, sentinel
     Retorna: (report_html: str, sentiment_score: float)
       sentiment_score: -1.0 a +1.0
     """
-    client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+    # Gemini client lazy: solo se crea en el fallback (abajo). Groq primario no lo necesita.
+    client = None
 
     extra_instr = ""
     if sentinel_mode:
@@ -165,6 +166,38 @@ def _analyze_sentiment_with_gemini(ticker: str, news: str, social: str, sentinel
     """
 
     try:
+        # ── Groq primario (vigilancia social, 2026-06-01) — free tier 14,400 RPD.
+        #    Gemini fallback abajo. Ver venom/reports/llm-api-comparison-2026-06-01.
+        try:
+            import llm_client as _llm
+            if _llm.groq_available():
+                _gtext, _gok = _llm.groq_text(
+                    prompt, system="Responde en el formato pedido. Sé conciso.",
+                    temperature=0.7, max_tokens=600,
+                    call_type="social_intel", symbol=ticker,
+                )
+                if _gok and _gtext:
+                    print(f"[social_analyzer] {ticker}: Groq OK (primario)", flush=True)
+                    log_ai_decision("SOCIAL_SENTINEL", prompt, _gtext)
+                    _score = 0.0
+                    import re as _re
+                    _clean = _re.sub(r"```(?:json)?\s*", "", _gtext).replace("```", "")
+                    for _m in reversed(list(_re.finditer(r"\{[^{}]*\}", _clean))):
+                        try:
+                            _cand = json.loads(_m.group(0))
+                            if "score" in _cand:
+                                _score = max(-1.0, min(1.0, float(_cand["score"])))
+                                break
+                        except (json.JSONDecodeError, ValueError):
+                            continue
+                    return _gtext, _score
+                print(f"[social_analyzer] {ticker}: Groq fail → fallback Gemini", flush=True)
+        except Exception as _ge:
+            print(f"[social_analyzer] {ticker}: Groq excepción ({_ge}) → fallback Gemini", flush=True)
+
+        # Fallback Gemini — crear client ahora (lazy)
+        if client is None:
+            client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
         import threading as _th
         _holder = [None]
         def _gemini_call():

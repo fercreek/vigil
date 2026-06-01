@@ -1234,6 +1234,25 @@ def get_sentinel_report_compact(symbol: str, current_price: float, rsi: float, e
         logger.warning(f"[Sentinel Compact] Pydantic SentinelResponse no disponible ({_e}) — fallback JSON mode")
         _has_pydantic_schema = False
 
+    # ── Groq primario (vigilancia, 2026-06-01) — constrained JSON, free tier alto.
+    #    Gemini queda como fallback automático abajo. Ver venom/reports/llm-api-comparison-2026-06-01.
+    if _has_pydantic_schema:
+        try:
+            import llm_client as _llm
+            if _llm.groq_available():
+                _gobj, _gok = _llm.groq_structured(
+                    prompt, SentinelResponse,
+                    system="Genera SOLO el JSON pedido. Cada voz ≤8 palabras. Sin prosa adicional.",
+                    temperature=0.5, max_tokens=2500,
+                    call_type="sentinel_compact", symbol=symbol,
+                )
+                if _gok and _gobj is not None and _gobj.has_real_voices():
+                    logger.info(f"[Sentinel Compact] {symbol}: Groq OK (primario)")
+                    return _gobj.to_renderer_dict()
+                logger.warning(f"[Sentinel Compact] {symbol}: Groq sin voices/fail → fallback Gemini")
+        except Exception as _ge:
+            logger.warning(f"[Sentinel Compact] {symbol}: Groq excepción ({_ge}) → fallback Gemini")
+
     try:
         if _has_pydantic_schema:
             resp = client.models.generate_content(

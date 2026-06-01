@@ -37,6 +37,10 @@ COST_PER_TOKEN = {
     "claude-haiku-4-5-20251001": {"in": 0.80 / 1_000_000, "out": 4.00 / 1_000_000},
     "claude-haiku-4-5":          {"in": 0.80 / 1_000_000, "out": 4.00 / 1_000_000},
     "gemini-2.5-flash":          {"in": 0.15 / 1_000_000,  "out": 0.60 / 1_000_000},
+    # Groq (2026) — free tier = $0; precios pago listados como referencia de tracking
+    "openai/gpt-oss-120b":       {"in": 0.15 / 1_000_000,  "out": 0.75 / 1_000_000},
+    "llama-3.1-8b-instant":      {"in": 0.05 / 1_000_000,  "out": 0.08 / 1_000_000},
+    "llama-3.3-70b-versatile":   {"in": 0.59 / 1_000_000,  "out": 0.79 / 1_000_000},
 }
 
 # call_type que cuentan para el límite diario de "decisiones críticas"
@@ -119,6 +123,9 @@ def get_monthly_cost(month: str = None) -> dict:
                 COUNT(*)                                                                AS calls,
                 COALESCE(SUM(CASE WHEN provider='claude' THEN cost_usd ELSE 0 END), 0) AS claude_cost,
                 COALESCE(SUM(CASE WHEN provider='gemini' THEN cost_usd ELSE 0 END), 0) AS gemini_cost,
+                COALESCE(SUM(CASE WHEN provider='groq'   THEN cost_usd ELSE 0 END), 0) AS groq_cost,
+                COALESCE(SUM(CASE WHEN provider='gemini' THEN 1 ELSE 0 END), 0)        AS gemini_calls,
+                COALESCE(SUM(CASE WHEN provider='groq'   THEN 1 ELSE 0 END), 0)        AS groq_calls,
                 COALESCE(SUM(tokens_in),  0)                                            AS t_in,
                 COALESCE(SUM(tokens_out), 0)                                            AS t_out,
                 COALESCE(SUM(cached_tokens_in), 0)                                      AS t_cached
@@ -126,10 +133,10 @@ def get_monthly_cost(month: str = None) -> dict:
             WHERE ts LIKE ? AND approved = 1
         """, (f"{month}%",)).fetchone()
         conn.close()
-        total, calls, claude_cost, gemini_cost, t_in, t_out, t_cached = row
+        total, calls, claude_cost, gemini_cost, groq_cost, gemini_calls, groq_calls, t_in, t_out, t_cached = row
     except Exception as e:
         print(f"[ai_budget] Error getting monthly cost: {e}")
-        total = calls = claude_cost = gemini_cost = t_in = t_out = 0
+        total = calls = claude_cost = gemini_cost = groq_cost = gemini_calls = groq_calls = t_in = t_out = t_cached = 0
 
     used_pct = round(total / MAX_MONTHLY_USD * 100, 1)
     cached_pct = round(t_cached / max(t_in, 1) * 100, 1)
@@ -139,6 +146,9 @@ def get_monthly_cost(month: str = None) -> dict:
         "calls":            calls,
         "claude_usd":       round(claude_cost, 4),
         "gemini_usd":       round(gemini_cost, 4),
+        "groq_usd":         round(groq_cost, 4),
+        "gemini_calls":     gemini_calls,
+        "groq_calls":       groq_calls,
         "tokens_in":        t_in,
         "tokens_out":       t_out,
         "tokens_cached":    t_cached,
@@ -232,7 +242,8 @@ def get_budget_summary_html() -> str:
         f"[{bar}] {m['budget_used_pct']:.1f}%\n"
         f"Gastado: <code>${m['total_usd']:.4f}</code> / <code>${m['max_monthly_usd']:.0f}</code>\n"
         f"├ Claude: <code>${m['claude_usd']:.4f}</code>\n"
-        f"└ Gemini: <code>${m['gemini_usd']:.4f}</code>\n"
+        f"├ Gemini: <code>${m['gemini_usd']:.4f}</code> ({m['gemini_calls']} calls)\n"
+        f"└ Groq:   <code>${m['groq_usd']:.4f}</code> ({m['groq_calls']} calls) ⚡vigil\n"
         f"Cache hit: <code>{m['cached_pct']:.1f}%</code> {cache_emoji} ({m['tokens_cached']:,} / {m['tokens_in']:,} tokens)\n"
         f"Decisiones hoy: <code>{daily} / {MAX_DAILY_DECISIONS}</code>\n"
         f"Restante: <code>${m['remaining_usd']:.4f}</code>"
