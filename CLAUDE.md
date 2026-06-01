@@ -956,3 +956,17 @@ Ver `docs/STRATEGY_RULES.md` para reglas completas. Resumen:
 2. Validación de Sesión: entradas fuertes solo tras apertura de Londres (LND) o Nueva York (NY)
 3. Análisis de Fallo: revisar 15m para detectar Stop Hunt en cada SL
 4. Post-Mortem: Flash Report por cada alerta con probabilidad 1-10 basada en macro-tendencia
+
+<!-- SKILLS:START (auto — editar en venom/registry/skills-by-project.yaml) -->
+## Skills de este proyecto
+> Auto-sync desde `venom/registry/skills-by-project.yaml`. NO editar a mano.
+> **Regla: antes de generar/ejecutar una tarea con skill aquí, proponerlo y preguntar '¿uso [skill]?' — no improvisar.**
+
+| Tarea | Skill |
+|---|---|
+| auditar el bot / revisar logs / algo falló | `cortex-audit` |
+| snapshot del estado del bot | `cortex-snapshot` |
+| watchlist | `cortex-watchlist` |
+| intel macro de mercado | `cortex-macro-intel` |
+| operar / comandos del bot de Telegram | `tradebot-tg` |
+<!-- SKILLS:END -->
