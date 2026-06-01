@@ -27,6 +27,12 @@ ZEC_SL_LEVEL  = 521.0      # Fernando SL definido 2026-05-27 (doble techo chart)
 _last_zec_pulse = 0.0
 _zec_sl_alerted = False    # solo alertar una vez hasta que rebote
 
+# HYPE level monitor (Fernando 2026-06-01 — descubrimiento de precio cerca de ATH)
+HYPE_BREAKOUT_LEVEL = 74.31   # ATH 120d · ruptura → corre a $84 (fib 1.272)
+HYPE_REENTRY_LEVEL  = 67.0    # soporte pullback → zona reentrada
+_hype_breakout_alerted = False
+_hype_reentry_alerted = False
+
 
 # ── Telegram ─────────────────────────────────────────────────────────────────
 
@@ -323,6 +329,41 @@ def _check_zec_sl():
         logger.debug("[MarketReport] ZEC SL check error: %s", e)
 
 
+def _check_hype_levels():
+    """Alert on HYPE breakout above ATH or pullback into reentry zone."""
+    global _hype_breakout_alerted, _hype_reentry_alerted
+    try:
+        from scalp_alert_bot import GLOBAL_CACHE
+        p = GLOBAL_CACHE.get("prices", {}).get("HYPE", 0)
+        if not p:
+            return
+        # Breakout sobre ATH → corre a targets
+        if p > HYPE_BREAKOUT_LEVEL and not _hype_breakout_alerted:
+            _send(
+                f"🚀 <b>HYPE BREAKOUT</b>\n"
+                f"  Precio: <b>${p:,.2f}</b> rompió ATH ${HYPE_BREAKOUT_LEVEL:.2f}\n"
+                f"  🎯 Targets: $84 (T1) · $97 (T2) · $110 (T3)\n"
+                f"  ⚠️ Confirmar con volumen — RSI diario sobrecomprado"
+            )
+            logger.warning("[MarketReport] HYPE breakout: $%.2f > $%.2f", p, HYPE_BREAKOUT_LEVEL)
+            _hype_breakout_alerted = True
+        elif p < HYPE_BREAKOUT_LEVEL - 2:
+            _hype_breakout_alerted = False  # reset si vuelve bajo ATH
+        # Pullback a zona reentrada
+        if p <= HYPE_REENTRY_LEVEL and not _hype_reentry_alerted:
+            _send(
+                f"🟢 <b>HYPE REENTRADA</b>\n"
+                f"  Precio: <b>${p:,.2f}</b> tocó soporte ${HYPE_REENTRY_LEVEL:.0f}\n"
+                f"  💡 Zona de reentrada si sostiene — invalida bajo $67"
+            )
+            logger.warning("[MarketReport] HYPE reentry zone: $%.2f <= $%.0f", p, HYPE_REENTRY_LEVEL)
+            _hype_reentry_alerted = True
+        elif p > HYPE_REENTRY_LEVEL + 3:
+            _hype_reentry_alerted = False  # reset si rebota
+    except Exception as e:
+        logger.debug("[MarketReport] HYPE level check error: %s", e)
+
+
 def run_market_status_reports():
     global _last_zec_pulse
     logger.info("[MarketReport] Iniciado — reportes %s UTC | ZEC pulse cada 4H | SL $%.0f",
@@ -349,6 +390,9 @@ def run_market_status_reports():
 
             # ZEC SL watchdog — runs every loop (~30-60s)
             _check_zec_sl()
+
+            # HYPE breakout/reentry watchdog
+            _check_hype_levels()
 
             # Check ZEC pulse
             if time.time() - _last_zec_pulse >= ZEC_PULSE_SEC:
