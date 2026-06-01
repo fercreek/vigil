@@ -30,8 +30,10 @@ _zec_sl_alerted = False    # solo alertar una vez hasta que rebote
 # HYPE level monitor (Fernando 2026-06-01 — descubrimiento de precio cerca de ATH)
 HYPE_BREAKOUT_LEVEL = 74.31   # ATH 120d · ruptura → corre a $84 (fib 1.272)
 HYPE_REENTRY_LEVEL  = 67.0    # soporte pullback → zona reentrada
+HYPE_PULSE_SEC      = 4 * 3600  # update cada 4H mientras se vigila de cerca
 _hype_breakout_alerted = False
 _hype_reentry_alerted = False
+_last_hype_pulse = 0.0
 
 
 # ── Telegram ─────────────────────────────────────────────────────────────────
@@ -181,7 +183,7 @@ def build_market_status(label: str = "") -> str:
         "",
         "<b>── Crypto ──────────────────</b>",
     ]
-    for sym in ["BTC", "ETH", "ZEC", "TAO", "TON"]:
+    for sym in ["BTC", "ETH", "ZEC", "TAO", "TON", "HYPE"]:
         lines.append(_sym_line(sym, prices, inds))
 
     lines += [
@@ -329,6 +331,41 @@ def _check_zec_sl():
         logger.debug("[MarketReport] ZEC SL check error: %s", e)
 
 
+def build_hype_pulse() -> str:
+    """Mini HYPE update cada 4H — vigilancia de descubrimiento de precio."""
+    prices, inds = _prices_and_rsi()
+    p   = prices.get("HYPE", 0)
+    rsi = prices.get("HYPE_RSI") or inds.get("HYPE", {}).get("rsi") or 0
+    ind = inds.get("HYPE", {})
+    ema200 = ind.get("ema_200") or p
+    bb_u   = ind.get("bb_u", 0)
+    bb_l   = ind.get("bb_l", 0)
+    atr    = ind.get("atr", 0)
+
+    trend   = "↗ sobre EMA200" if p > ema200 else "↘ bajo EMA200"
+    rsi_ctx = "sobrecomprado" if rsi > 70 else "sobrevendido" if rsi < 30 else "neutral"
+    now_str = datetime.now(timezone.utc).strftime("%H:%M UTC")
+
+    lines = [
+        f"🔬 <b>HYPE PULSE — {now_str}</b>",
+        f"  ${p:,.2f} | RSI {rsi:.0f} ({rsi_ctx}) | {trend}",
+    ]
+    # distancia a niveles clave
+    if p:
+        gap_bo = (HYPE_BREAKOUT_LEVEL - p) / p * 100
+        if p > HYPE_BREAKOUT_LEVEL:
+            lines.append(f"  🚀 sobre ATH ${HYPE_BREAKOUT_LEVEL:.2f} — targets $84 / $97 / $110")
+        else:
+            lines.append(f"  Breakout ${HYPE_BREAKOUT_LEVEL:.2f} ({gap_bo:+.1f}%) | reentrada ${HYPE_REENTRY_LEVEL:.0f}")
+    if bb_u and bb_l:
+        lines.append(f"  BB: ${bb_l:,.1f} ↔ ${bb_u:,.1f}")
+    if atr:
+        lines.append(f"  ATR ${atr:,.2f} → SL est ${p-2*atr:,.2f} | TP1 est ${p+2.5*atr:,.2f}")
+
+    lines.append("<i>HYPE monitoring — no es señal de trade</i>")
+    return "\n".join(lines)
+
+
 def _check_hype_levels():
     """Alert on HYPE breakout above ATH or pullback into reentry zone."""
     global _hype_breakout_alerted, _hype_reentry_alerted
@@ -365,11 +402,12 @@ def _check_hype_levels():
 
 
 def run_market_status_reports():
-    global _last_zec_pulse
-    logger.info("[MarketReport] Iniciado — reportes %s UTC | ZEC pulse cada 4H | SL $%.0f",
+    global _last_zec_pulse, _last_hype_pulse
+    logger.info("[MarketReport] Iniciado — reportes %s UTC | ZEC+HYPE pulse cada 4H | SL $%.0f",
                 ", ".join(f"{h:02d}:{m:02d}" for h, m in REPORT_TIMES_UTC), ZEC_SL_LEVEL)
 
-    _last_zec_pulse = time.time()  # don't fire immediately on boot
+    _last_zec_pulse = time.time()   # don't fire immediately on boot
+    _last_hype_pulse = time.time()
 
     while True:
         try:
@@ -400,6 +438,12 @@ def run_market_status_reports():
                 msg = build_zec_pulse()
                 _send(msg)
                 _last_zec_pulse = time.time()
+
+            # Check HYPE pulse
+            if time.time() - _last_hype_pulse >= HYPE_PULSE_SEC:
+                logger.info("[MarketReport] HYPE pulse 4H")
+                _send(build_hype_pulse())
+                _last_hype_pulse = time.time()
 
             wait = _seconds_until_next_slot()
             time.sleep(max(wait, 30))
