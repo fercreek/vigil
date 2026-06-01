@@ -1243,7 +1243,7 @@ def get_sentinel_report_compact(symbol: str, current_price: float, rsi: float, e
                 _gobj, _gok = _llm.groq_structured(
                     prompt, SentinelResponse,
                     system="Genera SOLO el JSON pedido. Cada voz ≤8 palabras. Sin prosa adicional.",
-                    temperature=0.5, max_tokens=2500,
+                    temperature=0.5, max_tokens=1200,  # voices cortas; cabe más bajo 8k TPM free
                     call_type="sentinel_compact", symbol=symbol,
                 )
                 if _gok and _gobj is not None and _gobj.has_real_voices():
