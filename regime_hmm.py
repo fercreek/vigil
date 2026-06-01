@@ -243,13 +243,25 @@ def detect_regime(symbol: str, timeframe: str = "1h", lookback: int = 200) -> di
         return _cached
 
     try:
-        # Spec 023.5: branch source por presence de "/" en symbol
+        # Spec 023.5 + fix 2026-06-01: branch source por cripto-detección robusta.
+        # "ZEC/USDT" → crypto. "ZEC" (bare) también si está en config.SYMBOLS (cripto monitoreada).
+        # Antes: bare "ZEC" caía a yfinance → history vacía → régimen UNKNOWN.
+        base = symbol.split("/")[0].upper()
         is_crypto = "/" in symbol
+        if not is_crypto:
+            try:
+                import config
+                if base in getattr(config, "SYMBOLS", []):
+                    is_crypto = True
+            except Exception:
+                pass
+
         if is_crypto:
-            # Lazy import para que el módulo sea importable sin ccxt local
+            # Lazy import para que el módulo sea importable sin ccxt local.
+            # get_df espera symbol BARE (construye {base}/USDT vía fallback OKX→…→Binance).
             from indicators import get_df
             # Pedimos lookback+50 para tener margen tras dropna de features
-            df = get_df(symbol, timeframe=timeframe, limit=lookback + 50)
+            df = get_df(base, timeframe=timeframe, limit=lookback + 50)
         else:
             # Stock vía yfinance
             df = _fetch_ohlcv_stock(symbol, timeframe=timeframe, lookback_candles=lookback + 50)

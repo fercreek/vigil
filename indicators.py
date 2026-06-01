@@ -36,11 +36,13 @@ def calculate_rsi(prices, period=14):
     return float(val) if pd.notna(val) else 50.0  # 50 = neutral si NaN
 
 def get_rsi(symbol, timeframe='1h'):
-    """Obtiene el RSI para un símbolo y temporalidad dados."""
+    """Obtiene el RSI para un símbolo y temporalidad dados. Usa fallback OKX→KuCoin→Bybit→Binance."""
     try:
-        exchange = binance
-        exchange_symbol = f"{symbol}/USDT"
-        ohlcv = exchange.fetch_ohlcv(exchange_symbol, timeframe=timeframe, limit=50)
+        from exchange_singleton import fetch_ohlcv_with_fallback
+        ohlcv = fetch_ohlcv_with_fallback(symbol, timeframe=timeframe, limit=50)
+        if not ohlcv:
+            print(f"[RSI ERROR] {symbol}/{timeframe}: all exchanges failed")
+            return 50.0
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         return calculate_rsi(df['close'])
     except Exception as e:
@@ -352,25 +354,24 @@ def get_macro_trend(symbol):
     Retorna el estado de la tendencia ("BULL", "BEAR", "NEUTRAL").
     """
     try:
-        exchange = binance
-        exchange_symbol = f"{symbol}/USDT"
-            
-        # Descargar datos 1h
-        ohlcv_1h = exchange.fetch_ohlcv(exchange_symbol, timeframe='1h', limit=250)
+        from exchange_singleton import fetch_ohlcv_with_fallback
+
+        # Descargar datos 1h (fallback OKX→KuCoin→Bybit→Binance)
+        ohlcv_1h = fetch_ohlcv_with_fallback(symbol, timeframe='1h', limit=250)
         df_1h = pd.DataFrame(ohlcv_1h, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         ema_1h = calculate_ema(df_1h['close'], period=200)
         price_1h = df_1h['close'].iloc[-1]
         trend_1h = "UP" if price_1h > ema_1h else "DOWN"
 
         # Descargar datos 4h
-        ohlcv_4h = exchange.fetch_ohlcv(exchange_symbol, timeframe='4h', limit=250)
+        ohlcv_4h = fetch_ohlcv_with_fallback(symbol, timeframe='4h', limit=250)
         df_4h = pd.DataFrame(ohlcv_4h, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         ema_4h = calculate_ema(df_4h['close'], period=200)
         price_4h = df_4h['close'].iloc[-1]
         trend_4h = "UP" if price_4h > ema_4h else "DOWN"
 
         # Descargar datos 1d
-        ohlcv_1d = exchange.fetch_ohlcv(exchange_symbol, timeframe='1d', limit=250)
+        ohlcv_1d = fetch_ohlcv_with_fallback(symbol, timeframe='1d', limit=250)
         df_1d = pd.DataFrame(ohlcv_1d, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         ema_1d = calculate_ema(df_1d['close'], period=200)
         price_1d = df_1d['close'].iloc[-1]
