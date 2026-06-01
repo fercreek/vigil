@@ -19,7 +19,7 @@ import yfinance as yf
 import social_analyzer
 from config import (V4_EMA_PROXIMITY_MAX, V4_EMA_PROXIMITY_MIN, V4_RSI_LOW,
                     V4_RSI_HIGH, V4_RSI_HIGH_ZEC, V4_MIN_CONFLUENCE,
-                    V4_ATR_SL_MULT, V4_COOLDOWN)
+                    V4_ATR_SL_MULT, V4_COOLDOWN, SYMBOLS)
 import alert_manager
 
 # Cargar variables de entorno
@@ -848,9 +848,12 @@ def get_prices() -> dict:
     res["VIX"] = GLOBAL_CACHE["macro_metrics"].get("vix", 0.0)
 
     # 3. Datos Técnicos (TTL_INDICATORS para reducir carga)
-    for sym in ["TAO", "BTC", "ZEC", "SOL", "ETH", "HBAR", "DOGE", "TON"]:
+    # Símbolos cuyo PRECIO ya viene del batch Binance/CoinGecko (arriba).
+    # Los que no (ej. HYPE) se precian aquí vía OKX (fetch_ohlcv_with_fallback).
+    _BATCH_PRICED = {"TAO", "BTC", "ZEC", "SOL", "ETH", "HBAR", "DOGE", "TON", "GOLD", "SUI", "FIL"}
+    for sym in SYMBOLS:
         last_ind_update = GLOBAL_CACHE["last_update"]["indicators"].get(sym, 0)
-        
+
         if now - last_ind_update > TTL_INDICATORS:
             try:
                 # V12.1: Guardamos el previo para la inercia (Hook)
@@ -868,8 +871,14 @@ def get_prices() -> dict:
                 GLOBAL_CACHE["last_update"]["indicators"][sym] = now
                 try:
                     _df_rvol = indicators.get_df(sym, '15m', limit=50)
-                    if _df_rvol is not None and len(_df_rvol) >= 24:
-                        GLOBAL_CACHE["indicators"][sym]["rvol"] = indicators.calculate_rvol(_df_rvol, period=24)
+                    if _df_rvol is not None and not _df_rvol.empty:
+                        if len(_df_rvol) >= 24:
+                            GLOBAL_CACHE["indicators"][sym]["rvol"] = indicators.calculate_rvol(_df_rvol, period=24)
+                        # Precio para símbolos fuera del batch Binance (ej. HYPE) — vía OKX
+                        if sym not in _BATCH_PRICED:
+                            _px = float(_df_rvol['close'].iloc[-1])
+                            res[sym] = _px
+                            GLOBAL_CACHE["prices"][sym] = _px
                 except Exception:
                     pass
 
