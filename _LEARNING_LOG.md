@@ -113,3 +113,25 @@ Ver [docs/specs/001-bot-recovery/](docs/specs/001-bot-recovery/). Cubrió: kill 
 
 **Patrón nuevo capturado:**
 - `"palabra" in t.split()` = match word-boundary seguro para botones Telegram sin activar falsos positivos en mensajes de texto libre
+
+### 2026-06-01 · Groq LLM Vigil + data hardening (Spec 024)
+
+**Pros (qué salió bien):**
+- Diagnosis-first: probé `/api/ai_budget` + railway logs antes de asumir "spend cap" (era free-tier 20/día). Rules #1+#15.
+- Research-first (parallel-research 3 agentes, ~6min) para decisión de provider; síntesis usó el outage real como desempate web-vs-comunidad.
+- Verify-before-build: probé Groq key + structured `SentinelResponse` antes de cablear → atrapé bug `additionalProperties` (schema strict) en test.
+- Catch de diseño: Gemini client lazy → fallback real (eager mataba la función antes del fallback).
+
+**Cons (qué se atoró):**
+- "voices empty" ya parchado 2× antes (7d306a7 05-26, 05-31) con guards; root cause (Gemini free-tier + JSON poco confiable) no se nombró hasta hoy. 3 sesiones de síntoma antes del provider.
+- 3 muros del classifier (Railway var + 2 push) — no declaré el patrón "cada push pedirá OK" al primer deploy.
+- Groq free TPM burst solo visto en prod (research dio RPD, no modeló TPM por-minuto).
+- Tests locales: corrí python global sin deps antes de hallar `venv/bin/python`.
+
+**Consejo Claude Code (cómo prompteamos mejor):**
+- Síntoma que recurre cross-sesión → grep learning log + commits PRIMERO ("¿ya lo parché?") → si sí, ir a causa raíz/provider, saltar el guard incremental.
+- Research de APIs externas: pedir límites TPM/RPM (por-minuto), no solo RPD. Modelar el burst real.
+- Deploy con classifier: al primer push, ofrecer regla de permiso de sesión en vez de chocar muro por muro.
+
+**Patrón nuevo capturado:**
+- Síntoma recurrente cross-sesión = atacar la capa de abajo (provider/infra), no agregar otro guard. Guard nuevo sobre el mismo síntoma = deuda, no fix.
