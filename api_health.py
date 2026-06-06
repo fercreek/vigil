@@ -30,7 +30,7 @@ SKIP      = "SKIP"        # ⚪ no configurada (opcional)
 _EMOJI = {OK: "🟢", RATE_LIM: "🔴", AUTH_FAIL: "🔴", DOWN: "🔴", DEGRADED: "⚠️", SKIP: "⚪"}
 
 # APIs cuyo cambio a estado roto dispara alerta proactiva a Telegram.
-_CRITICAL = {"gemini", "data_feed"}
+_CRITICAL = {"gemini", "groq", "data_feed"}
 
 
 def _emoji(status: str) -> str:
@@ -59,6 +59,29 @@ def check_gemini() -> dict:
         return {"name": "gemini", "label": "Gemini AI", "status": DOWN, "detail": f"HTTP {r.status_code}"}
     except Exception as e:
         return {"name": "gemini", "label": "Gemini AI", "status": DOWN, "detail": type(e).__name__}
+
+
+def check_groq() -> dict:
+    """models.list via REST OpenAI-compat — barato, clasifica el HTTP. Espeja check_gemini."""
+    key = os.getenv("GROQ_API_KEY")
+    if not key:
+        return {"name": "groq", "label": "Groq LLM", "status": AUTH_FAIL,
+                "detail": "GROQ_API_KEY no configurada"}
+    try:
+        r = requests.get(
+            "https://api.groq.com/openai/v1/models",
+            headers={"Authorization": f"Bearer {key}"}, timeout=10)
+        if r.status_code == 200:
+            return {"name": "groq", "label": "Groq LLM", "status": OK, "detail": "models 200"}
+        if r.status_code == 429:
+            return {"name": "groq", "label": "Groq LLM", "status": RATE_LIM,
+                    "detail": "429 — TPM/RPM free tier topado"}
+        if r.status_code in (400, 401, 403):
+            return {"name": "groq", "label": "Groq LLM", "status": AUTH_FAIL,
+                    "detail": f"{r.status_code} — key inválida/vencida"}
+        return {"name": "groq", "label": "Groq LLM", "status": DOWN, "detail": f"HTTP {r.status_code}"}
+    except Exception as e:
+        return {"name": "groq", "label": "Groq LLM", "status": DOWN, "detail": type(e).__name__}
 
 
 def check_data_feed() -> dict:
@@ -130,7 +153,7 @@ def check_reddit() -> dict:
 # ─── Orquestación ───────────────────────────────────────────────────────────────
 def run_all() -> list:
     """Corre todos los checks. Orden = prioridad en el reporte."""
-    return [check_gemini(), check_data_feed(), check_telegram(), check_etherscan(), check_reddit()]
+    return [check_gemini(), check_groq(), check_data_feed(), check_telegram(), check_etherscan(), check_reddit()]
 
 
 def format_report(results: list = None) -> str:
