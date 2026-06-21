@@ -4,6 +4,28 @@ Auto-reflexión por sesión. Objetivo: cómo prompteamos a Claude mejor la próx
 
 ---
 
+### 2026-06-20 · Plan Fénix — revivir bot como cockpit + experimento ZEC
+
+**Pros (qué salió bien):**
+- Plan mode + AskUserQuestion en la bifurcación estratégica real (Opción C) ANTES de codear. Evitó revivir el modelo fallido (18.7% WR auto) por inercia.
+- Verify-before-build pagó: F2 "telemetría rota" no necesitó código (cadena existía; bug raíz = DB efímera F0.1). F0.2 Groq verificado en vivo antes de "arreglar" lo que ya estaba bien.
+- Smoke en vivo (correr el binario 60-90s) destapó 2 bugs que el análisis estático (2 Explore + debugger) no vio: 2do macro feed yfinance + el "Groq flaky" era 429 TPM (no schema).
+- Commits checkpoint por path explícito (regla #19); tree ajeno intacto. venom en background mientras se podaba.
+
+**Cons (qué se atoró o sobrecomplicó):**
+- F0.3 incompleto en 1er pase: gateé solo el macro feed iShares; había un 2do feed yfinance en scalp_alert_bot.py sin gatear. Lo encontró el smoke después, no el análisis upfront.
+- `git add` multi-path abortó silencioso por un pathspec sobre archivo ya borrado → commiteó solo el delete, costó un amend.
+- `timeout` no existe en macOS (exit 127) → 1 intento de smoke perdido antes de `perl alarm`.
+
+**Consejo Claude Code (cómo prompteamos mejor):**
+- Correr el smoke en vivo TEMPRANO (post-F0), no al cierre — es ground-truth; encuentra 429/feeds-fantasma/$0.00 que el snapshot estático no.
+- Antes de gatear un "feed": grep exhaustivo de TODAS sus llamadas (`yf.download`/módulo), no confiar en el snapshot. Repos enredados tienen fuentes duplicadas.
+- Tras `git add` multi-path: `git diff --cached --stat` antes de commitear.
+
+**Patrón nuevo capturado:** Live-smoke-early > static-analysis-deep en repos con deuda alta. Correr el binario revela más verdad que N agentes de exploración estática.
+
+---
+
 ### 2026-06-01 · Monitoreo HYPE (Hyperliquid) — add símbolo + fix loop hardcoded
 
 **Pros (qué salió bien):**
