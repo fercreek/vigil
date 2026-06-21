@@ -1,11 +1,35 @@
 # _NEXT.md — Scalp Bot / Zenith
 
-> Update: 2026-06-01 · Último commit: `bafc5fa`
-> **Sesión 06-01: HYPE (Hyperliquid) agregado al monitoreo — scan + level alerts + pulse 4H. Fix raíz del loop hardcoded.**
+> Update: 2026-06-20 · Último commit: `6a42108`
+> **Sesión 06-20: PLAN FÉNIX — bot pasó de auto-alert ciego (18.7% WR, muerto 3 sem) a cockpit + experimento ZEC medido. Poda A + F0 + F1 + F2 hechos y verificados local. Falta deploy Railway.**
 
 ---
 
-## ⚡ En proceso (retomar aquí)
+## ⚡ FÉNIX — retomar aquí (P0)
+
+> Plan completo: `docs/FENIX.md` · Aprendizajes: `docs/LEARNINGS.md` · Plan original: `~/.claude/plans/armate-el-plan-fenix-spicy-kahn.md`
+
+### ✅ Hecho local (3 commits en main, pusheados)
+- **Poda A** (`427af0f`) — TAO fuera de auto-scan, `scalper_shorts_bot.py` borrado (504L).
+- **F0** (`6a42108`) — persistencia `TRACKER_DB`+makedirs · Groq verificado OK (sin 400) · macro feed kill-switch `MACRO_FEED_ENABLED` (off).
+- **F1** (`6a42108`) — `SYMBOLS=["ZEC"]` (scan aislado al experimento V3-REVERSAL) · swing en pausa (ZEC en SWING_BLOCKLIST) · `HMM_ENABLED` flag (off, V3 determinista).
+- **F2** — telemetría verificada e2e: trade V3 ZEC → resuelve WIN +9.52% → `get_intel_ab_stats` 1/1. Cadena ya estaba completa; el "0 resueltos" era la DB efímera (arreglada en F0.1). Sin código nuevo.
+- **LEARNINGS.md** — destilado venom.
+
+### 🔒 Falta — DEPLOY Railway (cloud, lo hace Fernando) — ver `docs/FENIX.md` runbook
+- [ ] **Volume** montado en `/data` (MUST — sin esto el histórico se borra)
+- [ ] **Env var** `TRACKER_DB=/data/trades.db` (MUST)
+- [ ] Redeploy (autoDeploy ON → el push ya lo disparó; verificar)
+- [ ] Checklist "está vivo": `/apihealth` 🟢, alerta ZEC llega, `total` no baja a 0 tras redeploy, BRI muestra `OFF`
+- [ ] Seed histórico viejo = OPCIONAL (92 trades = perdedores jubilados, saltar)
+
+### 🔜 F3 — disciplina (proceso, ya documentado en `docs/FENIX.md`)
+- [ ] Regla-gate activa: no spec N+1 sin ≥N trades resueltos de N. Veredicto experimento ZEC a 30d.
+- [ ] (Diferido) wire `log_intel_event` en SWING si re-entra al experimento.
+
+---
+
+## ⚡ Pre-Fénix (histórico — retomar aquí)
 
 ### P0 — Sesión 2026-06-01 — Monitoreo HYPE
 
