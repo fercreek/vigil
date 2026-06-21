@@ -1,5 +1,15 @@
 # SPEC WIRE AUDIT — Scalp Bot / Zenith
 
+> ⚠️ **STALE post-Plan Fénix (2026-06-20).** Esta tabla refleja el régimen PRE-Fénix (auto-alert
+> multi-símbolo, 36 specs encimadas, 18.7% WR). El Fénix cambió wires clave — leer `docs/FENIX.md`
+> + `docs/LEARNINGS.md` primero. Cambios que invalidan partes de abajo:
+> - **Símbolos:** auto-scan = solo `["ZEC"]` (config.SYMBOLS). Resto = jubilado / manual.
+> - **HMM (009/016):** off por default (`HMM_ENABLED=false`). V3 ya no lo consulta.
+> - **Macro feed (BlackRock/iShares + yfinance SPY/oil):** off (`MACRO_FEED_ENABLED=false`). BRI=OFF.
+> - **Sentinel auto:** solo ZEC (`SENTINEL_AUTO_SYMS`). TAO/TON on-demand.
+> - **Borrado:** `scalper_shorts_bot.py`. **Jubilado:** TAO (trade+report), SWING multi-símbolo.
+> - **Filosofía nueva:** cockpit + 1 experimento ZEC medido. Specs nuevas pasan regla-gate F3.
+>
 > Generado: 2026-05-26 · Sesión que arregló wires dormant
 > Commits de referencia: `d268d16` `9352069` `cbbfeb0` `25a9140`
 
