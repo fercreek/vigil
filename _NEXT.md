@@ -27,6 +27,11 @@
 - [ ] Regla-gate activa: no spec N+1 sin ≥N trades resueltos de N. Veredicto experimento ZEC a 30d.
 - [ ] (Diferido) wire `log_intel_event` en SWING si re-entra al experimento.
 
+### 👀 Watch-items (no bloqueantes — smoke local 06-20)
+- [ ] **Groq Sentinel ZEC flaky** — a veces `json_validate_failed` (JSON truncado) → fallback Gemini → ese ciclo salta alerta. TAO/TON pasan Groq OK el mismo ciclo = intermitente content-dependiente, NO schema (schema ya arreglado). Fallback cubre la mayoría. Si recurre seguido: subir `max_tokens` en `llm_client.groq_structured` o probar otro `GROQ_MODEL_JSON`.
+- [ ] **`CL=F` (oil) delisted en yfinance** — ruido en logs, query de OIL para inflation threshold. Macro feed ya off (F0.3); este ticker suelto se puede apagar aparte si molesta.
+- [ ] **MarketReport aún referencia TAO/TON** — el reporte 16/21 UTC sigue con ZEC/TAO/TON. Coherente con cockpit (intel manual), pero revisar si TAO debe salir del reporte también.
+
 ---
 
 ## ⚡ Pre-Fénix (histórico — retomar aquí)
