@@ -183,7 +183,7 @@ def build_market_status(label: str = "") -> str:
         "",
         "<b>── Crypto ──────────────────</b>",
     ]
-    for sym in ["BTC", "ETH", "ZEC", "TAO", "TON", "HYPE"]:
+    for sym in ["BTC", "ETH", "ZEC", "TON", "HYPE"]:  # Fénix: TAO jubilado (3% WR, disabled). Fuera del reporte.
         lines.append(_sym_line(sym, prices, inds))
 
     lines += [

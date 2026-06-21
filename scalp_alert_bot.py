@@ -794,19 +794,24 @@ def get_prices() -> dict:
                 "HYG":   "hyg",   # iShares High Yield — HYG↑ = risk-on
             }
             macro_vals = {}
-            _yf_pool = ThreadPoolExecutor(max_workers=1)
-            for yf_sym, key in macro_symbols.items():
-                try:
-                    _future = _yf_pool.submit(yf.download, yf_sym, period="1d", interval="1m", progress=False)
-                    _df = _future.result(timeout=20)
-                    if _df is not None and not _df.empty and 'Close' in _df.columns:
-                        val = float(_df['Close'].iloc[-1])
-                        macro_vals[key] = val if not math.isnan(val) else GLOBAL_CACHE["macro_metrics"].get(key, 0.0)
-                    else:
+            # Plan Fénix F0.3 — gate del feed yfinance de equities/oil (SPY/CL=F/NVDA/PLTR/TLT/HYG).
+            # Daban $0.00 desde Railway + ruido "CL=F delisted". Off → caen a default, sin red ni noise.
+            # DXY/VIX NO se gatean (vienen de indicators.get_dxy_vix abajo, sí funcionan).
+            from config import MACRO_FEED_ENABLED as _macro_on
+            if _macro_on:
+                _yf_pool = ThreadPoolExecutor(max_workers=1)
+                for yf_sym, key in macro_symbols.items():
+                    try:
+                        _future = _yf_pool.submit(yf.download, yf_sym, period="1d", interval="1m", progress=False)
+                        _df = _future.result(timeout=20)
+                        if _df is not None and not _df.empty and 'Close' in _df.columns:
+                            val = float(_df['Close'].iloc[-1])
+                            macro_vals[key] = val if not math.isnan(val) else GLOBAL_CACHE["macro_metrics"].get(key, 0.0)
+                        else:
+                            macro_vals[key] = GLOBAL_CACHE["macro_metrics"].get(key, 0.0)
+                    except (FuturesTimeout, Exception):
                         macro_vals[key] = GLOBAL_CACHE["macro_metrics"].get(key, 0.0)
-                except (FuturesTimeout, Exception):
-                    macro_vals[key] = GLOBAL_CACHE["macro_metrics"].get(key, 0.0)
-            _yf_pool.shutdown(wait=False)
+                _yf_pool.shutdown(wait=False)
 
             spy_p  = macro_vals.get("spy",  GLOBAL_CACHE["macro_metrics"].get("spy", 0.0))
             oil_p  = macro_vals.get("oil",  GLOBAL_CACHE["macro_metrics"].get("oil", 0.0))
