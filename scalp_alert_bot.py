@@ -1132,9 +1132,9 @@ def main():
                     import runtime_state as _rs
                     _open_syms = {t["symbol"] for t in _tracker.get_open_trades()}
                     _verbose = _rs.is_verbose()
-                    # Monitor manual: ZEC siempre, TAO + TON como análisis read-only
-                    # (TAO_TRADING_ENABLED controla V3/V4 auto-trades, no el Sentinel)
-                    _sentinel_syms = ["ZEC", "TAO", "TON"]
+                    # Plan Fénix: Sentinel auto = config.SENTINEL_AUTO_SYMS (default ["ZEC"]).
+                    # TAO/TON quedan on-demand vía /intel. Narrow corta carga TPM Groq (evita 429).
+                    from config import SENTINEL_AUTO_SYMS as _sentinel_syms
                     for _sym in _sentinel_syms:
                         if _sym in _open_syms:
                             print(f"⏭️ Sentinel {_sym}: Posición abierta — reporte omitido.")

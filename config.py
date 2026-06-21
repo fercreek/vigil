@@ -19,6 +19,11 @@ MACRO_WATCH = []  # Todos los símbolos ahora son operables
 import os as _os
 MACRO_FEED_ENABLED = _os.getenv("MACRO_FEED_ENABLED", "false").lower() in ("1", "true", "yes")
 
+# Plan Fénix F1 — Sentinel auto solo para ZEC (el experimento/cockpit core). TAO/TON quedan
+# on-demand vía /intel. Antes corrían ZEC+TAO+TON juntos cada ciclo → ~7.5k tokens > 8000 TPM de
+# Groq gpt-oss-120b → 429 → ZEC se comía el rate-limit. Narrow a ZEC = sin 429. Coma-separado en env.
+SENTINEL_AUTO_SYMS = [s.strip().upper() for s in _os.getenv("SENTINEL_AUTO_SYMS", "ZEC").split(",") if s.strip()]
+
 # ── Watchlist estática de acciones (siempre monitoreada, independiente del reporte)
 # yf_ticker: símbolo que entiende Yahoo Finance (CL=F = crude front month, GC=F = gold front month)
 # Niveles marcados con ⚠️ = estimados con ATR pre-mercado (08-Apr-2026).
