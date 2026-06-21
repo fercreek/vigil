@@ -7,7 +7,7 @@
 
 ## ⚡ FÉNIX — retomar aquí (P0)
 
-> Plan completo: `docs/FENIX.md` · Aprendizajes: `docs/LEARNINGS.md` · Plan original: `~/.claude/plans/armate-el-plan-fenix-spicy-kahn.md`
+> **Plan maestro (autoritativo, trabajar a fondo): `docs/VIGIL_MASTER_PLAN.md`** · Runbook deploy: `docs/FENIX.md` · Aprendizajes: `docs/LEARNINGS.md` · Plan original: `~/.claude/plans/armate-el-plan-fenix-spicy-kahn.md`
 
 ### ✅ Hecho local (3 commits en main, pusheados)
 - **Poda A** (`427af0f`) — TAO fuera de auto-scan, `scalper_shorts_bot.py` borrado (504L).
