@@ -32,7 +32,7 @@ import market_status_report
 # Threads desactivados (loopean sin disparar señales — ver logs May 2026):
 # import commodities_bot          # posiciones stuck "ya hay posicion abierta"
 # import manual_positions_monitor # "sin posiciones activas" siempre
-# import scalper_shorts_bot       # score=1/5 nunca dispara, tiene ccxt futures propio
+# scalper_shorts_bot BORRADO 2026-06-20 (poda A) — score=1/5 nunca disparó, 504L muertas
 import thread_health
 
 
@@ -102,7 +102,6 @@ if __name__ == "__main__":
     _start_thread("stock", stock_analyzer.stock_watchdog)
     # _start_thread("commodities", commodities_bot.run_commodities_bot)
     # _start_thread("manual_monitor", manual_positions_monitor.run_manual_monitor)
-    # _start_thread("scalper_shorts", scalper_shorts_bot.run_scalper_shorts_bot)
     _start_thread("daily_report", daily_report.run_daily_report)
     _start_thread("market_report", market_status_report.run_market_status_reports)
 

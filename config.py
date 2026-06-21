@@ -6,7 +6,7 @@ Importar en cualquier módulo con: from config import RSI_LONG_ENTRY, SYMBOLS, .
 """
 
 # ── Símbolos operados ─────────────────────────────────────────────────────────
-SYMBOLS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "HBAR", "DOGE", "TON", "HYPE"]
+SYMBOLS = ["ZEC", "BTC", "ETH", "SOL", "HBAR", "DOGE", "TON", "HYPE"]  # TAO sacado del auto-scan (3% WR / 32 trades, trade ya disabled Spec 001). Sigue en MANUAL_SYMBOLS pa' tracking de posición manual.
 MACRO_WATCH = []  # Todos los símbolos ahora son operables
 
 # ── Watchlist estática de acciones (siempre monitoreada, independiente del reporte)

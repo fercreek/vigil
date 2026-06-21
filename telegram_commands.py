@@ -434,7 +434,7 @@ def check_user_queries(prices: dict):
                         "  <code>/mode</code> · <code>/verbose</code>\n"
                         "  <code>/logs</code> — Últimos logs\n\n"
                         "<b>🐛 Debug avanzado:</b>\n"
-                        "  /agents /scan /scalper_shorts /stocks /metrics /liquidations\n\n"
+                        "  /agents /scan /stocks /metrics /liquidations\n\n"
                         "<b>📝 Quick actions (texto libre):</b>\n"
                         "  <code>BTC LONG 100k</code> — abrir manual rápido\n"
                         "  <code>CERRAR BTC</code> — cerrar manual\n"
@@ -796,10 +796,6 @@ def check_user_queries(prices: dict):
                 elif text.startswith("/commodities") or text.startswith("/gold") or text.startswith("/oil") or "commod" in t:
                     import commodities_bot as _cb
                     send_telegram(_cb.get_status_html(), keyboard=get_main_menu())
-
-                elif text.startswith("/scalper_shorts") or text.startswith("/ss") or "scalper" in t:
-                    import scalper_shorts_bot as _ssb
-                    send_telegram(_ssb.get_status_html(), keyboard=get_main_menu())
 
                 elif text.startswith("/manual"):
                     import manual_positions_monitor as _mpm
