@@ -54,13 +54,15 @@ def _build_extra_intel(sym: str) -> dict:
     intel = {}
     sym_base = sym.replace("/USDT", "")
 
-    # HMM regime
+    # HMM regime (Fénix F1: off por default vía config.HMM_ENABLED)
     try:
-        import regime_hmm
-        _hmm = regime_hmm.detect_regime(sym, timeframe="1h", lookback=200) or {}
-        if _hmm.get("regime"):
-            intel["hmm_regime"] = _hmm.get("regime")
-            intel["hmm_confidence"] = _hmm.get("confidence", 0.0)
+        from config import HMM_ENABLED
+        if HMM_ENABLED:
+            import regime_hmm
+            _hmm = regime_hmm.detect_regime(sym, timeframe="1h", lookback=200) or {}
+            if _hmm.get("regime"):
+                intel["hmm_regime"] = _hmm.get("regime")
+                intel["hmm_confidence"] = _hmm.get("confidence", 0.0)
     except Exception:
         pass
 
@@ -603,8 +605,10 @@ def check_strategies(prices: dict):
                 # Spec 017: guardamos _hmm para inyectar en prompt Cuadrilla Zenith después.
                 _hmm = {}
                 try:
-                    import regime_hmm
-                    _hmm = regime_hmm.detect_regime(sym, timeframe="1h", lookback=200) or {}
+                    from config import HMM_ENABLED
+                    if HMM_ENABLED:
+                        import regime_hmm
+                        _hmm = regime_hmm.detect_regime(sym, timeframe="1h", lookback=200) or {}
                     _regime = _hmm.get("regime")
                     if _regime == "STRONG_TREND":
                         _conf = _hmm.get("confidence", 0.0)

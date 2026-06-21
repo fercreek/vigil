@@ -6,8 +6,18 @@ Importar en cualquier módulo con: from config import RSI_LONG_ENTRY, SYMBOLS, .
 """
 
 # ── Símbolos operados ─────────────────────────────────────────────────────────
-SYMBOLS = ["ZEC", "BTC", "ETH", "SOL", "HBAR", "DOGE", "TON", "HYPE"]  # TAO sacado del auto-scan (3% WR / 32 trades, trade ya disabled Spec 001). Sigue en MANUAL_SYMBOLS pa' tracking de posición manual.
+# Plan Fénix F1 — auto-scan AISLADO a ZEC (único experimento auto, V3-REVERSAL, telemetría medida, muerte 30d).
+# BTC/ETH/etc. siguen disponibles como contexto macro (se fetchean por el mapa de precios hardcoded,
+# no por esta lista) y como tracking manual (MANUAL_SYMBOLS, lista completa abajo).
+# Histórico previo a Fénix: SYMBOLS = ["ZEC","BTC","ETH","SOL","HBAR","DOGE","TON","HYPE"] — 18.7% WR ciego, jubilado.
+SYMBOLS = ["ZEC"]
 MACRO_WATCH = []  # Todos los símbolos ahora son operables
+
+# Plan Fénix F0.3 — kill-switch del macro feed (iShares/BlackRock vía yfinance).
+# yfinance devuelve $0.00 desde Railway → BRI siempre NEUTRAL (ruido). Off por default:
+# si está off, BRI no entra a la confluencia (honesto: "no hay macro, no lo finjas").
+import os as _os
+MACRO_FEED_ENABLED = _os.getenv("MACRO_FEED_ENABLED", "false").lower() in ("1", "true", "yes")
 
 # ── Watchlist estática de acciones (siempre monitoreada, independiente del reporte)
 # yf_ticker: símbolo que entiende Yahoo Finance (CL=F = crude front month, GC=F = gold front month)
@@ -287,6 +297,10 @@ COMMODITY_BLOCKLIST  = ["GOLD"]        # Bloquear COMMODITY trades en estos sím
 BLOCK_SCORE_5        = True            # Kill switch conf_score=5 (0% WR overfitted)
 MIN_RSI_LONG         = 50.0            # NotebookLM: 15/17 wins en RSI 50-60, RSI 40-50 = 11.1% WR
 SHORT_BLOCKED_IN_VERDE_BULL = True     # Spec 001: cuando SP500>7000 + VIX<22 (VERDE_BULL_DORMANT), no abrir shorts en cripto.
+# Plan Fénix F1 — HMM régimen (Spec 009/016) off por default. Gateaba V3 en STRONG_TREND pero hmmlearn
+# no siempre está instalado → comportamiento no determinista local vs Railway. Se mantiene state machine
+# (regime_transitions.py). Re-encender solo con telemetría que justifique el gate.
+HMM_ENABLED          = _os.getenv("HMM_ENABLED", "false").lower() in ("1", "true", "yes")
 
 # ── Confluence Score ──────────────────────────────────────────────────────────
 MIN_CONFLUENCE_SCORE = 5     # Score mínimo para disparar alerta

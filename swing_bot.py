@@ -26,7 +26,11 @@ load_dotenv()
 
 TELEGRAM_TOKEN  = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-SYMBOLS   = ["ZEC/USDT", "TAO/USDT", "BTC/USDT", "ETH/USDT", "SOL/USDT"]
+# Plan Fénix F1 — swing aislado a ZEC. ZEC está en SWING_BLOCKLIST (WR 0% probado) → swing queda
+# efectivamente en pausa durante el experimento. El canal vivo es V3-REVERSAL (scalp loop). Para sumar
+# un brazo SWING al experimento, quitar ZEC de SWING_BLOCKLIST deliberadamente CON telemetría.
+# Previo a Fénix: ["ZEC/USDT","TAO/USDT","BTC/USDT","ETH/USDT","SOL/USDT"] — multi-símbolo, 17% WR, jubilado.
+SYMBOLS   = ["ZEC/USDT"]
 TIMEFRAME = "4h"
 
 # ATR multipliers (validados en backtest)

@@ -837,7 +837,9 @@ def get_prices() -> dict:
             }
             GLOBAL_CACHE["last_update"]["macro_metrics"] = now
             _oil_tag = " | ⛽ OIL INFLATION PRESSURE" if _oil_pressure else ""
-            _ishares_tag = f" | TLT: ${tlt_p:.2f} | HYG: ${hyg_p:.2f} | BRI: {'+1 RISK_ON' if _ishares_bias > 0 else ('-1 RISK_OFF' if _ishares_bias < 0 else '0 NEUTRAL')}"
+            from config import MACRO_FEED_ENABLED as _macro_on
+            _bri_label = ('+1 RISK_ON' if _ishares_bias > 0 else ('-1 RISK_OFF' if _ishares_bias < 0 else '0 NEUTRAL')) if _macro_on else 'OFF'
+            _ishares_tag = f" | TLT: ${tlt_p:.2f} | HYG: ${hyg_p:.2f} | BRI: {_bri_label}"
             print(f"🌍 [Macro Update] SPY: ${spy_p:.2f} | DXY: {dxy_p:.2f} | VIX: {vix_p:.1f}{_oil_tag}{_ishares_tag}")
         except Exception as e:
             print(f"⚠️ Error Macro (Yahoo): {e}")

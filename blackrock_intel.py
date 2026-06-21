@@ -154,6 +154,15 @@ def get_ishares_signals() -> dict:
         "summary": "HYG +0.4% (risk-on) | TLT +0.9% (safe haven demand)"
     }
     """
+    # Plan Fénix F0.3 — kill-switch. Si el macro feed está off, no fingir NEUTRAL:
+    # devolver OFF explícito → get_ishares_bias_score() da 0 (no contamina confluencia).
+    try:
+        from config import MACRO_FEED_ENABLED
+    except Exception:
+        MACRO_FEED_ENABLED = False
+    if not MACRO_FEED_ENABLED:
+        return {"macro_bias": "OFF", "summary": "macro feed off (MACRO_FEED_ENABLED=false)", "enabled": False}
+
     now = time.time()
     if now - _CACHE["ishares"]["last_update"] < TTL_ISHARES and _CACHE["ishares"]["data"]:
         return _CACHE["ishares"]["data"]

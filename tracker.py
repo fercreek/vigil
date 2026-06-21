@@ -4,6 +4,13 @@ import os
 
 DB_FILE = os.getenv("TRACKER_DB", "trades.db")
 
+# Plan Fénix F0.1 — persistencia. En Railway montar Volume en /data y setear
+# TRACKER_DB=/data/trades.db para que el histórico sobreviva redeploys.
+# Garantizar que el directorio del path exista (sqlite no crea dirs).
+_db_dir = os.path.dirname(DB_FILE)
+if _db_dir and not os.path.exists(_db_dir):
+    os.makedirs(_db_dir, exist_ok=True)
+
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
