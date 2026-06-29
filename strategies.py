@@ -23,6 +23,7 @@ from config import (
     V1_LONG_ENABLED, V4_BLOCKLIST, V5_ENABLED,
     SWING_BLOCKLIST, SHORT_BLOCKED_IN_VERDE_BULL,
     VIX_DORMANT_THRESHOLD, SP500_VERDE_THRESHOLD,
+    V3_SL_ATR_MULT,
 )
 
 
@@ -743,7 +744,7 @@ def check_strategies(prices: dict):
                 except Exception:
                     pass
 
-                sl_dist = max(atr * 2.0, p * 0.008)
+                sl_dist = max(atr * V3_SL_ATR_MULT, p * 0.008)
                 sl = round(p - sl_dist, 2)
                 tp1 = round(p + (sl_dist * 2.0), 2)
                 tp2 = round(p + (sl_dist * 3.5), 2)

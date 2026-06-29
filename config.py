@@ -269,10 +269,13 @@ RSI_LONG_ZEC_EXTREME = 30.0   # ZEC modo rescate agresivo (legacy)
 # Si símbolo no está aquí → usa RSI_LONG_EXTREME (default 30)
 RSI_REVERSAL_BY_SYMBOL = {
     "TAO": 28.0,    # ronda 4: 32→28 mejoró TAO V3 OOS de -14.7% a -3.0%
-    "ZEC": 30.0,    # ZEC V3 ✅ alto edge OOS (+21%)
+    "ZEC": 20.0,    # backtest tune Jun-2026: 20 → 60% WR +8.38R (vs 30 → 47% -5.35R)
     "ETH": 32.0,    # ETH V3 ✅ campeón OOS (+15.9%)
     "BTC": 32.0,    # BTC V3 marginal positivo OOS
 }
+
+# SL más ajustado para V3 — backtest Jun-2026: 1.5 > 2.0 en todos los símbolos
+V3_SL_ATR_MULT = 1.5
 
 # Multi-TF filter (NFI style) ronda 5 — bloquea V3 LONG si RSI 4H demasiado alto
 # Permite reversal solo cuando 4H también está débil → reduce false signals
@@ -470,7 +473,9 @@ ANALYSIS_MODE_QUIET = True
 # ── Manual Positions ─────────────────────────────────────────────────────────
 # Storage unificado en trades.db (flag is_manual=1). Sin seed hardcoded.
 # Lista de símbolos preferidos para el picker de /open (inline keyboard).
-MANUAL_SYMBOLS = ["TAO", "ZEC", "DOGE", "SOL", "BTC", "ETH", "TON", "HYPE"]
+MANUAL_SYMBOLS = ["TAO", "ZEC", "DOGE", "SOL", "BTC", "ETH", "TON", "HYPE", "BNB"]
+# BNB: backtest Jun-2026 V4-EMA → +84.8R, 54.6% WR, mejor símbolo en el universe.
+# Candidato a SYMBOLS[] para auto-scan V4 post-Fénix F1 (hoy aislado a ZEC).
 
 # ── Spec 010: Whale Netflows (on-chain tracker, NotebookLM 4 Prompt 3) ───────
 # Fuente: Etherscan + BscScan free APIs. Tracking transfers >$1M to/from exchanges.

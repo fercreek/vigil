@@ -959,14 +959,22 @@ Ver `docs/STRATEGY_RULES.md` para reglas completas. Resumen:
 
 <!-- SKILLS:START (auto — editar en venom/registry/skills-by-project.yaml) -->
 ## Skills de este proyecto
-> Auto-sync desde `venom/registry/skills-by-project.yaml`. NO editar a mano.
+> Auto-sync desde `venom/registry/skills-by-project.yaml` (venom = master). NO editar a mano.
 > **Regla: antes de generar/ejecutar una tarea con skill aquí, proponerlo y preguntar '¿uso [skill]?' — no improvisar.**
 
+### DEFAULT — skills propios de este repo (propón apenas la tarea aplica)
 | Tarea | Skill |
 |---|---|
-| auditar el bot / revisar logs / algo falló | `cortex-audit` |
-| snapshot del estado del bot | `cortex-snapshot` |
-| watchlist | `cortex-watchlist` |
-| intel macro de mercado | `cortex-macro-intel` |
+| auditar el bot / revisar logs / algo falló | `@agent cortex-debugger` |
+| snapshot del estado del bot | `@agent cortex-debugger` |
+| watchlist | `@agent cortex-debugger` |
+| intel macro de mercado | `@agent cortex-debugger` |
 | operar / comandos del bot de Telegram | `tradebot-tg` |
+
+### SUGERIDO — familias cross-proyecto (aplican en CUALQUIER repo según la tarea)
+- **🧠 venom — analiza/juzga:** `venom-design` scorea calidad visual de un post/imagen (gate >=9 + pre-check objetivo) · `venom-leveling` nivel L1-L7 de un skill o L1-L5 de una marca + leaderboard · `venom-playbook` que sabe hacer el ecosistema con data real (capabilities) · `venom-priority` ordena prioridad de la colmena + sync _NEXT<->focus · `venom-image-advisor` que API de imagen usar (Flux/Ideogram/DALL-E) · `venom-freud` analisis psyche/arte (me veo en X, autoanalisis)
+- **🔪 carnage — rompe/QA/repara:** `carnage-kill` red-team: rompe un bot/feature/parser, emite break-list · `carnage-repair` arregla el break-list con fix minimo + test de regresion · `carnage-qa` QA visual rapido de un post/imagen (sin gate-block) · `carnage-ux-polish` audita + aplica fixes UX/visual de una landing web
+- **🛠️ build — genera/cablea:** `build-post-templates` imagen de post brand-correct (16 plantillas, selector por tema) · `build-cc-post` imagen/post de marca Contreras Code · `build-sl-promo` contenido social de campania promo Studio Link (stories+feed+hero) · `build-help` copy de ayuda al usuario final (modal/tooltip/empty state, cero tecnico) · `build-components` biblioteca + estandarizacion de componentes UI de un repo · `build-tooltip` cablea tooltip Stimulus en formularios Studio Link · `build-chat` envia mensaje tono venom por WhatsApp o Telegram
+- **🎯 focus — productividad:** `focus` gestor diario de prioridades (today.json) · `focus-hyper` bloquea en UNA tarea, guard anti-drift · `focus-tdah` modo comunicacion TDAH (corto, A/B/C, 1 pregunta) · `focus-supernova` retro + cierre de sesion (bien/mal/patron) + commit
+- **🦇 batman/hydra — orquesta:** `batman` orquesta varias sesiones sobre UN repo (modo crunch/evento) · `hydra` derrame multi-modelo (Opus->Sonnet->Haiku) para abarcar mas
 <!-- SKILLS:END -->
