@@ -4,6 +4,27 @@ Auto-reflexión por sesión. Objetivo: cómo prompteamos a Claude mejor la próx
 
 ---
 
+### 2026-06-29 · Lucky Crown — Backtest offline + tune V3-ZEC + universe expansion
+
+**Pros (qué salió bien):**
+- Grid search 120 combos en 36s — diseño limpio con DataFrames precargados. Descubrió RSI=20 para ZEC: +8.38R, 60% WR vs -5.35R con RSI=30. Contraintuitivo pero probado con data.
+- pandas_ta no instalado → RSI/ATR/BB reimplementados en pandas puro sin deuda técnica.
+- Monitoring de Railway honesto: detectó Telegram Conflict 409 + startup nuevo pod antes de declarar éxito.
+- BNB V4-EMA +84.8R 54.6% WR encontrado en grid — mejor símbolo del universe expandido.
+
+**Cons (qué se atoró o sobrecomplicó):**
+- `backtest_sim.py` duplica `RSI_REVERSAL_THRESHOLD` y `V3_SL_ATR_MULT` en lugar de importar de `config.py`. Drift silencioso: test de verificación post-cambio devolvió números VIEJOS, parcheo manual necesario.
+- `FOMC_NEXT_MEETING = "2026-06-17"` seguía stale en prod (12 días pasados). Logs mostraban `FOMC proximity — skipping` — bot suprimiendo TODAS las señales ZEC V3. El fix más urgente no era RSI sino la fecha FOMC.
+- El tune no modela gates de producción (FOMC, HMM, whale, social). El resultado es el "techo teórico" de la señal, no el rendimiento real del bot live.
+
+**Consejo Claude Code (cómo prompteamos mejor):**
+- Antes de aplicar tune results → checklist de gates en producción: FOMC date vigente? HMM cargando? Un gate stale anula todo el tune.
+- `backtest_sim.py` debe `from config import RSI_REVERSAL_BY_SYMBOL, V3_SL_ATR_MULT` — no duplicar. Pedirle esto al inicio de la sesión de tune hubiera evitado el drift.
+
+**Patrón nuevo capturado:** "Backtest techo ≠ bot real" — un backtester sin gates de producción mide el potencial máximo de la señal pura. Verificar estado de gates ANTES de interpretar resultados del tune.
+
+---
+
 ### 2026-06-20 · Plan Fénix — revivir bot como cockpit + experimento ZEC
 
 **Pros (qué salió bien):**
