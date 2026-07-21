@@ -8,7 +8,7 @@
 ## ⚡ RETOMAR AQUÍ (P0)
 
 - [x] **Fix `FOMC_NEXT_MEETING` en `config.py`** — ✅ 07-21: actualizado a `"2026-07-28"` (reunión Jul 28-29). Supresión arranca lunes 27.
-- [ ] **Fix `[HMM PREDICT ERROR] ZEC/1h: startprob_ must sum to 1 (got nan)`** — error repetido en logs prod. HMM está off por default pero el error ensucia; sanear o silenciar en `regime_hmm.py`.
+- [x] **Fix `[HMM PREDICT ERROR] ZEC/1h: startprob nan`** — ✅ 07-21 (`b1f2ec4`): z-score features + guard degenerado + failure cache. Verificado limpio en ciclo post-deploy.
 - [ ] **Investigar `[MarketReport] Telegram error 400`** — warning en logs prod 07-21 (el DailyReport sí sale; probable HTML mal escapado en un reporte).
 - [ ] **Refactorizar `backtest_sim.py`** para importar desde `config.py` en lugar de duplicar `RSI_REVERSAL_THRESHOLD` y `V3_SL_ATR` — previene drift silencioso.
 - [ ] **Fix `swing_bot.py:240`** — `prices` no definido en `analyze_symbol()` scope (bug preexistente, visto en logs prod).
