@@ -89,7 +89,8 @@ def _build_features(df: pd.DataFrame) -> np.ndarray | None:
 
         feat = pd.concat([log_ret, vol, rng_pct], axis=1)
         feat.columns = ["log_ret", "vol", "rng_pct"]
-        feat = feat.dropna()
+        # inf (e.g. log de gap 0) sobrevive a dropna → nan en el fit del HMM
+        feat = feat.replace([np.inf, -np.inf], np.nan).dropna()
 
         if len(feat) < 30:
             return None
@@ -279,6 +280,15 @@ def detect_regime(symbol: str, timeframe: str = "1h", lookback: int = 200) -> di
         if len(features) > lookback:
             features = features[-lookback:]
 
+        # Fix 2026-07-21: z-score por columna antes del fit. Los features crudos viven en
+        # escalas ~1e-3 (log_ret/vol), debajo del min_covar default (1e-3) de hmmlearn →
+        # en mercado plano un estado colapsa y el EM produce startprob_=nan
+        # ("startprob_ must sum to 1 (got nan)" repetido en logs Railway).
+        _mu = features.mean(axis=0)
+        _sd = features.std(axis=0)
+        _sd[_sd < 1e-12] = 1e-12
+        features = (features - _mu) / _sd
+
         # Entrenar HMM 3-state
         try:
             model = GaussianHMM(
@@ -290,6 +300,13 @@ def detect_regime(symbol: str, timeframe: str = "1h", lookback: int = 200) -> di
             model.fit(features)
         except Exception as fit_err:
             print(f"[HMM FIT ERROR] {symbol}/{timeframe}: {fit_err}")
+            return {}
+
+        # Fit degenerado (nan en parámetros) → tratar como fallo y cachear el {} para
+        # no reintentar (y re-loggear) cada ciclo durante el TTL.
+        if not (np.all(np.isfinite(model.startprob_)) and np.all(np.isfinite(model.transmat_))):
+            print(f"[HMM FIT DEGENERATE] {symbol}/{timeframe}: nan en startprob/transmat — skip (cached {HMM_CACHE_TTL}s)")
+            _cache_set(_key, {})
             return {}
 
         # Predict states + posteriors
