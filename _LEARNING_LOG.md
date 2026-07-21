@@ -195,3 +195,17 @@ Ver [docs/specs/001-bot-recovery/](docs/specs/001-bot-recovery/). Cubrió: kill 
 
 **Patrón nuevo capturado:**
 - Señal-que-cuadra ≠ confirmación: una línea de log consistente con mi hipótesis no prueba el deploy; el registro de deployments sí.
+
+### 2026-07-21 (tramo 2) · HMM nan + Telegram 400
+
+**Pros:**
+- Repro sintético del fit degenerado antes de fixear (z-score + guard + failure cache) — el fix atacó la causa (features ~1e-3 bajo min_covar), no el síntoma.
+- Telegram 400: el timing del log (pulse 12:47:48 = mismo segundo del filtro Sentinel) apuntó directo al reason sin escapar. Payload exacto reproducido local.
+- Regla de deploy (railway up + deployment list) aplicada 2/2 sin tropiezo.
+
+**Cons:**
+- Background checks (sleep && logs) perdidos 2× por teardown de sesión → re-verificación manual. No delegar verificaciones cortas de deploy a background.
+
+**Consejo Claude Code:**
+- Errores hmmlearn "startprob nan" = features mal escalados o estado colapsado → z-score + validar isfinite(startprob_/transmat_) post-fit, y cachear el fallo para no spamear logs.
+- Todo string dinámico que entre a mensaje parse_mode=HTML pasa por html.escape() en el render boundary — y loggear el body de respuesta de Telegram en error.

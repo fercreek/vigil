@@ -9,7 +9,7 @@
 
 - [x] **Fix `FOMC_NEXT_MEETING` en `config.py`** — ✅ 07-21: actualizado a `"2026-07-28"` (reunión Jul 28-29). Supresión arranca lunes 27.
 - [x] **Fix `[HMM PREDICT ERROR] ZEC/1h: startprob nan`** — ✅ 07-21 (`b1f2ec4`): z-score features + guard degenerado + failure cache. Verificado limpio en ciclo post-deploy.
-- [ ] **Investigar `[MarketReport] Telegram error 400`** — warning en logs prod 07-21 (el DailyReport sí sale; probable HTML mal escapado en un reporte).
+- [x] **Fix `[MarketReport] Telegram error 400`** — ✅ 07-21 (`e6c09c8`): reason del Sentinel ("score 3/5 < 4") entraba crudo a mensaje HTML → `html.escape()` en render + log del body de error. Reproducido y verificado local con el payload exacto. ⏳ Confirmar próximo pulse ZEC/HYPE (~4h post-boot 16:14 UTC) sin 400.
 - [ ] **Refactorizar `backtest_sim.py`** para importar desde `config.py` en lugar de duplicar `RSI_REVERSAL_THRESHOLD` y `V3_SL_ATR` — previene drift silencioso.
 - [ ] **Fix `swing_bot.py:240`** — `prices` no definido en `analyze_symbol()` scope (bug preexistente, visto en logs prod).
 
