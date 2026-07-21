@@ -7,6 +7,7 @@ Reportes diarios:
 
 ZEC pulse: cada 4H sin importar score (monitor manual ZEC/TAO/TON).
 """
+import html as _html
 import time
 import os
 import requests
@@ -45,7 +46,8 @@ def _send(msg: str):
             "chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"
         }, timeout=15)
         if not r.ok:
-            logger.warning("[MarketReport] Telegram error %d", r.status_code)
+            # description de Telegram (e.g. "can't parse entities") — sin él un 400 es indiagnosticable
+            logger.warning("[MarketReport] Telegram error %d: %s", r.status_code, r.text[:200])
     except Exception as e:
         logger.warning("[MarketReport] send failed: %s", e)
 
@@ -106,7 +108,9 @@ def _zec_intel():
             last = rows[-1]
             ts_naive = datetime.fromisoformat(last["ts"].replace("Z", "")).replace(tzinfo=None)
             age_min = int((datetime.utcnow() - ts_naive).total_seconds() / 60)
-            intel["last_signal"] = f"{last['decision']} {last.get('reason','?')} hace {age_min}min"
+            # escape: reasons traen texto libre (e.g. "score 3/5 < 4") — un "<" crudo
+            # rompe parse_mode=HTML en Telegram (400 can't parse entities)
+            intel["last_signal"] = _html.escape(f"{last['decision']} {last.get('reason','?')} hace {age_min}min")
     except Exception:
         pass
     return intel
