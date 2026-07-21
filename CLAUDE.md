@@ -929,6 +929,32 @@ WEEK_PRIORITY_HIGH = ["IREN", "CORZ", "CIFR", "CRWV"]  # 8m: AI infra es la prio
 
 ---
 
+### 8n. Snapshot Web — Semana 20-24 Jul 2026 (verificado 21-Jul)
+
+**Fuente:** búsqueda web 21-Jul-2026 (Yahoo Finance, Bloomberg, Fortune, CoinDesk). No es reporte PTS — snapshot de estado real del mercado.
+
+**Crypto — bajista confirmado, capitulación en curso:**
+- **BTC ~$64,900.** El escenario bajista de 8m se CUMPLIÓ: perdió $76k, $73.8k y el stop PTS de $69.9k. -$53k vs hace un año. Compradores de $75k-126k realizando pérdidas = no hay optimismo near-term. Contrarian: Standard Chartered mantiene target $100k fin de 2026.
+- **ETH ~$1,826-1,937** (rango lateral). Muy debajo del entry PTS $2,520 y del stop $2,024 — operación stopeada hace tiempo.
+- **SOL ~$78.** XRP debajo de $1.10 hacia $1.00. Estructura técnica de alts débil.
+- **Flujos ETF:** BTC +$75.7M, ETH +$105.4M semana pasada — institucionales rotando a blue-chips, no a alts.
+
+**Equities — VERDE_BULL intacto, semana de earnings:**
+- **SP500 ~7,470** (BofA target 7,100 = -5%). Muy arriba de 7,000 → régimen VERDE_BULL sigue activo.
+- **10Y Treasury 4.52%**, bajando tras datos de inflación más fríos. Import prices +0.3% Jun = inflación de bienes aún empuja.
+- **⚠️ Earnings Mag7 arrancan MAÑANA:** TSLA + GOOGL reportan Mié 22-Jul after the bell (primeros Mag7 del ciclo). INTC, IBM, GM, AMD también esta semana. Consenso: EPS Mag7 +28% YoY — expectativa alta = riesgo de volatilidad si decepcionan.
+- Asia subió liderada por chips; el mercado apuesta a que los megacaps sostienen el rally AI.
+
+**Implicaciones para el bot (días siguientes):**
+1. **Crypto proxies gate FUNCIONA:** BTC $64.9k < gate $74k (`CRYPTO_PROXY_BTC_GATE`) → COIN/IREN/CORZ/CIFR/CLSK correctamente filtrados. No abrir longs crypto hasta reclaim de $74k.
+2. **$76k ya no es soporte, es resistencia** — actualizado comment en `config.py`. Reclaim de $69.9k → primera señal de vida; cierre daily >$74k → reactivar pipeline alts.
+3. **TSLA/GOOGL earnings 22-Jul** agregados a `EARNINGS_CALENDAR` → supresión 24h antes/después activa. TSLA holdea 11,509 BTC con pérdidas no realizadas — su earnings puede mover crypto sentiment.
+4. **FOMC actualizado:** próxima reunión **Jul 28-29** (`FOMC_NEXT_MEETING = "2026-07-28"`) → supresión de señales desde el lunes 27.
+5. **Equities long OK, crypto long NO:** régimen divergente — SP500 VERDE_BULL pero crypto es el peor sector. `SHORT_BLOCKED_IN_VERDE_BULL` sigue aplicando para no shortear alts en squeeze; longs de alts requieren el reclaim de BTC.
+6. **Semana de alta volatilidad esperada** (earnings + FOMC la que sigue) → tamaño reducido, no perseguir breakouts intraday.
+
+---
+
 ## Cómo Aplicar Estos Insights al Algoritmo
 
 ### Filtros a Implementar
@@ -972,9 +998,9 @@ Ver `docs/STRATEGY_RULES.md` para reglas completas. Resumen:
 | operar / comandos del bot de Telegram | `tradebot-tg` |
 
 ### SUGERIDO — familias cross-proyecto (aplican en CUALQUIER repo según la tarea)
-- **🧠 venom — analiza/juzga:** `venom-design` scorea calidad visual de un post/imagen (gate >=9 + pre-check objetivo) · `venom-leveling` nivel L1-L7 de un skill o L1-L5 de una marca + leaderboard · `venom-playbook` que sabe hacer el ecosistema con data real (capabilities) · `venom-priority` ordena prioridad de la colmena + sync _NEXT<->focus · `venom-image-advisor` que API de imagen usar (Flux/Ideogram/DALL-E) · `venom-freud` analisis psyche/arte (me veo en X, autoanalisis)
+- **🧠 venom — analiza/juzga:** `venom-design` scorea calidad visual de un post/imagen (gate >=9 + pre-check objetivo) · `venom-leveling` nivel L1-L7 de un skill o L1-L5 de una marca + leaderboard · `venom-playbook` que sabe hacer el ecosistema con data real (capabilities) · `venom-priority` ordena prioridad de la colmena + sync _NEXT<->focus · `venom-image-advisor` que API de imagen usar (Flux/Ideogram/DALL-E) · `venom-freud` analisis psyche/arte (me veo en X, autoanalisis) · `venom-social` compara redes cross-marca FB+IG (entre marcas + entre redes) con data real, surface que funciona · `venom-meeting` analiza recap+transcript de una llamada (read.ai), extrae pendientes, separa dev (task board) vs negocio/cliente (venom)
 - **🔪 carnage — rompe/QA/repara:** `carnage-kill` red-team: rompe un bot/feature/parser, emite break-list · `carnage-repair` arregla el break-list con fix minimo + test de regresion · `carnage-qa` QA visual rapido de un post/imagen (sin gate-block) · `carnage-ux-polish` audita + aplica fixes UX/visual de una landing web
-- **🛠️ build — genera/cablea:** `build-post-templates` imagen de post brand-correct (16 plantillas, selector por tema) · `build-cc-post` imagen/post de marca Contreras Code · `build-sl-promo` contenido social de campania promo Studio Link (stories+feed+hero) · `build-help` copy de ayuda al usuario final (modal/tooltip/empty state, cero tecnico) · `build-components` biblioteca + estandarizacion de componentes UI de un repo · `build-tooltip` cablea tooltip Stimulus en formularios Studio Link · `build-chat` envia mensaje tono venom por WhatsApp o Telegram
+- **🛠️ build — genera/cablea:** `build-post-templates` imagen de post brand-correct (16 plantillas, selector por tema) · `build-cc-post` imagen/post de marca Contreras Code · `build-sl-promo` contenido social de campania promo Studio Link (stories+feed+hero) · `build-help` copy de ayuda al usuario final (modal/tooltip/empty state, cero tecnico) · `build-components` biblioteca + estandarizacion de componentes UI de un repo · `build-tooltip` cablea tooltip Stimulus en formularios Studio Link · `build-chat` envia mensaje tono venom por WhatsApp o Telegram · `brand-batch` orquesta un batch de contenido social de una marca (discovery->generar->gate->preview), HASTA preview, no publica. Destilado del content-pipeline
 - **🎯 focus — productividad:** `focus` gestor diario de prioridades (today.json) · `focus-hyper` bloquea en UNA tarea, guard anti-drift · `focus-tdah` modo comunicacion TDAH (corto, A/B/C, 1 pregunta) · `focus-supernova` retro + cierre de sesion (bien/mal/patron) + commit
 - **🦇 batman/hydra — orquesta:** `batman` orquesta varias sesiones sobre UN repo (modo crunch/evento) · `hydra` derrame multi-modelo (Opus->Sonnet->Haiku) para abarcar mas
 <!-- SKILLS:END -->

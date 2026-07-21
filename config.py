@@ -241,7 +241,10 @@ QUANTUM_REENTRY_PULLBACK_PCT = 10.0
 QUANTUM_SUPPRESSED_UNTIL = "2026-06-15"   # 8m: extendido (en BE, no sobreextendido — pero esperar barrida)
 
 # PTS 8m: niveles críticos BTC y COIN
-BTC_CRITICAL_SUPPORT_8M  = 76000.0   # Pérdida = confirmación bajista → alts bajo presión
+# Snapshot 8n (21-Jul-2026): BTC ~64.9k — el soporte 76k se perdió y ahora actúa de
+# RESISTENCIA macro. Compradores 75k-126k realizando pérdidas (capitulación en curso).
+# El nivel operativo vigente es el gate de 74k (CRYPTO_PROXY_BTC_GATE) como reclaim.
+BTC_CRITICAL_SUPPORT_8M  = 76000.0   # 8n: roto — tratar como resistencia, no soporte
 COIN_STOP_TOLERANCE_8M   = 172.0     # Última ZR COIN — si pierde = crypto debilidad sistémica
 CLSK_WATCH_PULLBACK      = True      # CLSK escapada, no operar ahora — esperar retroceso
 
@@ -255,7 +258,7 @@ CRYPTO_PROXY_BTC_GATE = 74000.0
 MACRO_BONDS_WATCH = ["TLT", "TBT"]
 PRIORITY_BOOST_CLUSTER = "ai_infra"     # Esta semana: permite hasta 3 (vs 2 default) si SP500>7000
 PRIORITY_BOOST_MAX_PER_CLUSTER = 3
-WEEK_REVIEW_DATE = "2026-05-25"          # Última actualización PTS — invalidar después de 7 días
+WEEK_REVIEW_DATE = "2026-07-21"          # Última actualización intel — invalidar después de 7 días
 
 
 # ── Thresholds RSI ────────────────────────────────────────────────────────────
@@ -332,7 +335,7 @@ DXY_CRIPTO_PRESSURE = 103.0  # DXY > 103 → presión bajista en cripto (was 105
 OIL_INFLATION_THRESHOLD = 85.0  # Oil > $85 = presión inflacionaria → hawkish Fed (FOMC Mar-26)
 
 # ── FOMC Calendar ────────────────────────────────────────────────────────────
-FOMC_NEXT_MEETING = "2026-06-17"   # Próxima reunión FOMC (Apr 28-29 ya pasó) — suprimir señales 24h antes
+FOMC_NEXT_MEETING = "2026-07-28"   # Próxima reunión FOMC Jul 28-29 (Jun 16-17 ya pasó) — suprimir señales 24h antes
 RATE_BIAS = "HAWKISH_HOLD"         # FOMC Mar-26: tasas 3.50-3.75%, 30% prob de subida, sin recortes hasta dic
 
 # ── Earnings Suppression (Spec 001 May-22-2026) ──────────────────────────────
@@ -341,8 +344,10 @@ RATE_BIAS = "HAWKISH_HOLD"         # FOMC Mar-26: tasas 3.50-3.75%, 30% prob de 
 EARNINGS_SUPPRESS_24H = ["NVDA", "OKLO", "TSLA", "MSFT", "META", "AAPL", "GOOGL"]
 # Fechas de earnings conocidas (YYYY-MM-DD). Actualizar al recibir confirmación.
 EARNINGS_CALENDAR = {
-    "OKLO": "2026-05-27",  # PTS 08-May: earnings martes (siguiente martes)
+    "OKLO": "2026-05-27",  # PTS 08-May: earnings martes (siguiente martes) — ya pasó
     "NVDA": "2026-05-21",  # PTS 19-May referenció earnings esta semana — ya pasó
+    "TSLA": "2026-07-22",  # Q2: reporta after the bell, primer Mag7 del ciclo (confirmado 21-Jul)
+    "GOOGL": "2026-07-22", # Q2: reporta after the bell junto con TSLA (confirmado 21-Jul)
 }
 
 # ── Cache TTL (segundos) ──────────────────────────────────────────────────────
