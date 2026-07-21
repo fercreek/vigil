@@ -1,13 +1,15 @@
 # _NEXT.md — Scalp Bot / Zenith
 
-> Update: 2026-06-29 · Último commit: `23dd94c`
-> **Sesión 06-29 (Lucky Crown): Backtest offline construido + tune V3-ZEC RSI 30→20 SL 2.0→1.5 → +8.38R 60% WR. Universe expandido (GOLD/SOL/BNB/COIN/NVDA). BNB V4-EMA +84.8R → MANUAL_SYMBOLS. En prod Railway. Bug crítico: FOMC_NEXT_MEETING = "2026-06-17" stale → bot suprime TODAS señales ZEC V3.**
+> Update: 2026-07-21 · Último commit: `28f0941` (pusheado + deployado Railway `97d1fbe9`)
+> **Sesión 07-21: Snapshot mercado 8n (BTC 64.9k bear confirmado, TSLA/GOOGL earnings 22-Jul, FOMC 07-28) + FIX macro feed SPY/TLT/HYG $0.00 (yf.download→Ticker().history, feed re-encendido, verificado en prod SPY $745.55) + gitignore data artifacts. ⚠️ Railway NO auto-deploya: deploy = `railway up` manual.**
 
 ---
 
 ## ⚡ RETOMAR AQUÍ (P0)
 
-- [ ] **Fix `FOMC_NEXT_MEETING` en `config.py`** — cambiar `"2026-06-17"` por la fecha real del próx FOMC (2026-07-29 o 2026-07-30). Con fecha stale el gate bloquea todas las señales ZEC V3.
+- [x] **Fix `FOMC_NEXT_MEETING` en `config.py`** — ✅ 07-21: actualizado a `"2026-07-28"` (reunión Jul 28-29). Supresión arranca lunes 27.
+- [ ] **Fix `[HMM PREDICT ERROR] ZEC/1h: startprob_ must sum to 1 (got nan)`** — error repetido en logs prod. HMM está off por default pero el error ensucia; sanear o silenciar en `regime_hmm.py`.
+- [ ] **Investigar `[MarketReport] Telegram error 400`** — warning en logs prod 07-21 (el DailyReport sí sale; probable HTML mal escapado en un reporte).
 - [ ] **Refactorizar `backtest_sim.py`** para importar desde `config.py` en lugar de duplicar `RSI_REVERSAL_THRESHOLD` y `V3_SL_ATR` — previene drift silencioso.
 - [ ] **Fix `swing_bot.py:240`** — `prices` no definido en `analyze_symbol()` scope (bug preexistente, visto en logs prod).
 

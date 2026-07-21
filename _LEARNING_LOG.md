@@ -178,3 +178,20 @@ Ver [docs/specs/001-bot-recovery/](docs/specs/001-bot-recovery/). Cubrió: kill 
 
 **Patrón nuevo capturado:**
 - Síntoma recurrente cross-sesión = atacar la capa de abajo (provider/infra), no agregar otro guard. Guard nuevo sobre el mismo síntoma = deuda, no fix.
+
+### 2026-07-21 · Snapshot mercado + macro feed fix (sesión corta)
+
+**Pros (qué salió bien):**
+- Probe-before-scale 2×: probé `yf.Ticker().history()` local antes de editar, y `railway variables` antes de deployar — cero retrabajos por entorno.
+- Fix verificado con output REAL de prod (`SPY: $745.55` en logs Railway), no con "compila" — y el número cuadró con el snapshot web.
+- Root cause correcto en 1 pasada: la pista era que DXY/VIX SÍ funcionaban → misma librería, distinta ruta (`download` vs `Ticker().history`).
+
+**Cons (qué se atoró o sobrecomplicó):**
+- Afirmé "el push deployó" leyendo una señal coincidente en logs (earnings suppression, que resultó ser cálculo dinámico del Centinela). Railway NO auto-deploya; `railway deployment list` lo desmentía en 30s. 3ª instancia del patrón push≠deploy (antes: studio-link 07-02, litebox 07-03).
+
+**Consejo Claude Code (cómo prompteamos mejor):**
+- Al tocar código que corre en Railway: el deploy es SIEMPRE `railway up` manual + verificar `railway deployment list`. Push a GitHub solo mueve el repo.
+- "Ya está en prod" exige artefacto: deployment id con timestamp posterior al push.
+
+**Patrón nuevo capturado:**
+- Señal-que-cuadra ≠ confirmación: una línea de log consistente con mi hipótesis no prueba el deploy; el registro de deployments sí.
