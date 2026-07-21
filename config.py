@@ -17,7 +17,9 @@ MACRO_WATCH = []  # Todos los símbolos ahora son operables
 # yfinance devuelve $0.00 desde Railway → BRI siempre NEUTRAL (ruido). Off por default:
 # si está off, BRI no entra a la confluencia (honesto: "no hay macro, no lo finjas").
 import os as _os
-MACRO_FEED_ENABLED = _os.getenv("MACRO_FEED_ENABLED", "false").lower() in ("1", "true", "yes")
+# 21-Jul-2026: default ON otra vez — el fetch migró de yf.download (roto en Railway)
+# a yf.Ticker().history(), la ruta que DXY/VIX ya usaban con éxito. Env var lo apaga.
+MACRO_FEED_ENABLED = _os.getenv("MACRO_FEED_ENABLED", "true").lower() in ("1", "true", "yes")
 
 # Plan Fénix F1 — Sentinel auto solo para ZEC (el experimento/cockpit core). TAO/TON quedan
 # on-demand vía /intel. Antes corrían ZEC+TAO+TON juntos cada ciclo → ~7.5k tokens > 8000 TPM de

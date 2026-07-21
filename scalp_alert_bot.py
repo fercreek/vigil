@@ -795,14 +795,16 @@ def get_prices() -> dict:
             }
             macro_vals = {}
             # Plan Fénix F0.3 — gate del feed yfinance de equities/oil (SPY/CL=F/NVDA/PLTR/TLT/HYG).
-            # Daban $0.00 desde Railway + ruido "CL=F delisted". Off → caen a default, sin red ni noise.
-            # DXY/VIX NO se gatean (vienen de indicators.get_dxy_vix abajo, sí funcionan).
+            # Fix 21-Jul-2026: yf.download daba $0.00 desde Railway; se migró a
+            # yf.Ticker().history() — la misma ruta que DXY/VIX usan y sí responde allá.
             from config import MACRO_FEED_ENABLED as _macro_on
             if _macro_on:
+                def _yf_close_hist(sym):
+                    return yf.Ticker(sym).history(period="1d", interval="5m")
                 _yf_pool = ThreadPoolExecutor(max_workers=1)
                 for yf_sym, key in macro_symbols.items():
                     try:
-                        _future = _yf_pool.submit(yf.download, yf_sym, period="1d", interval="1m", progress=False)
+                        _future = _yf_pool.submit(_yf_close_hist, yf_sym)
                         _df = _future.result(timeout=20)
                         if _df is not None and not _df.empty and 'Close' in _df.columns:
                             val = float(_df['Close'].iloc[-1])
