@@ -12,6 +12,17 @@ logs/bot.pid
 risk_state.json
 runtime_state.json
 latest_report.txt
+data/api_health_state.json
+data/stock_alert_cache.json
+
+# Data artifacts — regenerable por backtest/tune (datasets descargados y resultados)
+data/*_1h_365d.csv
+data/backtest_results.json
+data/tune_results.json
+
+# Chart scratch assets (temporales de sesiones de análisis)
+chart_ideas/assets/*_tmp.png
+chart_ideas/assets/image_CHART_*.png
 
 # Claude Code local state
 .claude/scheduled_tasks.lock
