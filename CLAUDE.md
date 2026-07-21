@@ -15,6 +15,8 @@ Axiomas que aplican también al bot:
 
 Bot de alertas de trading (Python/Flask) enfocado en cripto (BTC, ETH, TAO) con análisis técnico, integración con Gemini AI, y ejecución en Binance. Genera alertas con confluencia técnica múltiple (RSI, BB, EMA 200, Elliott Waves).
 
+**⚠️ Deploy: Railway NO auto-deploya desde GitHub.** Push a `origin/main` solo mueve el repo. Deploy = `railway up` manual + verificar con `railway deployment list` (timestamp posterior al push). Nunca afirmar "ya está en prod" sin ese artefacto.
+
 Archivos clave:
 - `scalp_alert_bot.py` — lógica principal de alertas y loop principal (~1280 líneas)
 - `telegram_commands.py` — dispatcher de comandos Telegram (extraído de scalp_alert_bot)
