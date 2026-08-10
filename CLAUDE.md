@@ -1005,3 +1005,15 @@ Ver `docs/STRATEGY_RULES.md` para reglas completas. Resumen:
 - **🎯 focus — productividad:** `focus` gestor diario de prioridades (today.json) · `focus-hyper` bloquea en UNA tarea, guard anti-drift · `focus-tdah` modo comunicacion TDAH (corto, A/B/C, 1 pregunta) · `focus-supernova` retro + cierre de sesion (bien/mal/patron) + commit
 - **🦇 batman/hydra — orquesta:** `batman` orquesta varias sesiones sobre UN repo (modo crunch/evento) · `hydra` derrame multi-modelo (Opus->Sonnet->Haiku) para abarcar mas
 <!-- SKILLS:END -->
+
+---
+
+---
+
+## Lecciones de este repo (movidas de `angels/focus/_PATTERNS.md`, 2026-08-10)
+
+> Incidentes concretos que ocurrieron **aquí**. Vivían en un índice global de 206 filas
+> que nadie relee; el patrón general que comparten ya está en `angels/focus/_MECANISMOS.md`.
+> Esto es lo específico del repo — lo que solo muerde en este stack.
+
+- **Verificación delegada a background task (`sleep N && check`) se pierde en teardown de sesión → notificación "stopped/no record" y el estado queda DESCONOCIDO; el riesgo es afirmar el resultado como si el check hubiera corrido** <sub>2026-07-21</sub>
