@@ -1,6 +1,6 @@
 # _NEXT.md — Scalp Bot / Zenith
 
-> Update: 2026-07-21 · Último commit: `28f0941` (pusheado + deployado Railway `97d1fbe9`)
+> Update: 2026-08-20 · Último commit: `f1caa33` (pusheado + deployado Railway `229620ff`)
 > **Sesión 07-21: Snapshot mercado 8n (BTC 64.9k bear confirmado, TSLA/GOOGL earnings 22-Jul, FOMC 07-28) + FIX macro feed SPY/TLT/HYG $0.00 (yf.download→Ticker().history, feed re-encendido, verificado en prod SPY $745.55) + gitignore data artifacts. ⚠️ Railway NO auto-deploya: deploy = `railway up` manual.**
 
 ---
@@ -11,13 +11,16 @@
   (`mark_partial` + `mark_be`) y un cierre posterior en BE se guarda `PARTIAL_CLOSED` con PnL
   mezclado, no `LOST`. Cierra la brecha con `backtest_sim.py:136-150`. 15 tests nuevos en
   `tests/test_partial_tp1.py`. Diagnóstico completo: `docs/STOPLOSS_DIAGNOSIS_PLAN.md`.
-  ⏳ **Sin efecto medible hasta P0.1** (volumen Railway) — hoy la DB se borra en cada deploy.
+  ✅ Commit `f1caa33`, pusheado a `origin/main` y **en prod** — deploy `229620ff` SUCCESS,
+  verificado dentro del container (`PARTIAL_CLOSED` en `/app/trade_monitor.py`,
+  `PARTIAL_TP1_PCT = 50` en `/app/config.py`).
 - [x] **P0.1 — Volumen Railway `/data` + `TRACKER_DB=/data/trades.db`** — ✅ 08-20.
   `web-volume` (5 GB) montado en `web:/data`, `TRACKER_DB=/data/trades.db` seteada,
   deploy `45330d82` SUCCESS. Verificado por SSH: `/data/trades.db` existe y `lost+found`
   confirma filesystem montado. `/api/stats` responde 200 con `total: 0` (DB nueva, esperado).
-  ⏳ **Falta cerrar el criterio**: tras el PRÓXIMO `railway up`, confirmar que `total` NO
-  vuelve a 0. Hasta ese ciclo, la persistencia está montada pero no comprobada.
+  ✅ **Criterio cerrado**: se dejó un marcador en `/data` ANTES del `railway up` del deploy
+  `229620ff` y sobrevivió el ciclo completo. El volumen persiste de verdad, comprobado, no
+  inferido. (Marcador borrado después.)
 - [ ] **P0.2 — `risk_state.json` al volumen** — `risk_manager.py:36` usa ruta relativa; con
   `restartPolicyType=ALWAYS` un bot en `HALTED` revive en `NORMAL`.
 
