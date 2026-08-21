@@ -45,3 +45,23 @@ número solo puede bajar.
 0 registraban por qué había disparado la señal. Una señal huérfana —emitida y nunca
 resuelta— reduce el denominador en silencio, que es cómo "92 filas" se volvió "91 cierres"
 sin que nadie lo notara.
+
+## Historial del presupuesto de líneas (G3)
+
+Cada subida es una decisión, no un ajuste para que el rojo desaparezca. Se anota aquí
+para que el patrón sea visible: si esta lista crece rápido, el problema es el diseño,
+no el número.
+
+| Fecha | core | Por qué |
+|---|---:|---|
+| 2026-08-21 | 2,000 | Presupuesto inicial: motor de señales, ~12 módulos |
+| 2026-08-21 | 2,400 | Segunda estrategia (`breakout.py`) — el pullback es ciego a las rupturas |
+| 2026-08-21 | 2,600 | Poller de Telegram (los botones TOMADA/PASO no los recogía nadie) y el reloj del conocimiento (`make knowledge-refresh` existía y nada lo corría) |
+
+`knowledge/` mantiene su propio presupuesto de 800 y va en 549 — no se ha movido.
+
+**Cuándo NO subirlo:** cuando la línea roja sea deuda, duplicación o un archivo que
+debió partirse. Se intentó partir `main.py` en el tercer caso y el total **subió**
+(cada archivo paga su encabezado); ahí la partición era correcta por claridad pero no
+resolvía el presupuesto, y el presupuesto tenía que ceder porque el alcance creció de
+verdad.
