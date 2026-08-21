@@ -51,7 +51,28 @@ niebla a ticket vivo en la misma pasada. Esa es la mecánica, no una excepción 
 
 ## Frontera — abierta
 
-### 🎫 La primera `rules.py`
+### ✅ La primera `rules.py` — CERRADO 2026-08-21: no hay ventaja
+
+Resuelto con evidencia, no con opinión. Tres intentos, tres veredictos de NO EDGE:
+
+1. **Búsqueda de umbrales** (1,296 configuraciones, partición temporal): la mejor pasó de
+   +0.382R a **−0.341R** fuera de muestra, y perdió contra comprar sin filtro.
+2. **5 hipótesis de ENTRADA pre-registradas** con su mecanismo económico, sobre 6 símbolos ×
+   4 tramos × 2 años: ninguna pasó sus propios criterios. H4 (fadear capitulación) salió
+   **significativa al revés** — la vela extrema continúa, no revierte.
+3. **5 hipótesis de SALIDA pre-registradas**: dos parecieron tener ventaja consistente entre
+   regímenes (+0.110R el trailing). **Era autocorrelación**: entradas cada hora aguantando 240
+   velas cuentan el mismo movimiento ~72 veces. Re-medido sin solape → **−0.005R**, IC cruzando
+   cero, celdas saltando de +1.13R a −0.59R. Reproducible: `instrument/scripts/test_independence.py`.
+
+**Decisión de Fernando:** el bot queda **midiendo sin emitir**. `rules.py` conserva umbrales
+estándar que disparan cero veces, marcado NOT LIVE-READY, y G1 bloquea el merge con N=0.
+
+**Para reabrir este ticket hace falta una hipótesis con mecanismo**, no otra búsqueda. Lo que
+sí quedó apuntando a algo: H4 en reversa, y el timeframe diario —donde 2 años sí dan trades
+independientes suficientes— que no se ha probado.
+
+### 🎫 (retirado) La primera `rules.py`
 - tipo: `prototype` · estado: **en curso** (cabeza Sonnet, hydra 08-21) · bloqueado por: —
 - Graduó de la niebla al cerrarse los tres de arriba.
 - Insumo medido: MFE mediana **+0.67R** contra objetivos que promediaban **1.27R** — el objetivo
