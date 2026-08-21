@@ -94,7 +94,29 @@ def test_fomc_calendar_uses_fred_when_key_present():
     result = sources.fetch_fomc_calendar(http_get=http_get, now=NOW, fred_api_key="fake-key")
     assert result.ok
     assert result.source == "fred_releases_dates"
-    assert result.valid_until == "2026-09-16"
+    # 18:00 UTC, not the bare date -- see test_fomc_calendar_fred_and_html_agree_on_the_same_clock
+    assert result.valid_until == "2026-09-16T18:00:00+00:00"
+
+
+def test_fomc_calendar_fred_and_html_agree_on_the_same_clock():
+    """FRED returns a bare date (naive fromisoformat -> 00:00 UTC); HTML
+    anchors at 18:00 UTC. Same meeting, both paths must give the same
+    valid_until, or is_stale() disagrees depending on which source answered."""
+    fred_http_get = _router({"https://api.stlouisfed.org/fred/releases/dates": json.dumps(
+        {"release_dates": [{"date": "2026-09-16"}]})})
+    fred_result = sources.fetch_fomc_calendar(http_get=fred_http_get, now=NOW, fred_api_key="fake-key")
+
+    html = (
+        '<h4><a id="1">2026 FOMC Meetings</a></h4>'
+        '<div class="fomc-meeting__month col"><strong>September</strong></div>'
+        '<div class="fomc-meeting__date col">15-16*</div>'
+    )
+    html_http_get = _router({"https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm": html})
+    html_result = sources.fetch_fomc_calendar(http_get=html_http_get, now=NOW)
+
+    assert fred_result.ok and html_result.ok
+    assert fred_result.value["next_meeting_date"] == html_result.value["next_meeting_date"]
+    assert fred_result.valid_until == html_result.valid_until == "2026-09-16T18:00:00+00:00"
 
 
 def test_news_window_is_4h():

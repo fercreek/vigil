@@ -133,6 +133,35 @@ def test_none_when_indicators_have_no_history_yet(monkeypatch):
     assert rules.evaluate("ZEC", "1h", candles, 4) is None
 
 
+def test_suppressed_with_active_event_names_event_and_date(monkeypatch):
+    """Item 1/5: a live event window suppresses ahead of the RSI/BB/ADX gates,
+    and the reason names the event + its date -- never a generic message."""
+    _passing_ta(monkeypatch)  # every gate would otherwise pass -> would be SENT
+    candles = _candles(50)
+    suppressions = {"fomc_calendar": {"event": "FOMC meeting", "date": "2026-09-16T18:00:00+00:00"}}
+
+    result = rules.evaluate("ZEC", "1h", candles, len(candles) - 1, suppressions=suppressions)
+
+    assert result is not None
+    assert result["decision"] == "SUPPRESSED"
+    assert "FOMC meeting" in result["decision_reason"]
+    assert "2026-09-16T18:00:00+00:00" in result["decision_reason"]
+    assert result["gates_failed"] == ["event_window"]
+
+
+def test_no_suppression_when_suppressions_is_empty_or_none(monkeypatch):
+    """The stale/missing-calendar case (resolved by the caller, main.py) must
+    reach rules.py as an empty dict and change nothing -- gates still decide."""
+    _passing_ta(monkeypatch)
+    candles = _candles(50)
+
+    result_none = rules.evaluate("ZEC", "1h", candles, len(candles) - 1, suppressions=None)
+    result_empty = rules.evaluate("ZEC", "1h", candles, len(candles) - 1, suppressions={})
+
+    assert result_none["decision"] == "SENT"
+    assert result_empty["decision"] == "SENT"
+
+
 def test_ruleset_version_changes_when_rules_bytes_change(tmp_path):
     real_rules = Path(rules.__file__)
     geometry_path = real_rules.parent / "geometry.py"

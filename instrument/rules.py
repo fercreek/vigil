@@ -104,13 +104,32 @@ MIN_RR = 0.0
 REGIME = "TREND_PULLBACK"
 
 
-def evaluate(symbol: str, timeframe: str, candles: list[Candle], index: int) -> dict | None:
+def _event_suppression(suppressions: dict[str, dict] | None) -> str | None:
+    """First active entry in `suppressions`, formatted for decision_reason, or
+    None. `suppressions` is context the CALLER already resolved (main.py's
+    cache.require("fomc_calendar", on_stale="open") plus its own +/-24h window
+    check) -- this function only reads the dict handed to it. That is what
+    keeps evaluate() a pure function of its arguments: no database, no
+    network, no wall-clock read, here or anywhere else in this module."""
+    if not suppressions:
+        return None
+    _, info = next(iter(suppressions.items()))
+    return f"{info.get('event', 'scheduled event')} on {info.get('date', 'unknown date')}"
+
+
+def evaluate(symbol: str, timeframe: str, candles: list[Candle], index: int,
+             suppressions: dict[str, dict] | None = None) -> dict | None:
     """Evaluate the CLOSED candle at `index`. Entry is its close.
 
     Reads candles[:index+1] and nothing past it -- that slice is the only place
     in this function that touches `candles`, which is what keeps this look-ahead
     free. Returns a signals-table-ready dict, or None when there isn't enough
     warmup yet for the indicators to mean anything (not a registrable evaluation).
+
+    `suppressions` is optional pre-resolved event context (see
+    `_event_suppression`) -- e.g. a live FOMC blackout window. When it names an
+    active event the decision is SUPPRESSED with a reason that names the event
+    and its date, ahead of the RSI/BB/ADX gates below.
     """
     if index < 0 or index >= len(candles):
         raise IndexError(f"index {index} out of range for {len(candles)} candles")
@@ -152,6 +171,12 @@ def evaluate(symbol: str, timeframe: str, candles: list[Candle], index: int) -> 
         return {**base, "side": LONG, "decision": "SUPPRESSED",
                 "decision_reason": "close == ema200: no directional bias",
                 "gates_passed": [], "gates_failed": ["trend_bias"]}
+
+    event = _event_suppression(suppressions)
+    if event is not None:
+        return {**base, "side": side, "decision": "SUPPRESSED",
+                "decision_reason": f"event window: {event}",
+                "gates_passed": [], "gates_failed": ["event_window"]}
 
     gates_passed: list[str] = []
     gates_failed: list[str] = []

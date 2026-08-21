@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from . import llm_note, notify, rules, watch
 from .feed import FeedUnavailable, fetch_ohlcv
 from .geometry import InvalidGeometry, assert_geometry
+from .knowledge import cache
 from .resolver import RESOLVER_VERSION, resolve
 from .store import RowRejected, connect, insert_resolution, insert_signal
 
@@ -25,20 +26,49 @@ SYMBOLS = ["ZEC"]          # universe is fixed for the whole evaluation window
 TIMEFRAME = "1h"
 MAX_HOLD_BARS = 72         # the max-hold decision, 2026-08-21
 SCAN_SLEEP_SECONDS = 300
+FOMC_WINDOW_HOURS = 24     # how close to the meeting (either side) rules.py suppresses
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _parse_iso(value: str) -> datetime | None:
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _fomc_suppressions(conn, now: datetime) -> dict[str, dict]:
+    """The one place that consults the knowledge cache -- rules.py stays pure
+    and only reads whatever this returns. The asymmetry is cache.require()'s
+    on_stale="open": a stale or missing calendar entry must NOT suppress, and
+    that miss is logged to `heartbeats` (visible next to scan/feed status)
+    instead of silently behaving as "nothing to suppress today". Only a
+    FRESH entry inside the +/-24h window produces an active suppression."""
+    value, status = cache.require(conn, "fomc_calendar", on_stale="open", now=now)
+    if status != cache.FRESH:
+        watch.record(conn, "knowledge:fomc_calendar", status,
+                     "not suppressing (fail-open)", now.isoformat())
+        return {}
+    meeting = _parse_iso(value.get("next_meeting_date", "")) if value else None
+    if meeting is None or abs((meeting - now).total_seconds()) > FOMC_WINDOW_HOURS * 3600:
+        return {}
+    return {"fomc_calendar": {"event": "FOMC meeting", "date": value["next_meeting_date"]}}
+
+
 def scan_once(conn, symbols=SYMBOLS, send=True) -> int:
     """Evaluate the newest closed candle of every symbol. Returns signals sent."""
     sent = 0
+    suppressions = _fomc_suppressions(conn, datetime.now(timezone.utc))
     for symbol in symbols:
         candles = fetch_ohlcv(symbol, TIMEFRAME, limit=300)
         if len(candles) < 2:
             continue
-        row = rules.evaluate(symbol, TIMEFRAME, candles, len(candles) - 1)
+        row = rules.evaluate(symbol, TIMEFRAME, candles, len(candles) - 1,
+                              suppressions=suppressions)
         if row is None:
             continue
         if row.get("decision") == "SENT":

@@ -2,16 +2,14 @@
 
 Every fetcher takes an injectable `http_get(url) -> str` (like llm_note's
 `client`): tests inject a stub, nothing touches the network. Each owns its
-own valid_until -- a funding rate and a FOMC date are not stale on the same
-clock. Returns FetchResult(ok, value, valid_until, source, error);
-refresh.py cache.put()s only when ok=True.
+own valid_until -- a funding rate and a FOMC date are not stale on the same clock.
+Returns FetchResult(ok, value, valid_until, source, error); refresh.py cache.put()s only when ok=True.
 
 A missing credential is ok=True with value={"available": False, "reason":
 "missing_credential:X"} -- a completed check, never confused with "checked,
 nothing new" (legacy config.py:340/348 hardcoded FOMC_NEXT_MEETING /
 EARNINGS_CALENDAR and neither ever admitted "I no longer know this").
-Exceptions are caught by TYPE, never `except Exception` (.limits.json's
-ratchet is 4/4); FETCH_ERRORS below is the border instead.
+Exceptions are caught by TYPE, never `except Exception`; FETCH_ERRORS below is the border.
 """
 from __future__ import annotations
 
@@ -129,8 +127,9 @@ _MONTHS = {m: i for i, m in enumerate(
      "August", "September", "October", "November", "December"], start=1)}
 _YEAR_HEADER_RE = re.compile(r'id="\d+">(\d{4}) FOMC Meetings</a>')
 _ENTRY_RE = re.compile(
-    r'fomc-meeting__month[^"]*"><strong>([A-Za-z]+)</strong>.{0,400}?'
-    r'fomc-meeting__date[^"]*">([^<]+)<', re.S)
+    # Word-boundary anchored, not a loose prefix -- a decoy class must not win.
+    r'fomc-meeting__month(?:\s[^"]*)?"><strong>([A-Za-z]+)</strong>.{0,400}?'
+    r'fomc-meeting__date(?:\s[^"]*)?">([^<]+)<', re.S)
 
 
 def _parse_fomc_html(html: str, now: datetime) -> tuple[str, str] | None:
@@ -155,7 +154,8 @@ def _parse_fomc_html(html: str, now: datetime) -> tuple[str, str] | None:
 
 
 def _fetch_fomc_from_fred(http_get: HttpGet, api_key: str, now: datetime) -> FetchResult:
-    """release_id=101 is the FOMC Meeting Announcements release."""
+    """release_id=101 = FOMC Meeting Announcements. Anchors FRED's bare date
+    at 18:00 UTC, same clock as _parse_fomc_html, so both paths agree."""
     today = now.date().isoformat()
     params = urlencode({"release_id": 101, "api_key": api_key, "file_type": "json",
                          "sort_order": "asc", "realtime_start": today})
@@ -166,18 +166,18 @@ def _fetch_fomc_from_fred(http_get: HttpGet, api_key: str, now: datetime) -> Fet
         return _failed("fomc_calendar", exc)
     if upcoming is None:
         return _failed("fomc_calendar", ValueError("FRED returned no future release date"))
-    value = {"available": True, "next_meeting_date": upcoming, "label": upcoming}
-    return FetchResult(True, value, upcoming, "fred_releases_dates")
+    year, month, day = (int(part) for part in upcoming.split("-"))
+    meeting_ts = datetime(year, month, day, 18, 0, tzinfo=timezone.utc).isoformat()
+    value = {"available": True, "next_meeting_date": meeting_ts, "label": upcoming}
+    return FetchResult(True, value, meeting_ts, "fred_releases_dates")
 
 
 def fetch_fomc_calendar(http_get: HttpGet = _default_http_get, now: datetime | None = None,
                          fred_api_key: str | None = None) -> FetchResult:
     """Next FOMC meeting date. FRED_API_KEY unset today -> SCRAPES HTML
-    instead (fomccalendars.htm, confirmed present 2026-08-21) -- fragile by
-    nature, not an API; a redesign becomes a logged failure via
-    `_parse_fomc_html` returning None, never a wrong date. valid_until is
-    the meeting's own date: the fix for config.py:340's FOMC_NEXT_MEETING
-    sitting 24 days stale."""
+    instead (fomccalendars.htm) -- fragile by nature; a redesign becomes a
+    logged failure, never a wrong date. valid_until is the meeting's own
+    date -- the fix for config.py:340's FOMC_NEXT_MEETING sitting 24 days stale."""
     now = now or datetime.now(timezone.utc)
     fred_api_key = fred_api_key or os.getenv("FRED_API_KEY")
     if fred_api_key:
