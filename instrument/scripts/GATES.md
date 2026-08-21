@@ -18,10 +18,18 @@ no debe parecerse a uno que revisó y no encontró nada.**
 
 **G3 · Presupuesto de líneas.** El repo viejo declaró un límite de 600 líneas por archivo
 y terminó con 11 archivos rompiéndolo, el mayor en 1,460. Dos presupuestos separados:
-2,000 para el motor de señales y 800 para `knowledge/`, que es alcance nuevo del
+2,400 para el motor de señales y 800 para `knowledge/`, que es alcance nuevo del
 2026-08-21. Juntarlos habría significado reventar el número o subirlo en silencio. Tests y
 scripts quedan fuera de los totales — contar los tests le cobra impuesto al hábito que
 queremos.
+
+El 2,000 subió a 2,400 el mismo 2026-08-21, por la misma razón que `knowledge/` tiene su
+propio sub-presupuesto: `breakout.py` es una SEGUNDA estrategia (ruptura de rango +
+expansión de volatilidad — ver `HYPOTHESES.md` y el docstring del módulo), no el primer
+ruleset engordando. El motor ya estaba en 1,984/2,000 antes de este cambio; subir el número
+en silencio o dejarlo reventar habría sido el mismo defecto que este gate existe para
+atajar. 2,400 deja margen (~150 líneas) sin abrir la puerta a una tercera estrategia sin
+volver a tener esta conversación explícitamente.
 
 **G4 · Caducidad.** Cuatro calendarios escritos a mano (FOMC, earnings, OPEP, supresión)
 gobernaban decisiones y **los cuatro estaban vencidos** el día de la auditoría: 24, 30, 67

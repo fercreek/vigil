@@ -76,8 +76,7 @@ def _geometry_lines(row) -> list[str]:
 
 
 def _track_record_lines(row) -> list[str]:
-    """One verdict line, not two raw numbers to subtract; a framing line says
-    the stat is resolved trades, not this signal -- shown anyway, auditable."""
+    """One verdict line, not two raw numbers to subtract; auditable, shown anyway."""
     breakeven = _field(row, "breakeven_wr")
     ruleset, n = _field(row, "ruleset_version"), _field(row, "ruleset_resolved_n")
     wr = _field(row, "ruleset_wr")
@@ -140,25 +139,30 @@ def _now_line(row, current_price: float | None, now: datetime | None) -> str | N
     return " · ".join(parts) if parts else None
 
 
+def _observation_line(row) -> str | None:
+    """Every SENT row is a candidate under observation -- neither ruleset here
+    has cleared HYPOTHESES.md's success bar yet, and the alert says so."""
+    ruleset = _field(row, "ruleset_version")
+    return f"🧪 Candidata en observación ({ruleset}) — sin ventaja estadística demostrada aún" if ruleset else None
+
+
 def render(signal_row: dict | sqlite3.Row, account_size: float = 1000.0,
            risk_pct: float = 0.01, current_price: float | None = None,
            now: datetime | None = None) -> str:
     """Same row + same optional live inputs -> same string, always."""
-    header = [f"{_field(signal_row, 'symbol', '?')} {_field(signal_row, 'side', '?')} · "
-              f"{_field(signal_row, 'timeframe', '?')} · señal #{_field(signal_row, 'id', '?')}"]
+    header = [f"{_field(signal_row, 'symbol', '?')} {_field(signal_row, 'side', '?')} · {_field(signal_row, 'timeframe', '?')} · señal #{_field(signal_row, 'id', '?')}"]
     header += _geometry_lines(signal_row)
 
-    context = list(_track_record_lines(signal_row))
-    trigger = _trigger_line(signal_row)
-    context.append(trigger) if trigger else None
+    observation = _observation_line(signal_row)
+    context = ([observation] if observation else []) + list(_track_record_lines(signal_row))
+    context += [ln for ln in (_trigger_line(signal_row),) if ln]
     bar_ts = _field(signal_row, "bar_ts")
     if bar_ts:
         context.append(f"Vela cerrada {_parse_ts(bar_ts):%Y-%m-%d %H:%M} UTC")
     hint = position_hint(signal_row, account_size, risk_pct)
     context.append(hint) if hint else None
 
-    tail = [line for line in (_llm_line(signal_row),
-                               _now_line(signal_row, current_price, now)) if line]
+    tail = [ln for ln in (_llm_line(signal_row), _now_line(signal_row, current_price, now)) if ln]
     sections = [s for s in (header, context, tail) if s]
     return "\n\n".join("\n".join(section) for section in sections)
 

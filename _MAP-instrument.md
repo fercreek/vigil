@@ -5,7 +5,7 @@
 ## Destino
 
 Un instrumento que, ante cualquier regla de señal, responde en minutos y con denominador
-explícito si tiene ventaja — y que emite ≤3 alertas/semana accionables a mano.
+explícito si tiene ventaja — y que emite un puñado de alertas accionables al día.
 
 ## Notas
 
@@ -33,6 +33,24 @@ explícito si tiene ventaja — y que emite ≤3 alertas/semana accionables a ma
   vieja coincide con lo que hizo el precio en **29 de 59** casos. Con una semana completa, solo
   **7 de 59** tocaron TP1 y 38 pegaron el stop; MFE mediana **+0.67R** contra objetivos que
   promediaban **1.27R**.
+
+## Cadencia — revisada 2026-08-21
+
+El tope de **≤3 alertas/semana** se fijó cuando había **1 estrategia sobre 1 símbolo**. Hoy son
+**2 estrategias × 6 símbolos = 12 flujos**, y 3 por semana entre doce vuelve a ser silencio.
+
+**Nueva cadencia: ~17 alertas/semana (2-3 al día).** Es el ritmo natural del sistema, no un
+número elegido: sale de dejar correr las dos reglas con el enfriamiento puesto. Medido sobre 30
+días y 6 símbolos: 228 disparos crudos → **74 tras enfriamiento**.
+
+**El enfriamiento se queda** (`main.py:_in_cooldown`): una ruptura sigue rompiendo, y el 19-ago
+la regla disparó **5 veces sobre la misma subida de ETH**. Eso es un trade contado cinco veces —
+la misma autocorrelación serial que hizo parecer real una ventaja de +0.110R hasta que se
+espaciaron las entradas. La ventana es `MAX_HOLD_BARS`, no un número afinado: mientras la primera
+señal sigue abierta, una segunda sobre el mismo movimiento no es información nueva.
+
+**Lo que NO se hizo:** apretar umbrales para que la cadencia cuadre. Eso es ajustar a ojo, y ya
+falló tres veces en este repo.
 
 ## Decisiones cerradas por default (2026-08-21)
 
@@ -77,7 +95,7 @@ independientes suficientes— que no se ha probado.
 - Graduó de la niebla al cerrarse los tres de arriba.
 - Insumo medido: MFE mediana **+0.67R** contra objetivos que promediaban **1.27R** — el objetivo
   se pone donde vive la distribución de excursión, no en un múltiplo de ATR elegido a mano.
-- Criterio: calibrada a **≤3 alertas/semana** sobre el corpus. Si ningún umbral da expectancy
+- Criterio: cadencia revisada el 2026-08-21 (ver abajo). Si ningún umbral da expectancy
   positiva, ése es el resultado y se reporta — no se maquilla.
 
 ### 🎫 Postgres persistente + respaldo fuera del proveedor

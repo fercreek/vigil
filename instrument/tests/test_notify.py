@@ -45,6 +45,7 @@ EXPECTED = (
     "TP1      220.20   RR 1.24\n"
     "TP2      228.00   RR 2.48\n"
     "\n"
+    "🧪 Candidata en observación (r7) — sin ventaja estadística demostrada aún\n"
     "Necesita hasta 44.6% de aciertos; r7 trae 29% en 34 señales resueltas "
     "(intervalo de confianza 15-45%) — por debajo del umbral.\n"
     "Esa cifra mide señales YA resueltas, no ésta — se manda igual para auditar si "
@@ -79,6 +80,20 @@ def test_render_omits_ahora_line_without_live_inputs():
     out = render(ROW)
     assert "Ahora:" not in out
     assert "quedan" not in out
+
+
+def test_render_tags_the_signal_as_a_candidate_under_observation():
+    """Item 3/4 of the breakout brief: neither ruleset has a demonstrated
+    edge, and that has to travel in the alert, not just live in a docstring."""
+    out = render(ROW)
+    assert "🧪 Candidata en observación (r7) — sin ventaja estadística demostrada aún" in out
+
+
+def test_render_omits_observation_line_without_a_ruleset_version():
+    row = dict(ROW)
+    del row["ruleset_version"]
+    out = render(row)
+    assert "Candidata en observación" not in out
 
 
 def test_render_does_not_crash_on_missing_optional_fields():

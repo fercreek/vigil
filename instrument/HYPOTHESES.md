@@ -156,3 +156,49 @@ weekend's move gets arbed back.
   level). If `drift_r <= -1.0`: LONG (fade up). Otherwise skip.
 
 **Success criterion:** the 5 shared criteria above, applied to H5's signals only.
+
+---
+
+## Breakout — Donchian range breakout + volatility expansion (built 2026-08-21)
+
+> Pre-registered here, in `instrument/breakout.py`'s own module docstring, and in
+> `instrument/scripts/GATES.md`'s G3 accounting -- all written **before** running the
+> 30-day alert-rate measurement or looking at what the module would have said about
+> ETH's 2026-08-19 move. Same rule as the rest of this file: a bad result gets reported,
+> not patched into a better-looking one.
+
+**Statement:** a close beyond a 20-bar Donchian channel, on a bar whose true range has
+clearly expanded versus its own trailing volatility, continues in the breakout's direction.
+
+**Trigger for this build:** `rules.py` is a pullback-in-trend ruleset (RSI extreme +
+Bollinger extreme + ADX) and is blind by design to a clean directional break of a range.
+Measured cost of that blindness: 30 days in production, 8 alerts, all 8 on ZEC, 0 on the
+other 5 symbols; on 2026-08-19 ETH moved +19.6% in 24h with RSI at 96.6 and price ABOVE
+the upper Bollinger band -- the opposite of what `rules.py` requires (RSI<=30, price in
+the LOWER band) -- so `rules.py` could not have alerted on it by construction, not by an
+untuned threshold.
+
+**Mechanism:** the closest thing to a measured edge in this file is H3 above (+0.015R,
+beat the baseline in 4 of 6 symbols, missed the n>=30-per-symbol / significance bar) --
+momentum continuation. This instrument operationalises that same mechanism with a
+textbook range-breakout construct instead of H3's raw 4-close streak, because a streak
+says nothing about whether the move clears enough ground to trade; a channel breakout
+does.
+
+**Parameters (fixed, not fit -- full reasoning in `breakout.py`'s module docstring):**
+- Donchian channel, N=20 closed bars, excluding the current bar (the Entry-1 lookback
+  from the original Turtle Trading rules; also `rules.py`'s existing `BB_PERIOD`).
+- LONG trigger: `close[i] > max(high[i-20:i])`. SHORT trigger: `close[i] < min(low[i-20:i])`.
+- Volatility-expansion filter: the breakout bar's true range >= 1.5 × ATR(14) measured on
+  the PRIOR bar (trailing, excludes the breakout bar itself -- same convention as H4's
+  `tr[i] >= 3.0 × ATR(14)[i-1]` above, at a milder multiple since a breakout needs an
+  above-normal range, not H4's single-bar-shock extremity).
+- Geometry differs from every hypothesis above by design, not by oversight: the stop is
+  the OTHER side of the SAME Donchian channel that broke (risking the width of the base),
+  and the targets are outright ATR multiples added to entry (2.0×ATR / 4.0×ATR) rather
+  than an R-multiple of that stop -- the two legs are sized by different rulers on
+  purpose (see `breakout.py`).
+
+**Success criterion:** the 5 shared criteria above, applied to this instrument's signals
+only. It has NOT been run against them yet -- `scripts/test_hypotheses.py` covers H1-H5;
+extending it to this instrument is future work, not done as part of this build.

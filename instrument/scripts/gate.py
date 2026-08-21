@@ -79,8 +79,14 @@ def gate_g2_spec_count(repo_root: Path) -> GateResult:
     return GateResult("G2 open spec", passed, summary=f"{len(specs)} open spec(s)",
                       details=[str(p.relative_to(repo_root)) for p in specs])
 
-def gate_g3_loc(root: Path, per_file_max: int = 250, total_max: int = 2000) -> GateResult:
-    """250 lines/file everywhere; 2000 over runtime code, 800 over knowledge/.
+def gate_g3_loc(root: Path, per_file_max: int = 250, total_max: int = 2400) -> GateResult:
+    """250 lines/file everywhere; 2400 over runtime code, 800 over knowledge/.
+
+    total_max moved 2000->2400 on 2026-08-21 for the same reason knowledge/ got
+    its own 800 sub-budget: a second strategy (breakout.py) is new scope, not
+    the first ruleset grown fatter, and the alternative -- silently blowing
+    through 2000 or padding it "just in case" -- is exactly the drift this
+    gate exists to catch. See GATES.md for the accounting.
 
     Tests and scripts sit outside the totals: counting tests taxes the habit we want.
     """

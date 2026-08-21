@@ -126,7 +126,7 @@ def weekly_pulse(conn: sqlite3.Connection, component: str, max_age_minutes: floa
                   now: datetime | None = None, window_days: int = 7) -> dict[str, Any]:
     """Pure -- computes the weekly liveness pulse, sends nothing (that is the
     caller's job). Must be produced -- and sent -- on a fixed schedule every
-    week EVEN WHEN there is nothing to report: with a 3-alerts/week cap, a
+    week EVEN WHEN there is nothing to report: at a couple of alerts a day, a
     dead process and a quiet market are both silent, which is exactly how 54
     days passed unnoticed. `last_signal_at` is the part that tells them apart
     on sight -- an old date is obvious immediately, an absent message never is."""
