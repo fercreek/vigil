@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS signals (
   r_unit        NUMERIC(20,8),   -- |entry - sl| in price. One R.
   rr_tp1        NUMERIC(8,3),    -- DERIVED from the real prices, never from a multiplier
   rr_tp2        NUMERIC(8,3),
-  breakeven_wr  NUMERIC(6,4),    -- the hit rate this geometry demands: 1/(1+rr_tp1)
+  breakeven_wr  NUMERIC(6,4),    -- hit rate this geometry demands under the PARTIAL exit
+                                 -- scheme, conservative end (runner stopped at breakeven)
 
   -- why it fired — machine readable, never empty
   trigger       TEXT NOT NULL,   -- JSON: {"rsi":18.4,"bb_pctb":-0.02,"ema200":211.4}

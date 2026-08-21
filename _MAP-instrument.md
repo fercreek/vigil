@@ -1,5 +1,5 @@
 # MAPA — Instrumento de medición de señales (Zenith)
-> FOCUS-<pendiente> · caduca: **2026-09-20** · repo: `fercreek/vigil`
+> FOCUS-<pendiente — ⚠️ incumple la regla 6 del propio skill> · caduca: **2026-09-20** · repo: `fercreek/vigil`
 > Trazado 2026-08-21 con el skill `wayfinder`.
 
 ## Destino
@@ -34,44 +34,49 @@ explícito si tiene ventaja — y que emite ≤3 alertas/semana accionables a ma
   **7 de 59** tocaron TP1 y 38 pegaron el stop; MFE mediana **+0.67R** contra objetivos que
   promediaban **1.27R**.
 
-## Frontera — abierta (3 HITL, presupuesto lleno)
+## Decisiones cerradas por default (2026-08-21)
 
-### 🎫 Cuánto vive una señal antes de declararse TIMEOUT
-- tipo: `grilling` · estado: abierto · bloqueado por: —
-- **default si no se contesta:** 72h
-- Evidencia ya medida: a 36h el **63%** queda sin resolver (37 de 59 timeout); a 72h son 29;
-  a 168h solo 14, pero aguantar una señal una semana deja de parecerse a lo que operas.
-  Define el deadline del resolver y, con él, el denominador.
+Los tres tickets HITL de la frontera se cerraron **aplicando su default**, no contestándolos.
+Es la regla 3 del skill funcionando: *un ticket con default no bloquea — envejece y se aplica*.
+Fernando puede revertir cualquiera y se recalibra.
 
-### 🎫 A qué número se retira un ruleset
-- tipo: `grilling` · estado: abierto · bloqueado por: —
-- **default si no se contesta:** se retira si tras 100 señales resueltas el borde superior del
-  intervalo de confianza de la expectancy sigue por debajo de 0.
-- Se escribe **antes** de la primera señal. Escrito después, se renegocia — que es exactamente
-  como TAO llegó a 32 trades con 3% de aciertos.
+- **Cuánto vive una señal** → **72h**. A 36h el 63% quedaba sin resolver (37 de 59); a 168h solo
+  14, pero aguantar una señal una semana deja de parecerse a lo que se opera.
+- **A qué número se retira un ruleset** → se retira si tras **100 señales resueltas** el borde
+  superior del IC de la expectancy sigue < 0. Escrito antes de la primera señal, a propósito.
+- **Qué símbolos** → **solo ZEC**. Cada símbolo agregado divide el denominador.
 
-### 🎫 Qué símbolos, fijos, para toda la ventana
-- tipo: `grilling` · estado: abierto · bloqueado por: —
-- **default si no se contesta:** solo ZEC (el estado actual)
-- Cada símbolo agregado **divide** el denominador: es el mecanismo por el que el 83% de los
-  trades quedó en 2 símbolos y ninguno juntó n suficiente. Pero con 1 símbolo y ≤3 alertas/semana,
-  llegar a n=30 en vivo toma ~10 semanas.
+**Efecto sobre el presupuesto:** cerrar tres HITL liberó el cupo, así que `regla-v1` graduó de
+niebla a ticket vivo en la misma pasada. Esa es la mecánica, no una excepción a ella.
+
+## Frontera — abierta
+
+### 🎫 La primera `rules.py`
+- tipo: `prototype` · estado: **en curso** (cabeza Sonnet, hydra 08-21) · bloqueado por: —
+- Graduó de la niebla al cerrarse los tres de arriba.
+- Insumo medido: MFE mediana **+0.67R** contra objetivos que promediaban **1.27R** — el objetivo
+  se pone donde vive la distribución de excursión, no en un múltiplo de ATR elegido a mano.
+- Criterio: calibrada a **≤3 alertas/semana** sobre el corpus. Si ningún umbral da expectancy
+  positiva, ése es el resultado y se reporta — no se maquilla.
 
 ### 🎫 Postgres persistente + respaldo fuera del proveedor
 - tipo: `task` · modo: AFK · estado: abierto · bloqueado por: —
-- No cuesta presupuesto de preguntas. Sin esto se repite el incidente de la DB efímera que borró
-  5 meses de telemetría.
+- Sin esto se repite el incidente de la DB efímera que borró 5 meses de telemetría.
+
+### 🎫 Cablear `main.py`
+- tipo: `task` · modo: AFK · estado: abierto · bloqueado por: los módulos en curso
+- 🔴 **El destino dice "responde en minutos" y hoy no lo cumple**: sin cableado central hay
+  módulos aislados que funcionan, no un instrumento que le responda algo a alguien.
 
 ## Todavía sin precisar
 
-- **La primera `rules.py`** (`prototype`). Formulable, pero **no se abre**: el presupuesto de 3
-  tickets HITL está lleno. Entra cuando cierre uno de los de arriba. Ya tiene insumo: la MFE
-  mediana (+0.67R) dice dónde vivía el precio, contra objetivos de 1.27R que casi nunca se
-  tocaron — el objetivo se pone donde está la distribución, no en un múltiplo de ATR elegido a mano.
+- **Cómo se valida contra datos VIVOS**, y cuándo. Es el cierre de "¿qué tan bueno es esto de
+  verdad?" y hoy no está ni en la frontera ni fuera de alcance — solo se ha validado contra
+  histórico. Se precisa después de que `rules.py` cierre.
 - **¿El veredicto del LLM correlaciona con el resultado?** (`research`). Depende de que existan
   señales vivas con `llm_verdict` guardado. Hoy no hay ninguna.
-- Umbral de ambigüedad intrabar: hoy salió **0%** en 59 resoluciones a 1h, así que la pregunta
-  de bajar a 5m ni siquiera se abre.
+- Umbral de ambigüedad intrabar: salió **0%** en 59 resoluciones a 1h, así que la pregunta de
+  bajar a 5m ni se abre.
 
 ## Fuera de alcance
 

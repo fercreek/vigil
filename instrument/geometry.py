@@ -43,12 +43,30 @@ class Geometry:
 
     @property
     def breakeven_wr(self) -> float:
-        """The hit rate this geometry needs just to break even, all-out at TP1.
+        """Break-even hit rate IF the whole position exited at TP1.
 
-        Printed on every alert. A 1.18 R:R needs 45.8%; saying so up front is the
-        difference between a signal and a suggestion.
+        Kept as a reference figure only. It is NOT what the alert should quote,
+        because no trade resolves that way: resolver.py takes half off at TP1 and
+        runs the rest, so the real bar is the range below.
         """
         return 1.0 / (1.0 + self.rr_tp1)
+
+    def breakeven_wr_range(self, partial_at_tp1: float = 0.5) -> tuple[float, float]:
+        """(best, worst) break-even hit rate under the partial-exit scheme actually used.
+
+        A winner pays `partial*rr_tp1 + (1-partial)*x`, where x is rr_tp2 when the
+        runner reaches TP2 and 0 when it is stopped at breakeven. Those two ends bracket
+        the truth; nothing in between is knowable before the fact.
+
+        This exists because quoting the all-out number was wrong in both directions: at
+        0.7R/1.3R it prints 58.8% while the real bar sits between 50.0% and 74.1%, and
+        notify.py was comparing it against an empirical win rate produced by the partial
+        scheme -- so the alert could say "you are ahead" against a floor 15 points too low.
+        """
+        won = partial_at_tp1 * self.rr_tp1
+        best = 1.0 / (1.0 + won + (1.0 - partial_at_tp1) * self.rr_tp2)
+        worst = 1.0 / (1.0 + won)
+        return best, worst
 
     def r_at(self, price: float) -> float:
         """Signed R multiple of `price` relative to entry."""

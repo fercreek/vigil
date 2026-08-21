@@ -85,3 +85,33 @@ def test_a_geometry_the_legacy_bot_stored_92_times_is_refused():
     from instrument.geometry import InvalidGeometry
     with pytest.raises(InvalidGeometry):
         assert_geometry("LONG", 246.16, 265.39, 268.85, 280.0)   # real row, trades.db id=3
+
+
+def test_runner_stopped_and_target_in_one_candle_takes_the_stop():
+    """The pessimism rule has to hold on the runner too, not just before TP1.
+
+    Found by an adversarial pass: this branch checked TP2 first and never raised the
+    ambiguity flag, so a candle holding both breakeven and TP2 resolved as the best
+    case -- on the highest-paying path, which is the worst place to be generous.
+    Zero occurrences in ZEC 1h, but 8 in TAO, 6 in BTC, 8 in ETH and 7 in SOL: latent
+    until the day a second symbol is switched on.
+    """
+    bars = [_bar("t1", 100, 107, 99, 106),      # TP1 fills, stop moves to entry
+            _bar("t2", 106, 113, 99, 100)]      # touches TP2 (112) AND breakeven (100)
+    result = resolve(LONG_G, bars, max_bars=10)
+    assert result.outcome == "TP1_THEN_BE"
+    assert result.same_bar_ambiguous is True
+    assert result.r_realized == pytest.approx(0.6)       # not the 1.8R of the TP2 branch
+
+
+def test_breakeven_range_brackets_the_partial_scheme():
+    """The alert must quote a bar the trade can actually be measured against.
+
+    `breakeven_wr` answers "all out at TP1", which no trade does: half comes off at TP1
+    and the rest runs. At 0.7R/1.3R that prints 58.8% while the real bar is 50.0%-74.1%.
+    """
+    geometry = assert_geometry("LONG", 100.0, 90.0, 107.0, 113.0)   # rr1 0.7, rr2 1.3
+    best, worst = geometry.breakeven_wr_range(partial_at_tp1=0.5)
+    assert best == pytest.approx(0.5, abs=0.001)
+    assert worst == pytest.approx(0.7407, abs=0.001)
+    assert best < geometry.breakeven_wr < worst

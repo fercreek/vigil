@@ -108,6 +108,13 @@ def resolve(geometry: Geometry, candles: Sequence[Candle] | Iterable[Candle],
                                    tp1_bar_ts, mae_r, mfe_r, geometry, ambiguous)
                 continue
 
+        # Same pessimism as before TP1, and for the same reason. This branch used to
+        # check TP2 first and never set the flag, so a candle holding both breakeven
+        # and TP2 resolved as the best case -- exactly on the highest-paying path.
+        if hit_tp2 and hit_stop:
+            ambiguous = True
+            return _finish("TP1_THEN_BE", geometry.entry, candle.ts, index, True,
+                           tp1_bar_ts, mae_r, mfe_r, geometry, ambiguous)
         if hit_tp2:
             return _finish("TP1_THEN_TP2", geometry.tp2, candle.ts, index, True,
                            tp1_bar_ts, mae_r, mfe_r, geometry, ambiguous)
