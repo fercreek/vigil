@@ -28,7 +28,7 @@ DEFAULT_TIMEOUT_SECONDS = 8.0
 LLMClient = Callable[[dict[str, Any], float], Any]
 
 
-def annotate(signal: dict[str, Any], client: LLMClient | None,
+def annotate(signal: dict[str, Any], client: LLMClient | None = None,
              timeout: float = DEFAULT_TIMEOUT_SECONDS) -> dict[str, Any] | None:
     """Ask `client` for an opinion on `signal`. Returns the JSON-able dict to
     store in signals.llm_verdict, or None on ANY failure -- a crashing client,

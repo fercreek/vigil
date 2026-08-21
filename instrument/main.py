@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from . import breakout, llm_note, notify, rules, telegram_poll, watch
 from .feed import FeedUnavailable, fetch_ohlcv
 from .geometry import InvalidGeometry, assert_geometry
-from .knowledge import cache
+from .knowledge import cache, refresh
 from .resolver import RESOLVER_VERSION, resolve
 from .store import RowRejected, connect, insert_resolution, insert_signal
 
@@ -160,6 +160,31 @@ def resolve_pending(conn, max_hold_bars: int = MAX_HOLD_BARS) -> int:
     return resolved
 
 
+_KNOWLEDGE_EVERY = timedelta(hours=6)
+_last_knowledge_refresh: datetime | None = None
+
+
+def _refresh_knowledge_if_due(conn) -> str:
+    """Keep the knowledge base current from inside the loop.
+
+    There is no crontab on this host, so `make knowledge-refresh` existed and
+    nothing ever called it -- the cache was still empty in production hours after
+    the module shipped. A schedule that depends on someone remembering to install
+    it is the same failure as a date that depends on someone remembering to edit
+    it, which is the bug this whole module exists to kill.
+    """
+    global _last_knowledge_refresh
+    now = datetime.now(timezone.utc)
+    if _last_knowledge_refresh and now - _last_knowledge_refresh < _KNOWLEDGE_EVERY:
+        return "skipped"
+    _last_knowledge_refresh = now
+    report, problems = refresh.run(conn)
+    if problems:
+        watch.record(conn, "knowledge", "degraded", "; ".join(problems)[:200], _now())
+    conn.commit()
+    return f"{len(report)} entries, {len(problems)} problems"
+
+
 def run_forever(db_path: str | None = None) -> None:
     if notify.TELEGRAM_TOKEN:  # buttons need someone reading getUpdates; own thread, own connection
         telegram_poll.start_background(notify.TELEGRAM_TOKEN, db_path)
@@ -168,7 +193,8 @@ def run_forever(db_path: str | None = None) -> None:
             try:
                 sent = scan_once(conn)
                 resolved = resolve_pending(conn)
-                print(f"[{_now()}] sent={sent} resolved={resolved}")
+                refreshed = _refresh_knowledge_if_due(conn)
+                print(f"[{_now()}] sent={sent} resolved={resolved} knowledge={refreshed}")
             except FeedUnavailable as exc:
                 # A dead feed must look different from a quiet market. This is the
                 # distinction the legacy bot could not make for 54 days.

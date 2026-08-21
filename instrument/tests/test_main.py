@@ -96,3 +96,14 @@ def test_scan_once_evaluates_and_stores_every_strategy_per_symbol(monkeypatch):
     versions = {row["ruleset_version"] for row in rows}
     assert versions == {rules.RULESET_VERSION, breakout.RULESET_VERSION}
     assert all(row["decision"] == "SUPPRESSED" for row in rows)
+
+
+def test_a_sent_signal_does_not_crash_without_an_llm_client():
+    """main.py calls llm_note.annotate(row) with no client, and annotate used to
+    require one. Nothing caught it because no signal reached SENT until breakout.py
+    shipped -- it fires two or three times a day, so the first one in production
+    would have killed the loop, and restartPolicyType=ALWAYS would have hidden it as
+    a restart cycle. The contract says annotate degrades to None on any failure; a
+    missing provider is the most ordinary failure there is."""
+    from instrument import llm_note
+    assert llm_note.annotate({"symbol": "ZEC", "side": "LONG"}) is None
