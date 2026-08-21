@@ -441,7 +441,6 @@ BB_WIDTH_RANGING_PCT   = 0.01    # BB width < 2% = ranging (bajo edge)
 ATR_VOLATILE_PERCENTILE = 80     # ATR > percentil 80 = volatile
 REGIME_CACHE_TTL       = 900     # 15 min cache por simbolo
 FUNDING_CACHE_TTL      = 300     # 5 min cache
-COINGLASS_CACHE_TTL    = 600     # 10 min cache (limite free tier: 10 calls/min)
 
 # ── Phase 5: Dynamic Leverage + Portfolio Risk ───────────────────────────────
 LEVERAGE_MIN = 2           # VIX > 35 o VOLATILE

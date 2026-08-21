@@ -86,10 +86,6 @@ def gate_g1_evidence(repo_root: Path, changed_files: set[str] | None = "unset",
 
 def gate_g2_spec_count(repo_root: Path) -> GateResult:
     """docs/specs/ holds exactly one open .md outside ARCHIVE/."""
-    # docs/spec/ is this package's convention; the legacy docs/specs/ holds 111 files
-    # of the sprawl this gate prevents, and a gate kept red by debt nobody pays gets
-    # switched off. Reports SKIPPED, never PASS: a gate checking nothing must not look
-    # like a gate that found nothing.
     spec_dir = repo_root / "docs" / "spec"
     if not spec_dir.exists():
         return GateResult("G2 open spec", True, skipped=True,
@@ -100,20 +96,28 @@ def gate_g2_spec_count(repo_root: Path) -> GateResult:
                       details=[str(p.relative_to(repo_root)) for p in specs])
 
 def gate_g3_loc(root: Path, per_file_max: int = 250, total_max: int = 2000) -> GateResult:
-    """250 lines/file everywhere; 2000 total over RUNTIME code only.
+    """250 lines/file everywhere; 2000 over runtime code, 800 over knowledge/.
 
-    Tests and scripts are out of the total: a budget that counts tests taxes the
-    one habit we want more of. The per-file ceiling still applies to them.
+    Tests and scripts sit outside the totals: counting tests taxes the habit we want.
     """
     rows = [(sum(1 for _ in p.open()), p.relative_to(root.parent)) for p in _iter_py_files(root)]
     rows.sort(reverse=True)
-    total = sum(n for n, p in rows if not {"tests", "scripts"} & set(p.parts))
+    core = sum(n for n, p in rows
+               if not {"tests", "scripts", "knowledge"} & set(p.parts))
+    knowledge = sum(n for n, p in rows if "knowledge" in p.parts)
+    total = core
     over = [(n, p) for n, p in rows if n > per_file_max]
     biggest = f"{rows[0][1].name} {rows[0][0]}" if rows else "n/a"
-    summary = f"{total:,} / {total_max:,}  ·  archivo mayor: {biggest}"
+    knowledge_max = 800
+    over_knowledge = knowledge > knowledge_max
+    summary = (f"core {core:,}/{total_max:,} · knowledge {knowledge:,}/{knowledge_max:,}"
+               f"  ·  archivo mayor: {biggest}")
     table = [f"{n:>6}  {p}" for n, p in rows]
     over_lines = [f"OVER BUDGET: {p} has {n} lines (max {per_file_max})" for n, p in over]
-    return GateResult("G3 LOC", not over and total <= total_max, summary=summary,
+    if over_knowledge:
+        over_lines.append(f"OVER BUDGET: knowledge/ has {knowledge} lines (max {knowledge_max})")
+    passed = not over and total <= total_max and not over_knowledge
+    return GateResult("G3 LOC", passed, summary=summary,
                       details=table + over_lines, always_show=True)
 
 def _code_lines(path: Path) -> dict[int, str]:

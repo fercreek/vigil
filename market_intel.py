@@ -1,21 +1,23 @@
 """
 market_intel.py — Phase 2: Market Intelligence Layer
 
-Funding rates, niveles de liquidacion, deteccion de regimen de mercado.
+Funding rates, deteccion de regimen de mercado.
 Diseno cache-first con degradacion graceful en todas las funciones.
 
 Funciones principales:
   - get_funding_rates()       → batch fetch de funding rates via ccxt
   - get_funding_signal()      → +1/0/-1 para confluencia contrarian
-  - get_liquidation_levels()  → niveles CoinGlass (graceful sin API key)
-  - check_sl_near_liquidation() → warning si SL esta cerca de cluster
   - detect_regime()           → TRENDING_UP/DOWN, RANGING, VOLATILE
   - get_funding_html()        → HTML para Telegram /funding
   - get_regime_html()         → HTML para Telegram /regime
-  - get_liquidations_html()   → HTML para Telegram /liquidations
+  - get_liquidations_html()   → HTML para Telegram /liquidations (fuente retirada 2026-08-21)
+
+CoinGlass integration retirada 2026-08-21: la API v2 devuelve HTTP 500 (muerta) y la
+v4 requiere pago desde $29/mes. Sin key configurada nunca en .env y sin un solo caller
+del dato fuera del comando manual /liquidations, no se justifica el costo. get_liquidations_html()
+se dejo como respuesta honesta en vez de borrar el comando.
 """
 
-import os
 import time
 import ccxt
 import pandas as pd
@@ -25,7 +27,7 @@ from config import (
     FUNDING_EXTREME_LONG, FUNDING_EXTREME_SHORT,
     ADX_TRENDING_THRESHOLD, BB_WIDTH_RANGING_PCT,
     ATR_VOLATILE_PERCENTILE, REGIME_CACHE_TTL,
-    FUNDING_CACHE_TTL, COINGLASS_CACHE_TTL,
+    FUNDING_CACHE_TTL,
 )
 
 # ── Exchange (publica, sin auth — solo para funding rates) ────────────────────
@@ -34,7 +36,6 @@ from exchange_singleton import binance_futures as _binance_futures
 # ── Cache ─────────────────────────────────────────────────────────────────────
 _CACHE = {
     "funding": {"data": {}, "last_update": 0},
-    "liquidations": {},   # {symbol: {"data": {...}, "last_update": 0}}
     "regime": {},          # {symbol: {"result": {...}, "last_update": 0}}
 }
 
@@ -110,101 +111,7 @@ def get_funding_signal(symbol, side, funding_data=None):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 2. LIQUIDATION LEVELS (CoinGlass)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def get_liquidation_levels(symbol):
-    """
-    Fetch niveles de liquidacion de CoinGlass API.
-
-    Requiere COINGLASS_API_KEY en .env. Sin key → retorna {"available": False}.
-    Free tier: 10 calls/min — cache agresivo.
-    """
-    api_key = os.getenv("COINGLASS_API_KEY", "")
-    if not api_key:
-        return {"available": False, "reason": "no_api_key"}
-
-    # Check cache
-    now = time.time()
-    cached = _CACHE["liquidations"].get(symbol, {})
-    if cached and now - cached.get("last_update", 0) < COINGLASS_CACHE_TTL:
-        return cached.get("data", {"available": False, "reason": "cached_empty"})
-
-    try:
-        import requests
-        url = f"https://open-api.coinglass.com/public/v2/liquidation/info"
-        headers = {"coinglassSecret": api_key, "accept": "application/json"}
-        params = {"symbol": symbol}
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-
-        if data.get("code") == "0" and data.get("data"):
-            liq_data = data["data"]
-            result = {
-                "available": True,
-                "long_liquidations": liq_data.get("longLiquidationInfo", []),
-                "short_liquidations": liq_data.get("shortLiquidationInfo", []),
-                "timestamp": now,
-            }
-        else:
-            result = {"available": False, "reason": f"api_code_{data.get('code', 'unknown')}"}
-
-        _CACHE["liquidations"][symbol] = {"data": result, "last_update": now}
-        return result
-
-    except Exception as e:
-        print(f"⚠️ [MarketIntel] Error fetching liquidation levels for {symbol}: {e}")
-        if cached and cached.get("data"):
-            return cached["data"]
-        return {"available": False, "reason": str(e)}
-
-
-def check_sl_near_liquidation(symbol, sl_price, side):
-    """
-    Verifica si el SL esta cerca (<1%) de un cluster de liquidacion.
-
-    Retorna: {"warning": bool, "nearest_cluster": float, "distance_pct": float}
-    """
-    liq = get_liquidation_levels(symbol)
-    if not liq.get("available"):
-        return {"warning": False, "reason": "data_unavailable"}
-
-    # Para LONG, preocupan las liquidaciones SHORT (debajo)
-    # Para SHORT, preocupan las liquidaciones LONG (arriba)
-    if side == "LONG":
-        levels = liq.get("short_liquidations", [])
-    else:
-        levels = liq.get("long_liquidations", [])
-
-    if not levels or sl_price <= 0:
-        return {"warning": False, "reason": "no_levels"}
-
-    # Buscar cluster mas cercano al SL
-    nearest = None
-    min_dist = float('inf')
-
-    for level in levels:
-        liq_price = float(level.get("price", 0))
-        if liq_price <= 0:
-            continue
-        dist = abs(sl_price - liq_price) / sl_price
-        if dist < min_dist:
-            min_dist = dist
-            nearest = liq_price
-
-    if nearest is None:
-        return {"warning": False, "reason": "no_valid_levels"}
-
-    return {
-        "warning": min_dist < 0.01,  # <1%
-        "nearest_cluster": nearest,
-        "distance_pct": round(min_dist * 100, 2),
-    }
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 3. REGIME DETECTION
+# 2. REGIME DETECTION
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def detect_regime(symbol):
@@ -295,7 +202,7 @@ def _default_regime():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 4. TELEGRAM HTML GENERATORS
+# 3. TELEGRAM HTML GENERATORS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 _REGIME_EMOJI = {
@@ -379,40 +286,17 @@ def get_regime_html(symbols=None):
 
 
 def get_liquidations_html(symbol="TAO"):
-    """HTML formateado de niveles de liquidacion para Telegram."""
-    liq = get_liquidation_levels(symbol)
+    """
+    HTML para Telegram /liquidations.
 
-    lines = [f"💥 <b>LIQUIDATION LEVELS — {symbol}</b>\n"]
-
-    if not liq.get("available"):
-        reason = liq.get("reason", "unknown")
-        if reason == "no_api_key":
-            lines.append(
-                "<i>⚠️ COINGLASS_API_KEY no configurada en .env</i>\n"
-                "<i>Agrega la key para activar esta feature.</i>"
-            )
-        else:
-            lines.append(f"<i>⚠️ Data no disponible: {reason}</i>")
-        return "\n".join(lines)
-
-    long_liqs = liq.get("long_liquidations", [])[:5]  # Top 5
-    short_liqs = liq.get("short_liquidations", [])[:5]
-
-    if long_liqs:
-        lines.append("🔴 <b>Long Liquidations (arriba):</b>")
-        for lvl in long_liqs:
-            price = lvl.get("price", 0)
-            vol = lvl.get("vol", 0)
-            lines.append(f"  • ${float(price):,.2f} — Vol: {vol}")
-
-    if short_liqs:
-        lines.append("\n🟢 <b>Short Liquidations (abajo):</b>")
-        for lvl in short_liqs:
-            price = lvl.get("price", 0)
-            vol = lvl.get("vol", 0)
-            lines.append(f"  • ${float(price):,.2f} — Vol: {vol}")
-
-    if not long_liqs and not short_liqs:
-        lines.append("<i>Sin niveles de liquidacion significativos.</i>")
-
-    return "\n".join(lines)
+    La integracion CoinGlass que alimentaba este comando se retiro el 2026-08-21:
+    su API v2 (open-api.coinglass.com) devuelve HTTP 500 y la v4 requiere pago
+    desde $29/mes. Nunca hubo COINGLASS_API_KEY configurada en .env. En vez de
+    dejar el comando fallando o devolviendo un vacio ambiguo, responde honesto.
+    """
+    return (
+        f"💥 <b>LIQUIDATION LEVELS — {symbol}</b>\n\n"
+        "<i>⚠️ Esta fuente se retiro el 2026-08-21: la API de CoinGlass v2 "
+        "responde error 500 (muerta) y la v4 es de pago desde $29/mes.</i>\n\n"
+        "<i>Funding rate sigue disponible gratis, sin key, vía /funding.</i>"
+    )

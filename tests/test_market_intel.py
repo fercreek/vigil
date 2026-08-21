@@ -1,7 +1,7 @@
 """
 test_market_intel.py — Tests para Phase 2: Market Intelligence
 
-Cubre: ADX, BB Width, Regime Detection, Funding Rates, Liquidation Levels,
+Cubre: ADX, BB Width, Regime Detection, Funding Rates,
 y la integracion de funding signal en calculate_confluence_score().
 
 Todos los tests son self-contained (sin API calls reales).
@@ -269,45 +269,7 @@ class TestFundingRates:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 5. LIQUIDATION LEVELS TESTS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestLiquidationLevels:
-    """Tests para liquidation levels en market_intel.py."""
-
-    def test_no_api_key_returns_unavailable(self):
-        """Sin COINGLASS_API_KEY → graceful degradation."""
-        import market_intel
-        with patch.dict(os.environ, {}, clear=False):
-            # Remove key if exists
-            os.environ.pop("COINGLASS_API_KEY", None)
-            result = market_intel.get_liquidation_levels("TAO")
-            assert result["available"] is False
-            assert result["reason"] == "no_api_key"
-
-    def test_check_sl_near_liquidation_unavailable(self):
-        """Sin data de liquidacion → warning=False."""
-        import market_intel
-        with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("COINGLASS_API_KEY", None)
-            result = market_intel.check_sl_near_liquidation("TAO", 295.0, "LONG")
-            assert result["warning"] is False
-
-    def test_api_failure_graceful(self):
-        """Error de CoinGlass API → degradacion graceful."""
-        import market_intel
-        market_intel._CACHE["liquidations"] = {}  # Clear cache
-
-        with patch.dict(os.environ, {"COINGLASS_API_KEY": "fake_key"}):
-            mock_requests = MagicMock()
-            mock_requests.get.side_effect = Exception("connection refused")
-            with patch.dict(sys.modules, {'requests': mock_requests}):
-                result = market_intel.get_liquidation_levels("TAO")
-                assert result["available"] is False
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 6. CONFLUENCE SCORE WITH FUNDING INTEGRATION TESTS
+# 5. CONFLUENCE SCORE WITH FUNDING INTEGRATION TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestConfluenceWithFunding:
@@ -360,7 +322,7 @@ class TestConfluenceWithFunding:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 7. HTML GENERATORS TESTS
+# 6. HTML GENERATORS TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestHTMLGenerators:
@@ -399,9 +361,10 @@ class TestHTMLGenerators:
         assert "TRENDING_UP" in html
         assert "TAO" in html
 
-    def test_liquidations_html_no_key(self):
+    def test_liquidations_html_retired_source(self):
+        """CoinGlass se retiro 2026-08-21 — el comando responde honesto, no falla."""
         import market_intel
-        os.environ.pop("COINGLASS_API_KEY", None)
         html = market_intel.get_liquidations_html("TAO")
         assert "LIQUIDATION" in html
-        assert "COINGLASS_API_KEY" in html
+        assert "retiro" in html or "retirada" in html
+        assert "/funding" in html
