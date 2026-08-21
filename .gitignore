@@ -40,3 +40,7 @@ last_update_id.txt
 phase.txt
 .claude/worktrees/
 .DS_Store
+
+# instrument corpus: regenerable with instrument/scripts/fetch_corpus.py
+corpus/
+instrument/**/__pycache__/
