@@ -150,7 +150,7 @@ def render(signal_row: dict | sqlite3.Row, account_size: float = 1000.0,
            risk_pct: float = 0.01, current_price: float | None = None,
            now: datetime | None = None) -> str:
     """Same row + same optional live inputs -> same string, always."""
-    header = [f"{_field(signal_row, 'symbol', '?')} {_field(signal_row, 'side', '?')} · {_field(signal_row, 'timeframe', '?')} · señal #{_field(signal_row, 'id', '?')}"]
+    header = [f"{_field(signal_row, 'symbol', '?')} {_field(signal_row, 'side', '?')} · {_field(signal_row, 'timeframe', '?')} · alerta #{_field(signal_row, 'alert_no') or _field(signal_row, 'id', '?')}"]
     header += _geometry_lines(signal_row)
 
     observation = _observation_line(signal_row)

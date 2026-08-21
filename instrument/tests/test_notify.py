@@ -39,7 +39,7 @@ ROW = {
 }
 
 EXPECTED = (
-    "ZEC LONG · 1h · señal #418\n"
+    "ZEC LONG · 1h · alerta #418\n"
     "Entrada  212.40\n"
     "Stop     206.10   (−2.97%)   1R = 6.30\n"
     "TP1      220.20   RR 1.24\n"
@@ -101,7 +101,7 @@ def test_render_does_not_crash_on_missing_optional_fields():
     must still render without raising."""
     minimal = {"id": 1, "symbol": "BTC", "side": "LONG", "timeframe": "1h"}
     out = render(minimal)
-    assert out == "BTC LONG · 1h · señal #1"
+    assert out == "BTC LONG · 1h · alerta #1"
 
 
 def test_render_reads_from_a_real_sqlite_row():
@@ -120,7 +120,7 @@ def test_render_reads_from_a_real_sqlite_row():
         row = conn.execute("SELECT * FROM signals WHERE id = ?", (signal_id,)).fetchone()
 
     out = render(row)
-    assert out.startswith("ZEC LONG · 1h · señal #")
+    assert out.startswith("ZEC LONG · 1h · alerta #")
     assert "Disparo: RSI 18.4 · cierre bajo BB inferior · precio < EMA200" in out
     assert "TP2      228.00   RR 2.48" in out
 

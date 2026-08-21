@@ -112,7 +112,15 @@ def _evaluate_and_store(conn, strategy, symbol: str, candles, suppressions, send
     if row.get("decision") != "SENT":
         return False
     if send:
-        stored = conn.execute("SELECT * FROM signals WHERE id = ?", (signal_id,)).fetchone()
+        stored = dict(conn.execute("SELECT * FROM signals WHERE id = ?",
+                                   (signal_id,)).fetchone())
+        # A row id counts every evaluation, suppressed ones included, so the first
+        # real alert came out as #21 and would keep jumping by however many candles
+        # were quietly rejected in between. What belongs in a message to a human is
+        # a count of alerts actually sent: 1, 2, 3.
+        stored["alert_no"] = conn.execute(
+            "SELECT COUNT(*) FROM signals WHERE decision = 'SENT' AND id <= ?",
+            (signal_id,)).fetchone()[0]
         notify.send_signal(stored, current_price=candles[-1].close)
     return True
 
