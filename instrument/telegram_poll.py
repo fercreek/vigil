@@ -56,17 +56,20 @@ def keyboard_markup() -> dict:
 
 
 def _format_freshness(report: list[dict]) -> str:
+    """'caché de conocimiento' reads as engineer-talk on a phone; 'los datos
+    que uso' says the same thing. Each row translates its dict fields into a
+    sentence -- never the dict itself."""
     if not report:
-        return "🗂 La caché de conocimiento no tiene entradas todavía."
-    lines = ["🗂 Frescura de la caché de conocimiento:"]
+        return "🗂 Todavía no tengo datos guardados que revisar."
+    lines = ["🗂 Datos que uso para las señales:"]
     for row in report:
-        age = f"{row['age_hours']:.1f}h" if row["age_hours"] is not None else "edad desconocida"
+        age = f"actualizado hace {row['age_hours']:.1f}h" if row["age_hours"] is not None else "edad desconocida"
         if row["expired"]:
             hours = row["expired_for_hours"]
-            status = f"⚠️ vencida hace {hours:.1f}h" if hours is not None else "⚠️ vencida"
+            status = f"⚠️ vencido hace {hours:.1f}h" if hours is not None else "⚠️ sin vigencia registrada"
         else:
             status = "vigente"
-        manual = " · manual" if row["is_manual"] else ""
+        manual = " · cargado a mano" if row["is_manual"] else ""
         lines.append(f"- {row['key']}: {age}{manual} · {status}")
     return "\n".join(lines)
 

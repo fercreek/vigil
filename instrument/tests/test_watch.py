@@ -73,13 +73,13 @@ def test_weekly_pulse_reports_zero_alerts_with_the_old_date_that_reveals_it():
     assert "0 alertas esta semana" in rendered
     assert "2026-01-01" in rendered   # the old date, not the silence, is what gives it away
 
-def test_weekly_pulse_says_never_when_nothing_was_ever_sent():
+def test_weekly_pulse_says_none_sent_yet_when_nothing_was_ever_sent():
     with connect(":memory:") as conn:
         beat(conn, "signal_loop", datetime.now(timezone.utc).isoformat())
         pulse = weekly_pulse(conn, "signal_loop", max_age_minutes=60)
     assert pulse["last_signal_at"] is None
     assert pulse["alerts_this_week"] == 0
-    assert "nunca" in format_weekly_pulse(pulse)
+    assert "aún no manda ninguna señal" in format_weekly_pulse(pulse)
 
 def test_weekly_pulse_flags_possible_outage_when_the_heartbeat_is_stale():
     with connect(":memory:") as conn:

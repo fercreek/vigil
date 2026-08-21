@@ -6,6 +6,7 @@ None on any failure without touching the decision the rule already made.
 """
 from __future__ import annotations
 
+import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -73,8 +74,8 @@ def test_report_prints_the_insufficient_n_not_an_asterisked_number():
         report = build_report(conn)
     assert report["win_rate"] is None
     rendered = render_report(report)
-    assert "insuficiente para un WR" in rendered
-    assert "n=12" in rendered
+    assert "no alcanza para un %" in rendered
+    assert "llevas 12" in rendered
 
 # ── 2. taken-rate below 60% suspends conclusions ────────────────────────────
 def test_taken_rate_40_percent_suspends_conclusions():
@@ -90,7 +91,7 @@ def test_taken_rate_40_percent_suspends_conclusions():
     assert report["taken_rate"] < TAKEN_RATE_FLOOR
     assert report["conclusions_suspended"] is True
     rendered = render_report(report)
-    assert "SUSPENDED" in rendered
+    assert "quedan en pausa" in rendered
     assert "4/10" in rendered
 
 def test_taken_rate_above_floor_does_not_suspend():
@@ -175,8 +176,8 @@ def test_taken_feedback_reports_outcome_and_r_for_marked_trades():
     assert report["taken_feedback_by_outcome"] == {"TP1_THEN_TP2": 1, "SL": 1}
     assert report["taken_feedback_mean_r"] == pytest.approx((1.5 + -1.0) / 2)
     rendered = render_report(report)
-    assert "What happened to what you took" in rendered
-    assert "n=2 resolved" in rendered
+    assert "De lo que sí tomaste" in rendered
+    assert "2 resueltas" in rendered
 
 def test_taken_feedback_is_empty_when_nothing_marked_taken_has_resolved():
     with connect(":memory:") as conn:
@@ -185,6 +186,21 @@ def test_taken_feedback_is_empty_when_nothing_marked_taken_has_resolved():
         report = build_report(conn)
     assert report["taken_feedback_n"] == 0
     rendered = render_report(report)
-    assert "nothing marked TOMADA has resolved yet" in rendered
+    assert "ninguna se ha resuelto todavía" in rendered
 
-# ── 7. weekly pulse: silence must be sent too, and the old date is the tell ──────
+# ── 8. render_report never prints a raw Python structure ────────────────────
+def test_render_report_never_prints_a_raw_data_structure():
+    """The -18%-from-23%-of-rows incident and its siblings all trace back to
+    a number quoted without the shape it came from being legible -- a raw
+    dict/list literal in the text is the sharpest version of that failure
+    (e.g. the old "by decision: {'SUPPRESSED': 18}"). No brace/bracket
+    followed by a quote should ever reach the message body again."""
+    with connect(":memory:") as conn:
+        for i in range(3):
+            sid = _sent_signal(conn, index=i)
+            _resolve(conn, sid, r_realized=1.2, outcome="TP1_THEN_TP2" if i else "SL")
+        empty_report = build_report(conn, ruleset="nonexistent")
+        populated_report = build_report(conn)
+    for report in (empty_report, populated_report):
+        rendered = render_report(report)
+        assert not re.search(r"[\[{]['\"]", rendered), rendered

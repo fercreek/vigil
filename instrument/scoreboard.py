@@ -1,9 +1,11 @@
 """scoreboard.py — the report that decides whether a ruleset lives or dies.
 
 This is where the -18%-from-23%-of-rows incident (see docs/_MAP-instrument.md,
-the "11 vendedores" retro) gets structurally impossible: every figure below is
-printed WITH its denominator, in the same string, at the same visual weight.
-A number without its n does not get a line here.
+the "11 vendedores" retro) gets structurally impossible: every figure computed
+below carries its denominator in the same dict entry, at the same weight.
+A number without its n does not get computed here. render_report() -- the
+Spanish, human-readable text Fernando actually reads -- lives in
+report_text.py and inherits that invariant; it does not re-decide it.
 
 Design choices this file is accountable for:
   - No win rate below n=30. At n~91 the 95% CI on a WR is roughly +/-8 points --
@@ -34,6 +36,7 @@ from typing import Any, Sequence
 if __package__ in (None, ""):  # `python instrument/scoreboard.py` needs the repo root on sys.path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from instrument.report_text import render_report  # noqa: F401 -- re-exported, callers import it from here
 from instrument.stats import build_equity_curve, calculate_max_drawdown, calculate_profit_factor
 from instrument.store import connect
 
@@ -186,51 +189,6 @@ def build_report(conn: sqlite3.Connection, ruleset: str | None = None) -> dict[s
         "kill_rule_verdict": kill_rule_verdict(n_resolved, ci_hi),
         "max_drawdown_pct": max_dd, "profit_factor": profit_factor,
     }
-
-
-def render_report(report: dict[str, Any]) -> str:
-    r = report
-    lines = [f"=== Scoreboard — ruleset={r['ruleset'] or 'ALL'} ==="]
-    lines.append(f"Emitted: {r['total_emitted']} (by decision: {r['emitted_by_decision']})")
-    lines.append(f"Resolved: n={r['n_resolved']}")
-    lines.append(f"Orphaned (SENT, unresolved, > {MAX_HOLD_HOURS:.0f}h old): n={r['orphans']}")
-
-    if r["conclusions_suspended"]:
-        lines.append(
-            f"⚠️ CONCLUSIONS SUSPENDED — taken-rate {r['taken_rate']:.1%} "
-            f"(n={r['taken_marked']}/{r['taken_total']} marked) is below the "
-            f"{TAKEN_RATE_FLOOR:.0%} floor: a bad signal and a bad fill look identical here.")
-
-    lo, hi = r["expectancy_ci"]
-    lines.append(f"Expectancy: {r['expectancy_r']:.3f}R (n={r['n_resolved']}, "
-                "95% bootstrap CI [{:.3f}, {:.3f}])".format(lo, hi))
-
-    if r["win_rate"] is None:
-        lines.append(f"Win rate: n={r['win_rate_n']}, insuficiente para un WR (mínimo {MIN_N_FOR_WR})")
-    else:
-        lines.append(f"Win rate: {r['win_rate']}% (n={r['win_rate_n']})")
-
-    if r["breakeven_wr"] is not None:
-        lines.append(f"WR requerido (breakeven, geometría media): {r['breakeven_wr']:.1%} "
-                    f"(n={r['breakeven_wr_n']})")
-
-    if r["median_mfe_r"] is not None:
-        lines.append(f"Median MFE: {r['median_mfe_r']:.3f}R · Median MAE: {r['median_mae_r']:.3f}R "
-                    f"(n={r['mfe_mae_n']})")
-
-    lines.append(f"Taken-rate humano: {r['taken_rate']:.1%} (n={r['taken_marked']}/{r['taken_total']} marked)")
-
-    if r["taken_feedback_n"]:
-        lines.append(f"What happened to what you took: n={r['taken_feedback_n']} resolved "
-                    f"by outcome {r['taken_feedback_by_outcome']} · mean R "
-                    f"(human fill where marked): {r['taken_feedback_mean_r']:.3f}R")
-    else:
-        lines.append("What happened to what you took: n=0 — nothing marked TOMADA has resolved yet")
-
-    lines.append(f"Max drawdown: {r['max_drawdown_pct']:.2f}% · Profit factor: {r['profit_factor']:.2f} "
-                f"(n={r['n_resolved']}, equity assumes {RISK_PCT_PER_R:.0f}% risk per R)")
-    lines.append(f"Kill-rule verdict: {r['kill_rule_verdict']}")
-    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> None:

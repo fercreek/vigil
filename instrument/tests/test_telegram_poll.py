@@ -70,7 +70,7 @@ def test_keyboard_has_exactly_the_three_working_buttons():
 # ---------- freshness formatting ----------
 
 def test_format_freshness_empty():
-    assert "no tiene entradas" in telegram_poll._format_freshness([])
+    assert "Todavía no tengo datos guardados" in telegram_poll._format_freshness([])
 
 
 def test_format_freshness_marks_expired_and_manual():
@@ -81,8 +81,8 @@ def test_format_freshness_marks_expired_and_manual():
          "expired_for_hours": 6.0, "is_manual": True},
     ]
     text = telegram_poll._format_freshness(report)
-    assert "fomc_calendar: 2.0h · vigente" in text
-    assert "funding_btc: 30.0h · manual · ⚠️ vencida hace 6.0h" in text
+    assert "fomc_calendar: actualizado hace 2.0h · vigente" in text
+    assert "funding_btc: actualizado hace 30.0h · cargado a mano · ⚠️ vencido hace 6.0h" in text
 
 
 # ---------- report buttons over getUpdates ----------

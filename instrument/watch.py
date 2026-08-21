@@ -145,9 +145,21 @@ def weekly_pulse(conn: sqlite3.Connection, component: str, max_age_minutes: floa
     }
 
 
+_STATUS_EMOJI = {"vivo": "🟢", "posible caída": "🟡"}
+
+
 def format_weekly_pulse(pulse: dict[str, Any]) -> str:
-    """Pure text render, no network -- e.g. 'vivo · 0 alertas esta semana ·
-    última señal: 2026-08-14'. Whoever sends this is a different function."""
-    last = pulse["last_signal_at"][:10] if pulse["last_signal_at"] else "nunca"
-    return (f"{pulse['status']} · {pulse['alerts_this_week']} alertas esta semana "
-           f"· última señal: {last}")
+    """Pure text render, no network -- e.g. '🟢 vivo · 0 alertas esta semana ·
+    última señal: 2026-08-14'. Whoever sends this is a different function.
+
+    'nunca' used to stand alone for last_signal_at, which reads as an error
+    even when the honest reason is that the instrument just started -- this
+    says that plainly instead of leaving it to sound like one."""
+    alerts = pulse["alerts_this_week"]
+    plural = "" if alerts == 1 else "s"
+    if pulse["last_signal_at"]:
+        last = f"última señal: {pulse['last_signal_at'][:10]}"
+    else:
+        last = "aún no manda ninguna señal"
+    emoji = _STATUS_EMOJI.get(pulse["status"], "")
+    return f"{emoji} {pulse['status']} · {alerts} alerta{plural} esta semana · {last}".strip()
