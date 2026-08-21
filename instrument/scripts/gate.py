@@ -15,6 +15,11 @@ import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+
+# test_gate.py loads this file by path, so its directory is not on sys.path yet.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gate_helpers import (_code_lines, _git_changed_files,  # noqa: E402
+                          _iter_py_files, _read_limit)
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -30,27 +35,6 @@ class GateResult:
     summary: str = ""
     details: list[str] = field(default_factory=list)
     always_show: bool = False
-
-def _iter_py_files(root: Path, skip_dirs: tuple[str, ...] = ()):
-    if not root.exists():
-        return
-    for path in sorted(root.rglob("*.py")):
-        parts = path.relative_to(root).parts
-        if "__pycache__" in parts or any(d in parts for d in skip_dirs):
-            continue
-        yield path
-
-def _git_changed_files(repo_root: Path) -> set[str] | None:
-    """Files changed vs origin/main, or None if that can't be determined."""
-    for base in ("origin/main", "main"):
-        try:
-            out = subprocess.run(
-                ["git", "diff", "--name-only", f"{base}...HEAD"],
-                cwd=repo_root, capture_output=True, text=True, timeout=10, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-            continue
-        return set(out.stdout.split())
-    return None
 
 def gate_g1_evidence(repo_root: Path, changed_files: set[str] | None = "unset",
                      replay_path: Path | None = None, replay_module: Any = None,
@@ -120,24 +104,6 @@ def gate_g3_loc(root: Path, per_file_max: int = 250, total_max: int = 2000) -> G
     return GateResult("G3 LOC", passed, summary=summary,
                       details=table + over_lines, always_show=True)
 
-def _code_lines(path: Path) -> dict[int, str]:
-    """Lines of `path` with docstrings and comments stripped, keyed by lineno."""
-    text = path.read_text()
-    tree = ast.parse(text, filename=str(path))
-    doc_lines: set[int] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-            body = getattr(node, "body", [])
-            if body and isinstance(body[0], ast.Expr) and isinstance(
-                    getattr(body[0], "value", None), ast.Constant):
-                doc_lines.update(range(body[0].lineno, (body[0].end_lineno or body[0].lineno) + 1))
-    out: dict[int, str] = {}
-    for i, line in enumerate(text.splitlines(), start=1):
-        if i in doc_lines or line.strip().startswith("#"):
-            continue
-        out[i] = line.split("#", 1)[0]
-    return out
-
 def gate_g4_expiry(root: Path, registry: list[dict] | None = None, today: str | None = None,
                    skip_dirs: tuple[str, ...] = ("tests", "scripts")) -> GateResult:
     """No date literal governing suppression may be undeclared or expired.
@@ -166,12 +132,6 @@ def gate_g4_expiry(root: Path, registry: list[dict] | None = None, today: str | 
     details = [f"EXPIRED: {e['name']} until={e['until']}" for e in expired] + findings
     summary = f"{len(registry)} declared, {len(expired)} expired, {len(findings)} undeclared"
     return GateResult("G4 expiry", not expired and not findings, summary=summary, details=details)
-
-def _read_limit(limits_file: Path, default: int) -> tuple[int, str]:
-    if not limits_file.exists():
-        return default, (f"{limits_file.name} not found -- using default ceiling {default}; "
-                         f"create it with {{\"except_exception_max\": {default}}} to start the ratchet")
-    return int(json.loads(limits_file.read_text())["except_exception_max"]), ""
 
 def gate_g5_exceptions(root: Path, limits_file: Path | None = None, default_limit: int = 10) -> GateResult:
     """`except Exception: pass` fails immediately; total count is a ratchet."""
