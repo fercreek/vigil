@@ -56,7 +56,39 @@ def main() -> int:
     else:
         print("no se pudo instalar el teclado nuevo (ver log arriba)")
 
-    return 0 if (removed_id and installed_id) else 1
+    commands_ok = _reset_command_menu()
+    return 0 if (removed_id and installed_id and commands_ok) else 1
+
+
+# The slash-command menu is a THIRD registry, separate from both the reply keyboard
+# and anything a message carries: it lives on the bot account via setMyCommands and
+# survives every deploy. The retired bot left /pos /pnl /winrate /intel /status
+# /audit /regime /funding /macro /commodities in there, all of them pointing at a
+# process that no longer runs -- a menu of dead ends.
+def _reset_command_menu() -> bool:
+    import json
+    import urllib.error
+    import urllib.request
+
+    commands = [
+        {"command": "scoreboard", "description": "Marcador: n, expectancy, MFE/MAE"},
+        {"command": "pulso", "description": "Vivo + alertas de la semana"},
+        {"command": "frescura", "description": "Qué tan fresco está cada dato"},
+    ]
+    url = notify._TELEGRAM_API.format(token=notify.TELEGRAM_TOKEN, method="setMyCommands")
+    body = json.dumps({"commands": commands}).encode()
+    request = urllib.request.Request(url, data=body,
+                                     headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            ok = json.load(response).get("ok", False)
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        print(f"no se pudo fijar el menu de comandos: {exc}")
+        return False
+    print("menu de comandos reemplazado -- " +
+          ", ".join("/" + c["command"] for c in commands) if ok
+          else "setMyCommands devolvio ok=false")
+    return bool(ok)
 
 
 if __name__ == "__main__":
