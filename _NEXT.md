@@ -7,6 +7,20 @@
 
 ## ⚡ RETOMAR AQUÍ (P0)
 
+- [x] **P1.1 — Scale-out 50% en TP1** — ✅ 08-20. `trade_monitor.py` toma el parcial en TP1
+  (`mark_partial` + `mark_be`) y un cierre posterior en BE se guarda `PARTIAL_CLOSED` con PnL
+  mezclado, no `LOST`. Cierra la brecha con `backtest_sim.py:136-150`. 15 tests nuevos en
+  `tests/test_partial_tp1.py`. Diagnóstico completo: `docs/STOPLOSS_DIAGNOSIS_PLAN.md`.
+  ⏳ **Sin efecto medible hasta P0.1** (volumen Railway) — hoy la DB se borra en cada deploy.
+- [x] **P0.1 — Volumen Railway `/data` + `TRACKER_DB=/data/trades.db`** — ✅ 08-20.
+  `web-volume` (5 GB) montado en `web:/data`, `TRACKER_DB=/data/trades.db` seteada,
+  deploy `45330d82` SUCCESS. Verificado por SSH: `/data/trades.db` existe y `lost+found`
+  confirma filesystem montado. `/api/stats` responde 200 con `total: 0` (DB nueva, esperado).
+  ⏳ **Falta cerrar el criterio**: tras el PRÓXIMO `railway up`, confirmar que `total` NO
+  vuelve a 0. Hasta ese ciclo, la persistencia está montada pero no comprobada.
+- [ ] **P0.2 — `risk_state.json` al volumen** — `risk_manager.py:36` usa ruta relativa; con
+  `restartPolicyType=ALWAYS` un bot en `HALTED` revive en `NORMAL`.
+
 - [x] **Fix `FOMC_NEXT_MEETING` en `config.py`** — ✅ 07-21: actualizado a `"2026-07-28"` (reunión Jul 28-29). Supresión arranca lunes 27.
 - [x] **Fix `[HMM PREDICT ERROR] ZEC/1h: startprob nan`** — ✅ 07-21 (`b1f2ec4`): z-score features + guard degenerado + failure cache. Verificado limpio en ciclo post-deploy.
 - [x] **Fix `[MarketReport] Telegram error 400`** — ✅ 07-21 (`e6c09c8`): reason del Sentinel ("score 3/5 < 4") entraba crudo a mensaje HTML → `html.escape()` en render + log del body de error. Reproducido y verificado local con el payload exacto. ⏳ Confirmar próximo pulse ZEC/HYPE (~4h post-boot 16:14 UTC) sin 400.

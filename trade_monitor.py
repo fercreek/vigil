@@ -4,6 +4,7 @@ trade_monitor.py — Monitoreo de trades abiertos (TP1/TP2/SL tracking)
 Extraído de scalp_alert_bot.py para mantener archivos < 600 líneas.
 """
 
+import config
 import indicators
 import episode_memory as _em
 from datetime import datetime
@@ -11,6 +12,34 @@ from datetime import datetime
 # SWING trades open > 36h without hitting TP1 = signal failed; close at market
 SWING_TIME_EXIT_HOURS = 36
 # GLOBAL_CACHE importado lazy dentro de monitor_open_trades para evitar circularidad
+
+
+def _leg_pnl_pct(entry: float, exit_p: float, side: str) -> float:
+    """PnL % de una pata, con el signo correcto segun el lado."""
+    if not entry:
+        return 0.0
+    return ((exit_p - entry) / entry * 100) if side == "LONG" else ((entry - exit_p) / entry * 100)
+
+
+def blended_pnl_pct(t: dict, exit_price: float) -> float:
+    """PnL % real de un trade que ya tomo parcial en TP1.
+
+    Un trade con partial_pct=50 que vuelve al BE NO perdio 1R: cerro la mitad en
+    TP1 y la otra mitad plana. Antes de esto el cierre se guardaba como LOST con
+    el PnL de la pata que quedaba, que es la mitad de la historia.
+
+        blended = w * pnl(TP1) + (1-w) * pnl(salida)      con w = partial_pct/100
+
+    Sin parcial (w=0) devuelve el PnL de la salida — mismo numero de siempre.
+    """
+    w = (t.get("partial_pct") or 0) / 100.0
+    side = t["type"]
+    entry = t["entry_price"]
+    exit_leg = _leg_pnl_pct(entry, exit_price, side)
+    if w <= 0:
+        return exit_leg
+    tp1_leg = _leg_pnl_pct(entry, t["tp1_price"], side)
+    return w * tp1_leg + (1 - w) * exit_leg
 
 
 def monitor_open_trades(prices: dict):
@@ -66,32 +95,69 @@ def monitor_open_trades(prices: dict):
             (tipo == "LONG"  and curr_p >= t["tp1_price"]))
 
         if is_sl:
-            tracker.update_trade_status(t["id"], "LOST")
+            # Si ya se tomo parcial en TP1, esto NO es una perdida de riesgo
+            # completo: es el cierre del runner. El resultado del trade es la
+            # mezcla de las dos patas, no la ultima.
+            took_partial = (t.get("partial_pct") or 0) > 0
+            real_pnl = blended_pnl_pct(t, curr_p)
+            status = "PARTIAL_CLOSED" if took_partial else "LOST"
+
+            tracker.update_trade_status(t["id"], status)
             _ep_id = GLOBAL_CACHE.get("episode_ids", {}).pop(t["id"], None)
-            if _ep_id: _em.fill_outcome(_ep_id, "LOSS", -abs(pnl_pct))
-            msg = (f"🔴 <b>SL HIT</b>: {sym} {tipo} · <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
-                   f"Entry ${t['entry_price']:.4f} → Now ${curr_p:.4f}")
+            if _ep_id:
+                _em.fill_outcome(_ep_id, "WIN" if real_pnl > 0 else "LOSS", real_pnl)
+
+            if took_partial:
+                msg = (f"🟡 <b>RUNNER CERRADO</b>: {sym} {tipo} · <b>{real_pnl:+.2f}%</b>\n"
+                       f"{t.get('partial_pct')}% tomado en TP1 ${t['tp1_price']:.4f} · "
+                       f"resto salio en ${curr_p:.4f}\n"
+                       f"Entry ${t['entry_price']:.4f}")
+            else:
+                msg = (f"🔴 <b>SL HIT</b>: {sym} {tipo} · <b>{real_pnl:+.2f}%</b>\n"
+                       f"Entry ${t['entry_price']:.4f} → Now ${curr_p:.4f}")
             alert(f"t_{t['id']}_l", msg, version=t["version"], reply_to=reply)
-            gemini_analyzer.log_result_to_context(sym, "LOST", t["entry_price"], curr_p)
-            circuit_breaker.record_outcome(is_win=False, pnl_pct=-abs(pnl_pct))
+            gemini_analyzer.log_result_to_context(sym, status, t["entry_price"], curr_p)
+            circuit_breaker.record_outcome(is_win=real_pnl > 0, pnl_pct=real_pnl)
         elif is_tp2:
+            # Mezclado: si hubo parcial en TP1, la mitad cerro ahi y la otra aqui.
+            _tp2_pnl = blended_pnl_pct(t, curr_p)
             tracker.update_trade_status(t["id"], "FULL_WON")
             _ep_id = GLOBAL_CACHE.get("episode_ids", {}).pop(t["id"], None)
-            if _ep_id: _em.fill_outcome(_ep_id, "WIN", abs(pnl_pct))
-            msg = (f"🟢 <b>TP2 HIT</b>: {sym} {tipo} · <b>{(pnl_pct or 0.0):+.2f}%</b>\n"
+            if _ep_id: _em.fill_outcome(_ep_id, "WIN", _tp2_pnl)
+            msg = (f"🟢 <b>TP2 HIT</b>: {sym} {tipo} · <b>{_tp2_pnl:+.2f}%</b>\n"
                    f"Entry ${t['entry_price']:.4f} → Now ${curr_p:.4f}")
             alert(f"t_{t['id']}_w", msg, version=t["version"], reply_to=reply)
             gemini_analyzer.log_result_to_context(sym, "WIN_FULL", t["entry_price"], curr_p)
-            circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct))
+            circuit_breaker.record_outcome(is_win=True, pnl_pct=_tp2_pnl)
         elif is_tp1:
-            tracker.update_trade_status(t["id"], "PARTIAL_WON")
+            # Scale-out en TP1. Hasta ahora el bot movia el SL a BE pero dejaba el
+            # 100% puesto: si el precio regresaba, el trade salia en 0 y se
+            # guardaba LOST. El backtester en cambio cierra 50% aqui
+            # (backtest_sim.py:136-150) — de ahi venia la brecha entre el sim en
+            # verde y el feed de Telegram en rojo.
+            #
+            # NO se manda ninguna orden desde aqui. En LIVE el bracket ya dejo una
+            # limit reduceOnly de amount*0.5 en TP1 (trading_executor.py:130-134):
+            # el exchange ya venia cerrando la mitad. Esto solo pone la DB de
+            # acuerdo con lo que pasa afuera. Mandar una orden aqui seria cerrar
+            # el runner dos veces.
+            _pct = getattr(config, "PARTIAL_TP1_PCT", 50)
             be_offset = 0.999 if tipo == "SHORT" else 1.001
             new_sl = round(t["entry_price"] * be_offset, 6)
-            tracker.update_sl(t["id"], new_sl)
+
+            tracker.update_trade_status(t["id"], "PARTIAL_WON")  # sincroniza intel_outcomes
+            tracker.mark_partial(t["id"], _pct)                   # partial_pct = 50
+            tracker.mark_be(t["id"], sl_price=new_sl)             # be_moved = 1 + SL al BE
+            tracker.append_event(
+                t["id"],
+                f"PARTIAL {_pct}% @ TP1 ${t['tp1_price']:.4f} ({pnl_pct:+.2f}%) · SL→BE ${new_sl:.4f}")
+
             alert(f"t_{t['id']}_p",
-                  f"🟡 <b>TP1 HIT</b>: {sym} {tipo} · BE asegurado",
+                  f"🟡 <b>TP1 HIT</b>: {sym} {tipo} · <b>{_pct}% cerrado</b> "
+                  f"({pnl_pct:+.2f}%)\n"
+                  f"Resto corre a TP2 ${t['tp2_price']:.4f} · SL en BE ${new_sl:.4f}",
                   version=t["version"], reply_to=reply)
-            circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct) * 0.5)
+            circuit_breaker.record_outcome(is_win=True, pnl_pct=abs(pnl_pct) * _pct / 100.0)
 
     # ── Time-Based Exit (SWING only) ───────────────────────────────────
     # Data shows losing SWING trades stay open ~40h; winners close in ~19h.

@@ -451,6 +451,19 @@ LEVERAGE_MAX = 7           # Low vol + TRENDING
 MAX_CONCURRENT_POSITIONS = 3       # Maximo 3 posiciones simultaneas
 MAX_PORTFOLIO_EXPOSURE = 3.0       # Exposure < 3x balance
 
+# ── Scale-out en TP1 ─────────────────────────────────────────────────────────
+# % de la posicion que se considera cerrada al tocar TP1. El resto corre a TP2
+# con el SL en breakeven.
+#
+# En LIVE esto NO ejecuta nada: trading_executor.execute_bracket_order ya deja
+# una limit reduceOnly de amount*0.5 en TP1 (trading_executor.py:130-134). El
+# exchange venia haciendo el parcial y la DB no se enteraba — este valor es lo
+# que alinea la contabilidad con lo que ya pasa en Binance.
+#
+# backtest_sim.py asume 0.5 hardcodeado (lineas 136-150). Mantener ambos en 50
+# hasta que el sim importe de aqui (P1.5).
+PARTIAL_TP1_PCT = 50
+
 # ── Webhook TradingView: auth + rate limit ───────────────────────────────────
 # Los valores reales viven en .env (TV_WEBHOOK_SECRET, TV_WEBHOOK_TOKEN,
 # ENFORCE_HMAC, TV_RATE_LIMIT_PER_MIN). Ver webhook_security.py.

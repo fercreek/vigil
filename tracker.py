@@ -442,11 +442,19 @@ def update_trade_levels(trade_id: int, sl: float = None, tp1: float = None, tp2:
     conn.close()
 
 
-def mark_be(trade_id: int):
-    """Marca be_moved=1 y mueve sl_price al entry_price."""
+def mark_be(trade_id: int, sl_price: float = None):
+    """Marca be_moved=1 y mueve el SL a breakeven.
+
+    sl_price=None  → SL exactamente en entry_price (comportamiento original).
+    sl_price=X     → SL en X. El monitor automatico pasa el entry con un offset
+                     pequenio (0.1%) para que el BE cubra fees en vez de salir plano.
+    """
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("UPDATE trades SET be_moved = 1, sl_price = entry_price WHERE id = ?", (trade_id,))
+    if sl_price is None:
+        c.execute("UPDATE trades SET be_moved = 1, sl_price = entry_price WHERE id = ?", (trade_id,))
+    else:
+        c.execute("UPDATE trades SET be_moved = 1, sl_price = ? WHERE id = ?", (float(sl_price), trade_id))
     conn.commit()
     conn.close()
 
