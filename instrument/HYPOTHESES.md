@@ -202,3 +202,29 @@ does.
 **Success criterion:** the 5 shared criteria above, applied to this instrument's signals
 only. It has NOT been run against them yet -- `scripts/test_hypotheses.py` covers H1-H5;
 extending it to this instrument is future work, not done as part of this build.
+
+
+## Breakout geometry — medido 2026-08-21
+
+`MIN_RR = 0.20` en `breakout.py` es un piso de seguridad, no un filtro: exige 83% de
+aciertos y bloquea aproximadamente el peor 1% de las señales. Existe porque un gap
+sintético del 45% produjo un `SENT` que necesitaba **92.2%**, con el stop dimensionado
+por la base pre-gap contra un ATR también pre-gap.
+
+🔴 **No arregla el problema de fondo.** Sobre **154 señales de ruptura** del corpus
+(6 símbolos, muestreo 1 de cada 3 velas):
+
+| | R:R a TP1 | Aciertos que exige |
+|---|---:|---:|
+| p1 | 0.22 | 82% |
+| p10 | 0.29 | 78% |
+| **mediana** | **0.45** | **69%** |
+| p90 | 0.61 | 62% |
+
+La señal **mediana** necesita 69% de aciertos para no perder. Eso es la geometría, no
+una cola: el stop arriesga el ancho completo de la base mientras el objetivo es un
+múltiplo pequeño de ATR. Un piso lo bastante alto para arreglarlo rechazaría casi todo.
+
+**Queda como pregunta de diseño, no se afina a ojo.** La salida natural sería que el
+objetivo escale con el riesgo (múltiplos de R, como hace el pullback) en vez de con el
+ATR — pero eso cambia la estrategia y exige volver a medirla, no editarla.

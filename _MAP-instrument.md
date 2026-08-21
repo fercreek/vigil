@@ -90,22 +90,16 @@ estándar que disparan cero veces, marcado NOT LIVE-READY, y G1 bloquea el merge
 sí quedó apuntando a algo: H4 en reversa, y el timeframe diario —donde 2 años sí dan trades
 independientes suficientes— que no se ha probado.
 
-### 🎫 (retirado) La primera `rules.py`
-- tipo: `prototype` · estado: **en curso** (cabeza Sonnet, hydra 08-21) · bloqueado por: —
-- Graduó de la niebla al cerrarse los tres de arriba.
-- Insumo medido: MFE mediana **+0.67R** contra objetivos que promediaban **1.27R** — el objetivo
-  se pone donde vive la distribución de excursión, no en un múltiplo de ATR elegido a mano.
-- Criterio: cadencia revisada el 2026-08-21 (ver abajo). Si ningún umbral da expectancy
-  positiva, ése es el resultado y se reporta — no se maquilla.
 
-### 🎫 Postgres persistente + respaldo fuera del proveedor
-- tipo: `task` · modo: AFK · estado: abierto · bloqueado por: —
-- Sin esto se repite el incidente de la DB efímera que borró 5 meses de telemetría.
+### ✅ Persistencia — CERRADO 2026-08-21 sin Postgres
+`INSTRUMENT_DB=/data/instrument.db` sobre el volumen montado de Railway. El requisito era que
+el histórico sobreviviera a un redeploy, y SQLite sobre volumen lo cumple. Postgres habría sido
+infraestructura de más para el mismo resultado.
 
-### 🎫 Cablear `main.py`
-- tipo: `task` · modo: AFK · estado: abierto · bloqueado por: los módulos en curso
-- 🔴 **El destino dice "responde en minutos" y hoy no lo cumple**: sin cableado central hay
-  módulos aislados que funcionan, no un instrumento que le responda algo a alguien.
+### ✅ Cablear `main.py` — CERRADO 2026-08-21
+Corriendo en producción: dos estrategias, 6 símbolos, enfriamiento por episodio, refresco de
+conocimiento cada 6h y poller de Telegram. El destino ya se cumple.
+
 
 ## Todavía sin precisar
 

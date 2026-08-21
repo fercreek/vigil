@@ -69,7 +69,7 @@ def _fomc_suppressions(conn, now: datetime) -> dict[str, dict]:
     return {"fomc_calendar": {"event": "FOMC meeting", "date": value["next_meeting_date"]}}
 
 
-def _in_cooldown(conn, row) -> bool:
+def _in_cooldown(conn, row, now: datetime | None = None) -> bool:
     """True if this symbol and side already alerted inside the holding window.
 
     A breakout keeps breaking out: on 2026-08-19 the rule fired five times on one
@@ -79,12 +79,20 @@ def _in_cooldown(conn, row) -> bool:
 
     MAX_HOLD_BARS is the window, not a tuned number: while the first signal is
     still open, a second one on the same move is not new information.
+
+    It deliberately does NOT filter by ruleset. A pullback and a breakout on the same
+    symbol and side hours apart are very nearly the same trade, and counting them as
+    two independent samples toward the kill rule would inflate the evidence with the
+    same serial autocorrelation that already made a +0.110R exit evaporate once.
+
+    `now` is injectable so a replay passes the candle's clock; reading the wall clock
+    unconditionally meant any backtest reusing this suppressed nothing at all.
     """
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=MAX_HOLD_BARS)).isoformat()
+    cutoff = ((now or datetime.now(timezone.utc)) - timedelta(hours=MAX_HOLD_BARS)).isoformat()
     hit = conn.execute(
         "SELECT 1 FROM signals WHERE decision = 'SENT' AND symbol = ? AND side = ? "
-        "AND ruleset_version = ? AND emitted_at > ? LIMIT 1",
-        (row["symbol"], row["side"], row["ruleset_version"], cutoff)).fetchone()
+        "AND emitted_at > ? LIMIT 1",
+        (row["symbol"], row["side"], cutoff)).fetchone()
     return hit is not None
 
 
@@ -121,7 +129,11 @@ def _evaluate_and_store(conn, strategy, symbol: str, candles, suppressions, send
         stored["alert_no"] = conn.execute(
             "SELECT COUNT(*) FROM signals WHERE decision = 'SENT' AND id <= ?",
             (signal_id,)).fetchone()[0]
-        notify.send_signal(stored, current_price=candles[-1].close)
+        # 'SENT' means decided, not delivered: a None return is a lost message.
+        if notify.send_signal(stored, current_price=candles[-1].close) is None:
+            watch.record(conn, "telegram", "down",
+                         f"alert {signal_id} decided but not delivered", _now())
+            conn.commit()
     return True
 
 

@@ -107,6 +107,11 @@ CREATE TABLE IF NOT EXISTS manual_fills (
 );
 
 -- ── heartbeats: the 54 days of undetected downtime.
+-- One mark per signal. Without this a process restart replays Telegram updates from
+-- offset zero and inserts the same TOMADA twice, and _taken_feedback's plain JOIN counts
+-- it twice -- the denominator corruption this schema exists to make impossible.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_manual_fill_signal ON manual_fills (signal_id);
+
 CREATE TABLE IF NOT EXISTS heartbeats (
   component TEXT PRIMARY KEY,
   last_beat TIMESTAMPTZ NOT NULL,

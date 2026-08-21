@@ -44,11 +44,14 @@ def _fixed_atr(monkeypatch, value: float, recorder: list[int] | None = None):
 
 
 def _long_breakout_candles() -> list[Candle]:
-    """Flat range at 100 +/- 1, then a bar that closes well above it with a
-    wide true range -- clears both the Donchian breakout and (with atr fixed
-    at 1.0 below) the 1.5x expansion filter comfortably."""
+    """Flat range at 100 +/- 1, then a bar closing above it with a wide true range --
+    clears the Donchian break and (with atr fixed at 1.0) the 1.5x expansion filter.
+
+    Close sits at 105, not 150: with the stop on the far band near 99, a close of 150
+    risks 51 to target 2, an R:R of 0.04 that MIN_RR now blocks. These fixtures were
+    written to exercise the gates and nobody looked at the geometry they implied."""
     prior = _flat_candles(N_PRIOR)
-    return _with_breakout_bar(prior, close=150.0, high=152.0, low=149.0)
+    return _with_breakout_bar(prior, close=105.0, high=107.0, low=104.0)
 
 
 def test_no_lookahead_result_depends_only_on_prefix(monkeypatch):
@@ -81,7 +84,7 @@ def test_sent_never_ships_an_empty_trigger(monkeypatch):
 def test_short_breakout_sends_with_geometry_on_the_far_band(monkeypatch):
     _fixed_atr(monkeypatch, 1.0)
     prior = _flat_candles(N_PRIOR)
-    candles = _with_breakout_bar(prior, close=50.0, high=101.0, low=48.0)
+    candles = _with_breakout_bar(prior, close=95.0, high=101.0, low=94.0)
 
     result = breakout.evaluate("ZEC", "1h", candles, len(candles) - 1)
 
@@ -90,6 +93,9 @@ def test_short_breakout_sends_with_geometry_on_the_far_band(monkeypatch):
     # stop is the OTHER side of the broken channel (the upper band), not an
     # ATR multiple away from entry
     assert result["sl_price"] == pytest.approx(101.0)
+    # the old fixture used close=50 against a 101 stop with ATR 1: a risk of 51
+    # for a target of 2, RR 0.04. MIN_RR blocks that, correctly -- the fixture was
+    # degenerate, not the floor.
 
 
 def test_invalid_geometry_is_blocked_never_sent(monkeypatch):

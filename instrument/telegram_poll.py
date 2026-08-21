@@ -42,7 +42,7 @@ PULSE_MAX_AGE_MINUTES = 60
 # A new button needs a real handler here first -- growing this back toward
 # the legacy bot's six is exactly the mistake this module exists to undo.
 REPORT_BUTTONS: dict[str, Callable[[sqlite3.Connection], str]] = {
-    "📊 Scoreboard": lambda conn: scoreboard.render_report(scoreboard.build_report(conn)),
+    "📊 Scoreboard": lambda conn: _scoreboard_per_ruleset(conn),
     "💓 Pulso semanal": lambda conn: watch.format_weekly_pulse(
         watch.weekly_pulse(conn, PULSE_COMPONENT, PULSE_MAX_AGE_MINUTES)),
     "🗂 Frescura": lambda conn: _format_freshness(cache.freshness_report(conn)),
@@ -162,3 +162,21 @@ def start_background(token: str, db_path: str | None) -> tuple[threading.Thread,
     thread = threading.Thread(target=poll_forever, args=(token, db_path, stop), daemon=True)
     thread.start()
     return thread, stop
+
+
+def _scoreboard_per_ruleset(conn) -> str:
+    """One report per ruleset, never one aggregate.
+
+    scoreboard.py exists to decide whether A ruleset lives or dies, and the button
+    Fernando actually presses was calling build_report() with no ruleset -- averaging
+    the pullback and the breakout into a single kill-rule verdict. A dying strategy
+    hides behind a healthy one in that number, which is the one question the
+    instrument is for.
+    """
+    versions = [r[0] for r in conn.execute(
+        "SELECT DISTINCT ruleset_version FROM signals WHERE decision = 'SENT' "
+        "ORDER BY ruleset_version")]
+    if not versions:
+        return scoreboard.render_report(scoreboard.build_report(conn))
+    return "\n\n".join(
+        scoreboard.render_report(scoreboard.build_report(conn, ruleset=v)) for v in versions)

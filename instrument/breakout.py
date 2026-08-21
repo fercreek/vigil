@@ -93,7 +93,11 @@ ATR_PERIOD = 14
 EXPANSION_ATR_MULT = 1.5
 ATR_MULT_TP1 = 2.0
 ATR_MULT_TP2 = 4.0
-MIN_RR = 0.0  # a reported fact (breakeven_wr), not a gate -- see rules.py's rationale
+# A breakout whose stop is the width of a pre-gap base and whose target is a pre-gap
+# ATR can demand a 92% hit rate and still ship as SENT -- measured on a synthetic 45%
+# gap. The geometry difference is deliberate; having no sanity floor under it was not.
+# Sanity floor, not a filter. See HYPOTHESES.md, "Breakout geometry".
+MIN_RR = 0.20  # a reported fact (breakeven_wr), not a gate -- see rules.py's rationale
 
 REGIME = "BREAKOUT_EXPANSION"
 
