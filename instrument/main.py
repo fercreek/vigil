@@ -22,7 +22,10 @@ from .knowledge import cache
 from .resolver import RESOLVER_VERSION, resolve
 from .store import RowRejected, connect, insert_resolution, insert_signal
 
-SYMBOLS = ["ZEC"]          # universe is fixed for the whole evaluation window
+# Fixed for the whole evaluation window. Six rather than one is a universe
+# decision, not a fitted parameter: thresholds stay at textbook values, and a
+# single symbol at <=3 alerts/week needs ~10 weeks to reach n=30.
+SYMBOLS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "BNB"]
 TIMEFRAME = "1h"
 MAX_HOLD_BARS = 72         # the max-hold decision, 2026-08-21
 SCAN_SLEEP_SECONDS = 300
