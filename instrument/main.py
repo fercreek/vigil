@@ -33,7 +33,10 @@ TIMEFRAME = "1h"
 # ruleset_version (each module's own hash) is what tells their `signals` rows
 # apart, so adding a strategy is adding it to this tuple, not a second copy
 # of the loop below. Neither has a demonstrated edge yet (see notify.py).
-STRATEGIES = (rules, breakout)
+# breakout retired 2026-08-21, not deleted: +0.014R against its own no-gate baseline
+# of +0.026R -- the filter took value away, at 16 alerts a week. Numbers and the 4h/1D
+# runs in HYPOTHESES.md. Re-enable by putting it back in this tuple.
+STRATEGIES = (rules,)
 MAX_HOLD_BARS = 72         # the max-hold decision, 2026-08-21
 SCAN_SLEEP_SECONDS = 300
 FOMC_WINDOW_HOURS = 24     # how close to the meeting (either side) rules.py suppresses

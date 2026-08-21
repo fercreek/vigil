@@ -76,8 +76,9 @@ def test_missing_entry_does_not_suppress_and_is_logged_visibly():
 
 
 def test_scan_once_evaluates_and_stores_every_strategy_per_symbol(monkeypatch):
-    """main.STRATEGIES = (rules, breakout): one scan_once call must produce one
-    `signals` row per strategy, per symbol, distinguishable by ruleset_version
+    """One scan_once call produces one `signals` row per ACTIVE strategy, per symbol,
+    distinguishable by ruleset_version. Asserted against main.STRATEGIES rather than a
+    hardcoded count, so retiring or adding one is a config change, not a test rewrite
     -- that's what lets the scoreboard measure them apart (same ruleset_version
     column, no schema change). Flat candles so both come back SUPPRESSED, not
     SENT -- keeps this test independent of llm_note wiring."""
@@ -94,7 +95,7 @@ def test_scan_once_evaluates_and_stores_every_strategy_per_symbol(monkeypatch):
 
     assert sent == 0
     versions = {row["ruleset_version"] for row in rows}
-    assert versions == {rules.RULESET_VERSION, breakout.RULESET_VERSION}
+    assert versions == {m.RULESET_VERSION for m in main.STRATEGIES}
     assert all(row["decision"] == "SUPPRESSED" for row in rows)
 
 

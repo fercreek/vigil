@@ -228,3 +228,22 @@ múltiplo pequeño de ATR. Un piso lo bastante alto para arreglarlo rechazaría 
 **Queda como pregunta de diseño, no se afina a ojo.** La salida natural sería que el
 objetivo escale con el riesgo (múltiplos de R, como hace el pullback) en vez de con el
 ATR — pero eso cambia la estrategia y exige volver a medirla, no editarla.
+
+## Timeframes 4h y 1D — medido 2026-08-21
+
+El corpus horario se re-agregó a 4h y 1D y se corrieron las dos estrategias tal cual,
+sin tocar un umbral. Max-hold equivalente en horas (18 velas en 4h, 10 en 1D).
+
+| | Pullback | Ruptura |
+|---|---|---|
+| **1h** | **1.0/sem · +0.146R** · IC [−0.008, +0.301] | 16.0/sem · +0.014R |
+| **4h** | 0.30/sem · **−0.039R** · IC [−0.366, +0.288] (n=32) | 6.67/sem · +0.030R · IC [−0.014, +0.073] |
+| **1D** | 0.01/sem · **n=1**, sin valor | 0.78/sem · −0.007R · IC [−0.106, +0.092] |
+
+**Nada mejora al subir de marco.** El pullback se vuelve negativo en 4h y en 1D dispara
+una sola vez en dos años. La ruptura sigue indistinguible de cero en los tres.
+
+🟡 **Esto debilita el hallazgo del pullback en 1h.** Una ventaja real suele sobrevivir
+en marcos vecinos; que se evapore en 4h es señal de que el +0.146R con n=107 puede ser
+suerte. No lo invalida —el IC en 4h es enorme con n=32— pero es una razón concreta para
+tratarlo como candidato y no como resultado.
