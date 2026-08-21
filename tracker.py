@@ -54,6 +54,11 @@ def init_db():
         ("partial_pct", "INTEGER DEFAULT 0"),
         ("events_json", "TEXT DEFAULT NULL"),
         ("note", "TEXT DEFAULT NULL"),
+        # Id de la orden de entrada en Binance. Marca de PROPIEDAD: si esta seteado,
+        # el bracket de trading_executor puso ordenes reales para esta fila y el bot
+        # puede tocarlas. Si es NULL (SWING, manual, stocks, SIM, conf_score < 4) el
+        # bot NO tiene ordenes suyas en el exchange y no debe cancelar ni crear nada.
+        ("exchange_order_id", "TEXT DEFAULT NULL"),
     ]
     for col, type_def in columns:
         try:
@@ -402,7 +407,7 @@ def get_backtest_days():
     conn.close()
     return rows
 
-def log_trade(symbol, type, entry, tp1, tp2, sl, msg_id, version="V1-TECH", rsi=0.0, bb="", atr=0.0, elliott="", score=0, ai_analysis="", macro_bias="", inst_score=0, alert_type="unknown", trigger_conditions=None, is_manual=0, note=None):
+def log_trade(symbol, type, entry, tp1, tp2, sl, msg_id, version="V1-TECH", rsi=0.0, bb="", atr=0.0, elliott="", score=0, ai_analysis="", macro_bias="", inst_score=0, alert_type="unknown", trigger_conditions=None, is_manual=0, note=None, exchange_order_id=None):
     import json
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -412,10 +417,11 @@ def log_trade(symbol, type, entry, tp1, tp2, sl, msg_id, version="V1-TECH", rsi=
         INSERT INTO trades (
             symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, open_time, strategy_version,
             rsi_entry, bb_status, atr, elliott_wave, conf_score, ai_analysis, macro_bias, inst_score, alert_type, trigger_conditions,
-            is_manual, note
+            is_manual, note, exchange_order_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now, version, rsi, bb, atr, elliott, score, ai_analysis, macro_bias, inst_score, alert_type, conditions_json, int(is_manual), note))
+        VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (symbol, type, entry, tp1, tp2, sl, msg_id, now, version, rsi, bb, atr, elliott, score, ai_analysis, macro_bias, inst_score, alert_type, conditions_json, int(is_manual), note,
+          str(exchange_order_id) if exchange_order_id else None))
     conn.commit()
     trade_id = c.lastrowid
     conn.close()
@@ -598,7 +604,8 @@ def get_open_trades():
     c = conn.cursor()
     c.execute('''
         SELECT id, symbol, type, entry_price, tp1_price, tp2_price, sl_price, status, msg_id, strategy_version,
-               rsi_entry, bb_status, atr, elliott_wave, conf_score, open_time, is_manual, be_moved, partial_pct
+               rsi_entry, bb_status, atr, elliott_wave, conf_score, open_time, is_manual, be_moved, partial_pct,
+               exchange_order_id
         FROM trades
         WHERE status IN ('OPEN', 'PARTIAL_WON')
         ORDER BY id DESC
@@ -615,6 +622,7 @@ def get_open_trades():
             "rsi_entry": t[10], "bb_status": t[11], "atr": t[12], "elliott": t[13], "conf_score": t[14],
             "open_time": t[15] or "",
             "is_manual": bool(t[16]), "be_moved": bool(t[17]), "partial_pct": t[18] or 0,
+            "exchange_order_id": t[19],
         })
     return result
 

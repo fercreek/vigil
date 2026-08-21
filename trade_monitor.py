@@ -42,6 +42,45 @@ def blended_pnl_pct(t: dict, exit_price: float) -> float:
     return w * tp1_leg + (1 - w) * exit_leg
 
 
+def sync_exchange_stop(trade: dict, new_sl: float, alert_fn=None) -> dict:
+    """Mueve el stop en Binance para que coincida con el que acaba de escribirse en la DB.
+
+    Guarda de PROPIEDAD: solo corre si la fila trae `exchange_order_id`, que solo se
+    setea cuando el bracket LIVE puso ordenes de verdad. SWING, manual, stocks y SIM
+    no lo traen y se saltan — el bot no tiene ordenes suyas ahi y no debe inventarlas.
+
+    Nunca lanza. Si el stop queda descubierto (se cancelo el viejo y no entro el
+    nuevo) manda alerta, porque ese estado no se puede quedar callado.
+    """
+    if not trade.get("exchange_order_id"):
+        return {"status": "SKIPPED_NOT_OWNED"}
+    import os
+    if os.getenv("EXECUTION_MODE", "PAPER") != "LIVE":
+        return {"status": "SKIPPED_PAPER"}
+
+    try:
+        from scalp_alert_bot import GLOBAL_CACHE
+        import trading_executor
+        if not GLOBAL_CACHE.get("executor"):
+            GLOBAL_CACHE["executor"] = trading_executor.ZenithExecutor()
+        res = GLOBAL_CACHE["executor"].sync_stop_loss(trade["symbol"], trade["type"], new_sl)
+    except Exception as e:
+        print(f"❌ [SL Sync] {trade.get('symbol')}: {e}")
+        res = {"status": "FAILED", "reason": str(e)}
+
+    if res.get("unprotected") and alert_fn:
+        try:
+            alert_fn(f"slsync_{trade['id']}",
+                     f"🚨 <b>POSICION SIN STOP</b>: {trade['symbol']} {trade['type']}\n"
+                     f"Se cancelo el stop viejo y el nuevo (${new_sl}) NO entro.\n"
+                     f"<i>{res.get('reason')}</i>\n"
+                     f"Revisar en Binance A MANO.",
+                     version="RISK")
+        except Exception:
+            pass
+    return res
+
+
 def monitor_open_trades(prices: dict):
     """Monitorea posiciones abiertas, ejecuta TP/SL automático, y trailing stops."""
     # Lazy imports para evitar circularidad
@@ -148,6 +187,7 @@ def monitor_open_trades(prices: dict):
             tracker.update_trade_status(t["id"], "PARTIAL_WON")  # sincroniza intel_outcomes
             tracker.mark_partial(t["id"], _pct)                   # partial_pct = 50
             tracker.mark_be(t["id"], sl_price=new_sl)             # be_moved = 1 + SL al BE
+            sync_exchange_stop(t, new_sl, alert_fn=alert)          # y el stop real en Binance
             tracker.append_event(
                 t["id"],
                 f"PARTIAL {_pct}% @ TP1 ${t['tp1_price']:.4f} ({pnl_pct:+.2f}%) · SL→BE ${new_sl:.4f}")
@@ -199,8 +239,12 @@ def monitor_open_trades(prices: dict):
 
     # ── Trailing Stop Updates ────────────────────────────────────────────
     tsl_updates = trailing_stop_mgr.calculate_trailing_updates(open_trades, prices)
+    _by_id = {t["id"]: t for t in open_trades}
     for upd in tsl_updates:
         tracker.update_sl(upd["trade_id"], upd["new_sl"])
+        _t = _by_id.get(upd["trade_id"])
+        if _t:
+            sync_exchange_stop(_t, upd["new_sl"], alert_fn=alert)
         print(f"📐 [TrailingStop] {upd['reason']}")
         # Key por trade_id — el cooldown=300s evita spam; new_sl no va en la key
         # porque oscilaciones de precio generan keys distintas y bypassean el cooldown

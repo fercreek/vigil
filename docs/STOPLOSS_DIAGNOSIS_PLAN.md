@@ -238,3 +238,37 @@ Pendientes que salieron de aquí y no entraron al scope:
 - `gemini_analyzer.log_result_to_context:451` calcula su PnL como `(close-entry)/entry` sin mirar
   el lado → el signo sale invertido en SHORT. Solo afecta el texto que se le guarda a las personas
   de la Cuadrilla, no la contabilidad.
+
+
+### 2026-08-20 — Sincronización del stop con el exchange
+
+`trading_executor.sync_stop_loss()` cancela la `STOP_MARKET` viva y crea la nueva con el precio
+actualizado. Cableado en los dos puntos que movían el SL solo en la DB: TP1→BE y el trailing.
+22 tests en `tests/test_stop_loss_sync.py`. Suite: 295 pasan, las mismas 9 fallas de siempre.
+
+**Lo caro no fue mover el stop, fue no tocar lo que no es del bot.** Al cablearlo salió que la
+fila de `trades` no tenía forma de saber si esa posición tenía órdenes del bot en Binance. Sin eso,
+sincronizar a ciegas habría puesto órdenes sobre posiciones SWING o manuales — peor que el bug
+original. Por eso el cambio incluye una **marca de propiedad**: columna `exchange_order_id`, que
+viaja desde `execute_bracket_order` → `_store_pending` → `log_trade`, y solo se setea cuando el
+status es `LIVE_EXECUTED`. Sin esa marca, `sync_exchange_stop` se salta la fila.
+
+Además `sync_stop_loss` **nunca crea un stop donde no había**. Si la orden desapareció devuelve
+`NOT_FOUND` y no toca nada. El único caso que grita es el peligroso: viejo cancelado + nuevo
+rechazado → alerta `🚨 POSICION SIN STOP` a Telegram, porque ese estado no se puede quedar callado.
+
+Nada de esto se activa hoy: `EXECUTION_MODE` no está en Railway y el default es `PAPER`. Verificado
+otra vez el 08-20.
+
+#### 🔴 Lo que salió al hacerlo, y es más grave que lo que se arregló
+
+**El bracket se manda a Binance ANTES de que apruebes la señal.** `strategies.py:938` ejecuta
+`execute_bracket_order` en cuanto `conf_score >= 4`, dentro del ciclo de scan. El botón *Activar*
+de Telegram llega después y lo único que hace es crear la fila de tracking (`scalp_alert_bot.py`,
+rama `activate`). O sea: en LIVE el dinero ya se movió cuando te llega la pregunta, y si le das
+*Skip* la posición se queda abierta en Binance sin fila que la monitoree.
+
+Hoy es inofensivo porque el modo es PAPER. **El día que enciendas LIVE, esto muerde antes que
+cualquier otra cosa de este documento.** No lo toqué porque cambia el modelo de aprobación y esa
+decisión es tuya: o el bracket espera al *Activar*, o el *Activar* deja de fingir que es una
+aprobación.

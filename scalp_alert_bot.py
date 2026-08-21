@@ -81,8 +81,24 @@ _PENDING_SIGNALS: dict[int, dict] = {}  # {signal_id: {...params}}
 _PENDING_SIG_COUNTER: int = 0
 _PENDING_SIG_TTL: float = 14400.0      # 4h: señal expira si no se decide
 
+def _exec_order_id(exec_result) -> str | None:
+    """Id de la orden de entrada, SOLO si el bracket se ejecuto de verdad en el exchange.
+
+    PAPER_EXECUTED / FAILED / SKIPPED devuelven None a proposito: no hay ordenes
+    reales que sincronizar, y el monitor usa este campo como permiso para tocar
+    Binance.
+    """
+    if not isinstance(exec_result, dict):
+        return None
+    if exec_result.get("status") != "LIVE_EXECUTED":
+        return None
+    oid = exec_result.get("id")
+    return str(oid) if oid else None
+
+
 def _store_pending(sym, side, entry, tp1, tp2, sl, atr, rsi, score,
-                   alert_type, version, trigger_conditions, macro_regime="") -> int:
+                   alert_type, version, trigger_conditions, macro_regime="",
+                   exec_result=None) -> int:
     """Guarda parámetros de señal. Retorna signal_id para callback_data.
     Auto-crea SIM trade al momento de la señal — independiente de si Fernando activa o skipea.
     """
@@ -109,6 +125,10 @@ def _store_pending(sym, side, entry, tp1, tp2, sl, atr, rsi, score,
         "version": version, "trigger_conditions": trigger_conditions,
         "macro_regime": macro_regime, "ts": time.time(),
         "sim_id": sim_id,  # SIM ya corriendo — monitor_open_trades lo cierra en SL/TP
+        # Solo se setea si el bracket LIVE de trading_executor realmente puso ordenes.
+        # Viaja hasta la fila de trades para que el monitor sepa que ESA posicion
+        # tiene ordenes suyas en Binance y puede moverles el stop.
+        "exchange_order_id": _exec_order_id(exec_result),
     }
     if sim_id:
         print(f"🎮 [AutoSIM] {sym} {side} SIM#{sim_id} iniciado @ ${entry:,.4f}")
@@ -407,7 +427,7 @@ def _handle_callback(callback: dict, prices: dict):
             sym, side, entry, sig["tp1"], sig["tp2"], sig["sl"], msg_id,
             version=sig["version"], rsi=sig["rsi"], score=sig["score"],
             alert_type=sig["alert_type"], trigger_conditions=sig["trigger_conditions"],
-            is_manual=0,
+            is_manual=0, exchange_order_id=sig.get("exchange_order_id"),
         )
         tracker.append_event(tid, f"ACTIVATED via Telegram @ ${entry:.4f}")
         # Wire episode_id from pending → episode_ids (for fill_outcome at close)

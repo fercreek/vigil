@@ -966,7 +966,10 @@ def check_strategies(prices: dict):
                            f"🎙️ <b>DEBATE DEL CUADRANTE ZENITH:</b>\n"
                            f"{gemini_analyzer.get_ai_consensus(sym, p, phase, rsi, usdt_d, spy=prices.get('SPY'), oil=prices.get('OIL'), nvda=prices.get('NVDA'), pltr=prices.get('PLTR'), vix=vix, dxy=dxy, trade_type=trade_type, phy_bias=phy_bias, extra_intel=_build_extra_intel(sym))}")
                     _tc = build_trigger_conditions(sym, p, rsi, prev_rsi, bb_u, bb_l, ema_200, usdt_d, vix, dxy, macro_dict, macro_status, atr, elliott, ob_detected, social_adj, trade_type, phy_bias, conf_score, "v2_ai_long", phase, rsi_threshold=entry_rsi)
-                    _sid = _store_pending(sym, phase, p, tp1, tp2, sl, atr, rsi, conf_score, "v2_ai_long", "V2-AI", _tc, macro_status)
+                    # exec_result viaja para que la fila de trades quede ligada al
+                    # bracket real de Binance (unico punto del repo que lo crea).
+                    _sid = _store_pending(sym, phase, p, tp1, tp2, sl, atr, rsi, conf_score, "v2_ai_long", "V2-AI", _tc, macro_status,
+                                          exec_result=(res_exec if conf_score >= 4 else None))
                     mid = alert(f"{sym}_v2_ai_{phase}", msg, version="V2-AI",
                                 inline_keyboard=_alert_mgr.get_signal_keyboard(_sid, sym, phase))
                     if mid:

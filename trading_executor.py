@@ -66,6 +66,91 @@ class ZenithExecutor:
             print(f"⚠️ Error calculando cantidad: {e}")
             return 0.0
 
+    # ── Sincronizacion del stop con el exchange ──────────────────────────────
+    # El bot movia el SL solo en su tabla (tracker.update_sl / mark_be) y la orden
+    # STOP_MARKET seguia en Binance donde se dejo al abrir el bracket. En LIVE eso
+    # significaba que el bot reportaba "SL en BE" con el stop real todavia a 2 ATR.
+
+    @staticmethod
+    def _is_bot_stop_order(order: dict) -> bool:
+        """True si la orden es una STOP_MARKET reduceOnly — las que pone el bracket.
+
+        ccxt normaliza el tipo de forma distinta segun version, asi que se mira el
+        campo normalizado Y el crudo de `info`. Se exige reduceOnly para no tocar
+        una orden de entrada.
+        """
+        if not isinstance(order, dict):
+            return False
+        info = order.get("info") or {}
+        raw_type = str(info.get("type") or order.get("type") or "")
+        if "STOP" not in raw_type.upper().replace("_", ""):
+            return False
+        reduce_only = order.get("reduceOnly")
+        if reduce_only is None:
+            reduce_only = str(info.get("reduceOnly", "")).lower() == "true"
+        return bool(reduce_only)
+
+    def sync_stop_loss(self, symbol: str, side: str, new_sl: float) -> dict:
+        """Reemplaza la STOP_MARKET viva por una nueva en `new_sl`.
+
+        NO crea un stop donde no habia. Si la orden desaparecio (se lleno, la
+        cancelaste a mano, o la posicion ya cerro) devuelve NOT_FOUND y no toca
+        nada: crear una orden a ciegas sobre una posicion que el bot no abrio es
+        justo lo que hay que evitar. El unico lugar del repo que crea STOP_MARKET
+        es execute_bracket_order, asi que lo que se cancela aqui siempre es propio.
+
+        Nunca lanza: el ciclo de monitoreo no se cae porque el exchange falle.
+        """
+        self.mode = os.getenv("EXECUTION_MODE", "PAPER")
+        if self.mode != "LIVE":
+            return {"status": "SKIPPED_PAPER"}
+
+        exchange_symbol = f"{symbol}/USDT"
+        exit_side = "sell" if side == "LONG" else "buy"
+        try:
+            open_orders = self.exchange.fetch_open_orders(exchange_symbol) or []
+            stops = [o for o in open_orders if self._is_bot_stop_order(o)]
+            if not stops:
+                print(f"⚠️ [SL Sync] {symbol}: sin STOP_MARKET viva — nada que mover")
+                return {"status": "NOT_FOUND"}
+
+            amount = None
+            cancelled = []
+            for o in stops:
+                try:
+                    self.exchange.cancel_order(o["id"], exchange_symbol)
+                    cancelled.append(o["id"])
+                    amount = amount or o.get("amount") or (o.get("info") or {}).get("origQty")
+                except Exception as e:
+                    # Carrera clasica: se lleno entre el fetch y el cancel.
+                    print(f"⚠️ [SL Sync] {symbol}: no se pudo cancelar {o.get('id')}: {e}")
+
+            if not cancelled:
+                return {"status": "NOT_FOUND"}
+            if not amount:
+                print(f"❌ [SL Sync] {symbol}: stop cancelado pero sin cantidad — POSICION SIN STOP")
+                return {"status": "FAILED", "reason": "sin amount", "unprotected": True}
+
+            # A partir de aqui la posicion esta SIN STOP hasta que el alta confirme.
+            try:
+                new_order = self.exchange.create_order(
+                    symbol=exchange_symbol, type="STOP_MARKET", side=exit_side,
+                    amount=float(amount), params={"stopPrice": new_sl, "reduceOnly": True})
+            except Exception as e:
+                print(f"🚨 [SL Sync] {symbol}: stop viejo CANCELADO y el nuevo NO entro "
+                      f"({e}) — POSICION SIN STOP")
+                return {"status": "FAILED", "reason": str(e), "unprotected": True}
+
+            print(f"🛑 [SL Sync] {symbol}: stop movido a {new_sl} (cancelada {cancelled})")
+            return {"status": "SYNCED", "id": new_order.get("id"),
+                    "cancelled": cancelled, "new_sl": new_sl, "amount": float(amount)}
+
+        except Exception as e:
+            # Fallo antes de cancelar nada (fetch_open_orders): el stop viejo sigue
+            # puesto. Malo pero no peligroso — la posicion sigue protegida.
+            print(f"❌ [SL Sync] {symbol}: {e}")
+            return {"status": "FAILED", "reason": str(e)}
+
     def execute_bracket_order(self, symbol, side, entry, tp1, tp2, sl, tp3=None,
                               dynamic_leverage=None, dynamic_risk_pct=None):
         """Ejecuta una orden Bracket (Entrada + 3 TPs + SL) en Binance."""

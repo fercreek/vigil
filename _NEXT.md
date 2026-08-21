@@ -21,6 +21,14 @@
   ✅ **Criterio cerrado**: se dejó un marcador en `/data` ANTES del `railway up` del deploy
   `229620ff` y sobrevivió el ciclo completo. El volumen persiste de verdad, comprobado, no
   inferido. (Marcador borrado después.)
+- [x] **Sync del SL con Binance** — ✅ 08-20. `trading_executor.sync_stop_loss()` + marca de
+  propiedad `exchange_order_id` (sin ella no se toca nada del exchange). 22 tests en
+  `tests/test_stop_loss_sync.py`. Inerte hasta LIVE (`EXECUTION_MODE` no seteada, default PAPER).
+- [ ] 🔴 **El bracket se ejecuta ANTES del botón Activar** — `strategies.py:938` manda las órdenes
+  a Binance en cuanto `conf_score >= 4`; el *Activar* de Telegram solo crea la fila de tracking.
+  En LIVE eso significa dinero movido antes de tu aprobación, y un *Skip* deja posición abierta
+  sin fila que la monitoree. **Decidir antes de encender LIVE**: o el bracket espera el Activar,
+  o el Activar deja de presentarse como aprobación. Detalle: `docs/STOPLOSS_DIAGNOSIS_PLAN.md` §6.
 - [ ] **P0.2 — `risk_state.json` al volumen** — `risk_manager.py:36` usa ruta relativa; con
   `restartPolicyType=ALWAYS` un bot en `HALTED` revive en `NORMAL`.
 
