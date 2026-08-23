@@ -67,6 +67,30 @@ Fernando puede revertir cualquiera y se recalibra.
 **Efecto sobre el presupuesto:** cerrar tres HITL liberó el cupo, así que `regla-v1` graduó de
 niebla a ticket vivo en la misma pasada. Esa es la mecánica, no una excepción a ella.
 
+## Acciones — cableadas 2026-08-23
+
+El universo pasó de 6 símbolos a **35**: los 6 de cripto más 29 acciones
+(`instrument/equities.py`). La medición que lo justifica está en `EQUITIES.md`:
+**LONG +0.216R con n=138** sobre 730 días y 29 tickers, IC [+0.071, +0.362] entero
+sobre cero y el signo aguantando en las dos mitades del periodo, contra un baseline
+sin filtros de +0.026R sobre n=1,044. **SHORT −0.012R con n=130** — no aporta, y
+por eso en acciones solo se opera LONG.
+
+**Lo que el cableado obligó a arreglar:** `_in_cooldown` comparaba timestamps
+restando `hours=MAX_HOLD_BARS`. En cripto da igual porque una vela horaria es una
+hora de reloj; en acciones 72 velas son **15.5 días naturales**, y restar 72 horas
+dejaba el enfriamiento en **14 velas**. Habría avisado cinco veces de la misma
+subida — la autocorrelación serial que ya evaporó una ventaja de +0.110R aquí.
+
+**Lo que NO se tocó:** `rules.py` sigue siendo puro y sin saber en qué mercado
+está. El lado se decide en `main.py`, por la misma razón que el calendario FOMC.
+Y en cripto siguen operándose los dos lados: allí la muestra por lado es n=26 y
+recortar uno con esa evidencia sería el ajuste a ojo que ya falló tres veces.
+
+**Criterio de retiro, escrito antes de la primera señal:** si el LONG en acciones
+acumula 100 señales resueltas en vivo y el borde superior del IC de la expectancy
+sigue por debajo de cero, se retira el universo de acciones.
+
 ## Frontera — abierta
 
 ### ✅ La primera `rules.py` — CERRADO 2026-08-21: no hay ventaja

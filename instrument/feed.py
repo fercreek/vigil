@@ -1,4 +1,9 @@
-"""OHLCV feed with exchange fallback: OKX -> KuCoin -> Binance.
+"""OHLCV feed. Cripto por la cadena de exchanges, acciones por yfinance.
+
+El despacho es por simbolo (`equities.is_equity`) y no por argumento, para que
+todo lo de arriba -- scan_once, resolve_pending -- siga llamando `fetch_ohlcv`
+sin saber en que mercado esta. Un solo contrato: velas CERRADAS, la ultima
+descartada, y FeedUnavailable si no se pudo preguntar.
 
 Ports the fallback chain from scalp_bot/exchange_singleton.py (95 lines,
 fetch_ohlcv_with_fallback). OKX leads on purpose, same reason as the original:
@@ -20,6 +25,7 @@ from typing import Callable
 
 import ccxt
 
+from instrument import equities
 from instrument.resolver import Candle
 
 # One ccxt instance per exchange, created once and reused -- each instance
@@ -52,6 +58,45 @@ def _to_candle(row: list) -> Candle:
     return Candle(ts=ts, open=float(o), high=float(h), low=float(l), close=float(c))
 
 
+# yfinance no acepta "cuantas velas quiero", acepta un periodo. Se pide de mas y
+# se recorta: en acciones una vela horaria solo avanza mientras la bolsa abre, asi
+# que 300 velas son ~46 sesiones, no 12 dias.
+_YF_PERIOD_FOR = {"1h": "60d", "1d": "2y", "1wk": "5y"}
+
+
+def _fetch_equity(symbol: str, timeframe: str, limit: int) -> list[Candle]:
+    """Velas de una accion. Descarta la ultima fila igual que la rama de cripto.
+
+    Ese descarte es incondicional a proposito, misma disciplina que arriba: la
+    fila mas reciente de yfinance es la vela en formacion cuando el mercado esta
+    abierto, y distinguirla mirando el reloj es introducir una decision de
+    calendario en el unico modulo que no deberia tener ninguna. Fuera de horario
+    el costo es retrasar una vela; el look-ahead no tiene ese precio.
+    """
+    try:
+        import yfinance as yf
+    except ImportError as exc:                      # pragma: no cover
+        raise FeedUnavailable(f"{symbol}: yfinance no instalado ({exc})") from exc
+    period = _YF_PERIOD_FOR.get(timeframe, "60d")
+    try:
+        df = yf.download(symbol, period=period, interval=timeframe,
+                         progress=False, auto_adjust=False, threads=False)
+    except Exception as exc:                        # yfinance lanza de todo
+        raise FeedUnavailable(f"{symbol} {timeframe}: yfinance fallo: {exc}") from exc
+    if df is None or len(df) < 2:
+        raise FeedUnavailable(f"{symbol} {timeframe}: yfinance devolvio {0 if df is None else len(df)} filas")
+    if hasattr(df.columns, "levels"):               # yfinance devuelve MultiIndex a veces
+        df.columns = df.columns.get_level_values(0)
+    rows = [
+        Candle(ts=ts.tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%SZ") if ts.tzinfo
+               else ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+               open=float(o), high=float(h), low=float(l), close=float(c))
+        for ts, o, h, l, c in zip(df.index, df["Open"], df["High"], df["Low"], df["Close"])
+        if not (o != o or h != h or l != l or c != c)   # NaN: la bolsa estaba cerrada
+    ]
+    return rows[:-1][-limit:]
+
+
 def fetch_ohlcv(symbol: str, timeframe: str = "1h", limit: int = 300,
                  since_ms: int | None = None) -> list[Candle]:
     """Fetch up to `limit` CLOSED candles, trying OKX, then KuCoin, then Binance.
@@ -66,6 +111,9 @@ def fetch_ohlcv(symbol: str, timeframe: str = "1h", limit: int = 300,
     exchange answers with fewer rows than requested (early history, thin
     symbol) -- that is a real, honest answer, just a short one.
     """
+    if equities.is_equity(symbol):
+        return _fetch_equity(symbol, timeframe, limit)
+
     errors: list[str] = []
     for name, exchange, format_symbol in _CHAIN:
         try:

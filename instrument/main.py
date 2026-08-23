@@ -15,7 +15,7 @@ import argparse
 import time
 from datetime import datetime, timedelta, timezone
 
-from . import breakout, llm_note, notify, rules, telegram_poll, watch
+from . import breakout, equities, llm_note, notify, rules, telegram_poll, watch
 from .feed import FeedUnavailable, fetch_ohlcv
 from .geometry import InvalidGeometry, assert_geometry
 from . import knowledge_clock
@@ -27,6 +27,13 @@ from .store import RowRejected, connect, insert_resolution, insert_signal
 # decision, not a fitted parameter: thresholds stay at textbook values, and a
 # single symbol at the old <=3 alerts/week cap needed ~10 weeks to reach n=30.
 SYMBOLS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "BNB"]
+
+# Acciones, agregadas 2026-08-23. El universo y el porque estan en equities.py; la
+# medicion que lo justifica, en EQUITIES.md. Van en su propia lista y no mezcladas
+# en SYMBOLS porque casi todo lo que las distingue -- el reloj, el lado operable,
+# el feed -- se decide por pertenencia a este conjunto.
+EQUITY_SYMBOLS = equities.EQUITY_SYMBOLS
+ALL_SYMBOLS = SYMBOLS + EQUITY_SYMBOLS
 TIMEFRAME = "1h"
 
 # Every strategy module here is evaluated against every symbol, every scan --
@@ -91,7 +98,12 @@ def _in_cooldown(conn, row, now: datetime | None = None) -> bool:
     `now` is injectable so a replay passes the candle's clock; reading the wall clock
     unconditionally meant any backtest reusing this suppressed nothing at all.
     """
-    cutoff = ((now or datetime.now(timezone.utc)) - timedelta(hours=MAX_HOLD_BARS)).isoformat()
+    # MAX_HOLD_BARS son VELAS; esta consulta compara TIMESTAMPS. En cripto da igual
+    # -- una vela horaria es una hora de reloj. En acciones no: 72 velas son 15.5
+    # dias naturales, y restar 72 horas dejaria el enfriamiento en 14 velas, que es
+    # la misma subida avisada cinco veces.
+    hours = equities.cooldown_hours(row["symbol"], MAX_HOLD_BARS)
+    cutoff = ((now or datetime.now(timezone.utc)) - timedelta(hours=hours)).isoformat()
     hit = conn.execute(
         "SELECT 1 FROM signals WHERE decision = 'SENT' AND symbol = ? AND side = ? "
         "AND emitted_at > ? LIMIT 1",
@@ -108,6 +120,12 @@ def _evaluate_and_store(conn, strategy, symbol: str, candles, suppressions, send
                             suppressions=suppressions)
     if row is None:
         return False
+    # El lado se decide aqui y no en rules.py, por la misma razon que el calendario
+    # FOMC: es contexto del universo, no parte de la regla. rules.py sigue siendo
+    # una funcion pura de sus argumentos.
+    if row.get("decision") == "SENT" and not equities.side_allowed(symbol, row["side"]):
+        row["decision"] = "SUPPRESSED"
+        row["decision_reason"] = equities.side_rejection_reason(symbol, row["side"])
     if row.get("decision") == "SENT" and _in_cooldown(conn, row):
         row["decision"] = "SUPPRESSED"
         row["decision_reason"] = "cooldown: same episode already alerted"
@@ -140,13 +158,21 @@ def _evaluate_and_store(conn, strategy, symbol: str, candles, suppressions, send
     return True
 
 
-def scan_once(conn, symbols=SYMBOLS, send=True) -> int:
+def scan_once(conn, symbols=ALL_SYMBOLS, send=True) -> int:
     """Evaluate the newest closed candle of every symbol, against every
     strategy in STRATEGIES. Returns signals sent, pooled across strategies."""
     sent = 0
     suppressions = _fomc_suppressions(conn, datetime.now(timezone.utc))
     for symbol in symbols:
-        candles = fetch_ohlcv(symbol, TIMEFRAME, limit=300)
+        # Con 35 simbolos, que uno falle es rutina; que ese fallo se lleve el barrido
+        # de los otros 34 no lo es. Se registra por simbolo -- sigue distinguiendose
+        # de "mire y no habia nada", que es lo que importa -- y el ciclo continua.
+        try:
+            candles = fetch_ohlcv(symbol, TIMEFRAME, limit=300)
+        except FeedUnavailable as exc:
+            watch.record(conn, f"scan:{symbol}", "down", str(exc), _now())
+            conn.commit()
+            continue
         if len(candles) < 2:
             continue
         for strategy in STRATEGIES:
@@ -170,7 +196,10 @@ def resolve_pending(conn, max_hold_bars: int = MAX_HOLD_BARS) -> int:
                                        row["tp1_price"], row["tp2_price"])
         except InvalidGeometry:
             continue                                        # the schema should have caught it
-        candles = fetch_ohlcv(row["symbol"], row["timeframe"], limit=max_hold_bars + 50)
+        try:
+            candles = fetch_ohlcv(row["symbol"], row["timeframe"], limit=max_hold_bars + 50)
+        except FeedUnavailable:
+            continue                                        # se reintenta en el proximo ciclo
         after = [c for c in candles if c.ts > row["bar_ts"]]
         if len(after) < max_hold_bars:
             continue                                        # not enough history yet, try later
