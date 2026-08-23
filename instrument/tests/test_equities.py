@@ -134,3 +134,69 @@ class TestGateDeLadoCableado:
         assert fila["decision"] == esperado, f"{symbol} {side} quedo como {fila['decision']}"
         if esperado == "SUPPRESSED":
             assert "n=130" in fila["decision_reason"], "el motivo no trae su denominador"
+
+
+class TestEsperaAdaptativa:
+    """La bolsa abre el 19% de la semana. Preguntar cada cinco minutos el otro 81%
+    son ~6,600 peticiones diarias por velas que no pueden existir -- y Yahoo no
+    contesta a eso con un error, contesta con vacio."""
+
+    def _conn(self):
+        from instrument.store import connect
+        return connect(":memory:")
+
+    def _feed_pegado(self, ts):
+        from instrument.resolver import Candle
+        def feed(symbol, timeframe="1h", limit=300, since_ms=None):
+            return [Candle(ts=ts, open=100, high=101, low=99, close=100)] * 2
+        return feed
+
+    def test_repetir_la_misma_vela_alarga_la_espera(self, monkeypatch):
+        main._reset_backoff()
+        monkeypatch.setattr(main, "fetch_ohlcv", self._feed_pegado("2026-08-21T20:00:00Z"))
+        with self._conn() as conn:
+            main.scan_once(conn, symbols=["NVDA"], send=False)      # primera: la registra
+            assert main._idle_wait["NVDA"] == 0.0
+            main._skip_until["NVDA"] = 0.0                          # dejar pasar el guard
+            main.scan_once(conn, symbols=["NVDA"], send=False)      # segunda: misma vela
+            assert main._idle_wait["NVDA"] == main.SCAN_SLEEP_SECONDS
+            main._skip_until["NVDA"] = 0.0
+            main.scan_once(conn, symbols=["NVDA"], send=False)      # tercera: se dobla
+            assert main._idle_wait["NVDA"] == main.SCAN_SLEEP_SECONDS * 2
+
+    def test_la_espera_tiene_tope(self, monkeypatch):
+        main._reset_backoff()
+        monkeypatch.setattr(main, "fetch_ohlcv", self._feed_pegado("2026-08-21T20:00:00Z"))
+        with self._conn() as conn:
+            for _ in range(12):
+                main._skip_until["NVDA"] = 0.0
+                main.scan_once(conn, symbols=["NVDA"], send=False)
+        assert main._idle_wait["NVDA"] == main.IDLE_BACKOFF_MAX_SECONDS
+
+    def test_una_vela_nueva_devuelve_el_ritmo_normal(self, monkeypatch):
+        main._reset_backoff()
+        with self._conn() as conn:
+            monkeypatch.setattr(main, "fetch_ohlcv", self._feed_pegado("2026-08-21T20:00:00Z"))
+            main.scan_once(conn, symbols=["NVDA"], send=False)
+            main._skip_until["NVDA"] = 0.0
+            main.scan_once(conn, symbols=["NVDA"], send=False)
+            assert main._idle_wait["NVDA"] > 0
+            monkeypatch.setattr(main, "fetch_ohlcv", self._feed_pegado("2026-08-21T21:00:00Z"))
+            main._skip_until["NVDA"] = 0.0
+            main.scan_once(conn, symbols=["NVDA"], send=False)
+        assert main._idle_wait["NVDA"] == 0.0, "una vela nueva debe reiniciar la espera"
+
+    def test_mientras_espera_no_se_pide_el_feed(self, monkeypatch):
+        main._reset_backoff()
+        pedidos = []
+        from instrument.resolver import Candle
+        def feed(symbol, timeframe="1h", limit=300, since_ms=None):
+            pedidos.append(symbol)
+            return [Candle(ts="2026-08-21T20:00:00Z", open=100, high=101, low=99, close=100)] * 2
+        monkeypatch.setattr(main, "fetch_ohlcv", feed)
+        with self._conn() as conn:
+            main.scan_once(conn, symbols=["NVDA"], send=False)
+            main._skip_until["NVDA"] = 0.0
+            main.scan_once(conn, symbols=["NVDA"], send=False)   # deja la espera puesta
+            main.scan_once(conn, symbols=["NVDA"], send=False)   # este debe saltarse
+        assert len(pedidos) == 2, f"se pidio el feed {len(pedidos)} veces, esperaba 2"

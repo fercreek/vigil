@@ -158,6 +158,31 @@ def _evaluate_and_store(conn, strategy, symbol: str, candles, suppressions, send
     return True
 
 
+# Espera adaptativa por simbolo. No sabe de calendarios ni de husos: si el feed
+# devuelve la MISMA vela que la vez pasada, es que no habia nada nuevo, y preguntar
+# otra vez en cinco minutos tampoco lo habra. La espera se dobla hasta un tope.
+#
+# Existe porque la bolsa abre el 19% de la semana (6.5h x 5 de 168) y sin esto las
+# 29 acciones generan ~8,100 peticiones diarias a Yahoo, cuatro de cada cinco por
+# velas que no pueden existir. Yahoo no responde a eso con un error claro: empieza
+# a devolver vacio, el simbolo cae a FeedUnavailable y deja de vigilarse con la
+# unica huella de un latido en rojo.
+#
+# En cripto casi nunca actua: siempre hay vela nueva, asi que el contador se
+# reinicia y la espera vuelve al minimo.
+IDLE_BACKOFF_MAX_SECONDS = 3600
+_last_bar_seen: dict[str, str] = {}
+_skip_until: dict[str, float] = {}
+_idle_wait: dict[str, float] = {}
+
+
+def _reset_backoff() -> None:
+    """Para los tests: el estado vive en memoria y no debe filtrarse entre casos."""
+    _last_bar_seen.clear()
+    _skip_until.clear()
+    _idle_wait.clear()
+
+
 def scan_once(conn, symbols=ALL_SYMBOLS, send=True) -> int:
     """Evaluate the newest closed candle of every symbol, against every
     strategy in STRATEGIES. Returns signals sent, pooled across strategies."""
@@ -167,6 +192,8 @@ def scan_once(conn, symbols=ALL_SYMBOLS, send=True) -> int:
         # Con 35 simbolos, que uno falle es rutina; que ese fallo se lleve el barrido
         # de los otros 34 no lo es. Se registra por simbolo -- sigue distinguiendose
         # de "mire y no habia nada", que es lo que importa -- y el ciclo continua.
+        if time.time() < _skip_until.get(symbol, 0.0):
+            continue                                   # sin vela nueva posible todavia
         try:
             candles = fetch_ohlcv(symbol, TIMEFRAME, limit=300)
         except FeedUnavailable as exc:
@@ -178,6 +205,15 @@ def scan_once(conn, symbols=ALL_SYMBOLS, send=True) -> int:
         for strategy in STRATEGIES:
             if _evaluate_and_store(conn, strategy, symbol, candles, suppressions, send):
                 sent += 1
+        if candles[-1].ts == _last_bar_seen.get(symbol):
+            espera = min(max(_idle_wait.get(symbol, 0.0) * 2, SCAN_SLEEP_SECONDS),
+                         IDLE_BACKOFF_MAX_SECONDS)
+        else:
+            espera = 0.0                               # vela nueva: volver al ritmo normal
+        _idle_wait[symbol] = espera
+        _skip_until[symbol] = time.time() + espera
+        _last_bar_seen[symbol] = candles[-1].ts
+
         watch.record(conn, f"scan:{symbol}", "ok", f"evaluated bar {candles[-1].ts}", _now())
         conn.commit()
     return sent
