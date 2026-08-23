@@ -52,6 +52,9 @@ tp1_r       = input.float(0.7, "TP1 = R x",  group=g_geo, step=0.1)
 tp2_r       = input.float(1.3, "TP2 = R x",  group=g_geo, step=0.1)
 partial_tp1 = input.float(0.5, "Parcial en TP1", group=g_geo, step=0.1, minval=0.0, maxval=1.0)
 
+g_side = "Que lados operar"
+sides_in = input.string("Auto (acciones: solo LONG)", "Lados permitidos", options=["Auto (acciones: solo LONG)", "Ambos", "Solo LONG", "Solo SHORT"], group=g_side, tooltip="Medido 2026-08-23 sobre 2 anios y 29 acciones: LONG +0.216R (n=138, IC [+0.071,+0.362], positivo en las dos mitades) contra un baseline sin filtros de +0.026R. SHORT -0.012R con n=130: no aporta nada. En cripto la muestra es n=26 y no alcanza para decidir, por eso Auto no restringe cripto.")
+
 g_cool = "Enfriamiento (main.py::_in_cooldown)"
 max_hold_bars = input.int(72, "Velas de enfriamiento por lado", group=g_cool, minval=1)
 use_cooldown  = input.bool(true, "Aplicar enfriamiento", group=g_cool)
@@ -147,7 +150,20 @@ float tp2_px = is_long ? close + tp2_r * r_unit : close - tp2_r * r_unit
 // fallar; se conserva porque 22 de las 92 filas del bot viejo no la pasaban.
 bool geo_ok = not na(r_unit) and r_unit > 0 and sl_px > 0 and tp1_px > 0 and tp2_px > 0 and (is_long ? (sl_px < close and close < tp1_px and tp1_px <= tp2_px) : (sl_px > close and close > tp1_px and tp1_px >= tp2_px))
 
-bool raw_fire = warm and not tie and not in_fomc and gates_ok and geo_ok
+// ---------------------------------------------------------------------------
+// Gate de lado. No es un umbral afinado a ojo: en 2 anios y 29 acciones el LONG
+// dio +0.216R (n=138) con el IC entero por encima de cero y el signo aguantando
+// en las dos mitades, mientras el SHORT dio -0.012R con n=130 -- indistinguible
+// de nada. Tiene mecanismo: comprar retrocesos aprovecha la deriva alcista
+// estructural de las acciones; vender rebotes pelea contra ella.
+// En cripto NO se restringe: alli la muestra es n=26 (12 LONG / 14 SHORT) y
+// recortar un lado con esa evidencia seria justo el ajuste a ojo que este
+// indicador existe para no repetir.
+// ---------------------------------------------------------------------------
+bool is_equity = syminfo.type == "stock" or syminfo.type == "fund" or syminfo.type == "index" or syminfo.type == "dr"
+bool side_ok = sides_in == "Ambos" ? true : sides_in == "Solo LONG" ? is_long : sides_in == "Solo SHORT" ? is_short : (is_equity ? is_long : true)
+
+bool raw_fire = warm and not tie and not in_fomc and side_ok and gates_ok and geo_ok
 
 // Enfriamiento: un aviso por episodio, por simbolo y lado. El 19-ago la regla
 // disparo 5 veces sobre la MISMA subida de ETH -- eso es un trade contado cinco
@@ -164,9 +180,9 @@ if fired and barstate.isconfirmed
     else
         last_short_bar := bar_index
 
-string state = not warm ? "CALENTANDO" : tie ? "SUPRIMIDA" : in_fomc ? "SUPRIMIDA" : not gates_ok ? "SUPRIMIDA" : not geo_ok ? "BLOQUEADA" : cooling ? "SUPRIMIDA" : "ENVIADA"
+string state = not warm ? "CALENTANDO" : tie ? "SUPRIMIDA" : in_fomc ? "SUPRIMIDA" : not side_ok ? "SUPRIMIDA" : not gates_ok ? "SUPRIMIDA" : not geo_ok ? "BLOQUEADA" : cooling ? "SUPRIMIDA" : "ENVIADA"
 
-string reason = not warm ? "sin historia suficiente" : tie ? "close == ema200: sin sesgo" : in_fomc ? "ventana de evento: FOMC" : cooling and gates_ok and geo_ok ? "enfriamiento: mismo episodio ya aviso" : not geo_ok and gates_ok ? "geometria invalida" : not gates_ok ? "fallo: " + (g_rsi ? "" : "rsi_extreme ") + (g_bb ? "" : "bb_confluence ") + (g_adx ? "" : "adx_trending ") + (g_atr ? "" : "atr_min") : "paso los 4 gates"
+string reason = not warm ? "sin historia suficiente" : tie ? "close == ema200: sin sesgo" : in_fomc ? "ventana de evento: FOMC" : not side_ok ? "lado no habilitado en este mercado" : cooling and gates_ok and geo_ok ? "enfriamiento: mismo episodio ya aviso" : not geo_ok and gates_ok ? "geometria invalida" : not gates_ok ? "fallo: " + (g_rsi ? "" : "rsi_extreme ") + (g_bb ? "" : "bb_confluence ") + (g_adx ? "" : "adx_trending ") + (g_atr ? "" : "atr_min") : "paso los 4 gates"
 
 // =============================================================================
 // CONTEXTO -- el chart contra el corpus donde la regla se midio.
@@ -201,8 +217,11 @@ if show_levels and fired and barstate.isconfirmed
     ln_t1 := line.new(bar_index, tp1_px, bar_index + max_hold_bars, tp1_px, color=color.new(color.green, 20), width=1)
     ln_t2 := line.new(bar_index, tp2_px, bar_index + max_hold_bars, tp2_px, color=color.new(color.green, 55), width=1, style=line.style_dotted)
 
-// =============================================================================
-// PANELES
+// =============================================================================// PANELES
+// El panel viejo decia "fallo: rsi_extreme bb_confluence". Eso es un diagnostico de
+// ingeniero: nombra el gate que no paso y deja al operador traduciendo. Lo que hace
+// falta antes de arriesgar dinero es otra cosa -- entro o no entro, por que, que falta
+// exactamente, y a que precio esto se armaria. Eso es lo que arma esta seccion.
 // =============================================================================
 // Punto de equilibrio real: la mitad sale en TP1 y el resto corre con el stop
 // en entrada. Guardar el numero "todo en TP1" hacia que la alerta dijera "vas
@@ -218,61 +237,118 @@ color PANEL_BG = color.rgb(14, 17, 24)   // solido: el panel se lee sobre las ve
 f_pos(sel) =>
     sel == "Arriba izquierda" ? position.top_left : sel == "Abajo derecha" ? position.bottom_right : sel == "Abajo izquierda" ? position.bottom_left : sel == "Media derecha" ? position.middle_right : sel == "Media izquierda" ? position.middle_left : position.top_right
 
-var table pnl = table.new(f_pos(panel_pos_in), 2, 13, border_width=1)
+// ---------------------------------------------------------------------------
+// Cuantas de las cuatro condiciones estan puestas. Es la medida de "que tan
+// cerca", y no todas pesan igual: ADX y ATR describen el CONTEXTO (hay tendencia,
+// se mueve lo suficiente) y no dependen de donde este el precio ahora mismo. RSI
+// y banda describen el PRECIO. Con el contexto puesto, lo unico que falta es que
+// el precio venga -- ese es el caso que merece que el operador se quede mirando.
+// ---------------------------------------------------------------------------
+int gates_set = (g_rsi ? 1 : 0) + (g_bb ? 1 : 0) + (g_adx ? 1 : 0) + (g_atr ? 1 : 0)
+bool ctx_ready = g_adx and g_atr          // contexto listo, falta el precio
+bool armed = warm and not tie and not in_fomc and ctx_ready and not (g_rsi and g_bb)
+
+// Ultima vez que ESTE grafico marco una senal. Sin esto, "no entrar" doce dias
+// seguidos se lee igual que un indicador roto -- y a ~1 alerta por semana repartida
+// entre seis simbolos, callar es el comportamiento normal, no una falla.
+var int last_fire_bar = na
+if fired and barstate.isconfirmed
+    last_fire_bar := bar_index
+
+f_ago(float bars) =>
+    na(bars) ? "nunca en este grafico" : bars < 24 ? str.tostring(bars, "#") + " velas" : str.tostring(math.round(bars / 24.0)) + " dias"
+
+// El precio al que esto se armaria: la banda que el gate de %B pide tocar. Es
+// aproximado a proposito y se dice -- la banda se mueve con cada vela nueva.
+float trigger_px = is_long ? bb_lo : bb_up
+float trigger_dist = close != 0 ? (trigger_px - close) / close * 100.0 : na
+
+// ---------------------------------------------------------------------------
+// El veredicto, en el idioma en el que se opera.
+// ---------------------------------------------------------------------------
+string verdict = not warm ? "ESPERA" : not side_ok ? "NO ENTRAR" : state == "ENVIADA" ? (is_long ? "ENTRAR LONG" : "ENTRAR SHORT") : state == "BLOQUEADA" ? "NO ENTRAR" : armed ? "VIGILA" : "NO ENTRAR"
+
+color verdict_bg = verdict == "ENTRAR LONG" ? color.rgb(19, 115, 102) : verdict == "ENTRAR SHORT" ? color.rgb(140, 38, 45) : verdict == "VIGILA" ? color.rgb(150, 104, 20) : color.rgb(62, 68, 82)
+
+string why = not warm ? "Faltan velas para que los indicadores signifiquen algo" : not side_ok and is_equity ? "En acciones el SHORT midio -0.012R con n=130: no aporta. Aqui solo se compran retrocesos" : not side_ok ? "Este lado esta apagado en los ajustes" : tie ? "El precio esta sobre la EMA200: sin lado definido" : in_fomc ? "Ventana FOMC: el bot no opera cerca de la reunion" : state == "ENVIADA" ? "Retroceso dentro de la tendencia, las cuatro puestas" : cooling ? "Ya avise de este movimiento; una segunda no es informacion nueva" : not g_adx and not g_atr ? "Mercado lateral y quieto: ni tendencia ni recorrido" : not g_adx ? "No hay tendencia que seguir, esto es rango" : not g_atr ? "Se mueve muy poco: el stop no cabe" : is_long ? "Tendencia alcista, pero el precio va estirado arriba -- no hay retroceso que comprar" : "Tendencia bajista, pero el precio va estirado abajo -- no hay rebote que vender"
+
+string missing = state == "ENVIADA" ? "nada, esta puesta" : not side_ok ? "que el precio cruce al otro lado de la EMA200" : not g_rsi and not g_bb ? (is_long ? "que el precio baje: RSI a 30 y tocar la banda de abajo" : "que el precio suba: RSI a 70 y tocar la banda de arriba") : not g_rsi ? (is_long ? "que el RSI baje a 30" : "que el RSI suba a 70") : not g_bb ? (is_long ? "que el precio toque la banda de abajo" : "que el precio toque la banda de arriba") : not g_adx ? "que se forme tendencia (ADX 25)" : not g_atr ? "que el rango se abra (ATR 0.4%)" : "-"
+
+var table pnl = table.new(f_pos(panel_pos_in), 2, 18, border_width=1)
 if show_panel and barstate.islast
     color hdr = color.rgb(0, 0, 0)
-    table.cell(pnl, 0, 0, "ZENITH V19 | INSTRUMENTO", bgcolor=hdr, text_color=color.white, text_size=size.small)
+    table.cell(pnl, 0, 0, "ZENITH V19", bgcolor=hdr, text_color=color.white, text_size=size.small)
     table.cell(pnl, 1, 0, base + " | " + timeframe.period, bgcolor=hdr, text_color=color.white, text_size=size.small)
 
-    color st_c = state == "ENVIADA" ? color.rgb(19, 115, 102) : state == "BLOQUEADA" ? color.rgb(140, 38, 45) : color.rgb(62, 68, 82)
-    table.cell(pnl, 0, 1, "Estado", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 1, state + (state == "ENVIADA" ? (is_long ? " LONG" : " SHORT") : ""), bgcolor=st_c, text_color=color.white, text_size=size.small)
-    table.cell(pnl, 0, 2, "Motivo", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 2, reason, bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
+    table.cell(pnl, 0, 1, "QUE HAGO", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, 1, verdict, bgcolor=verdict_bg, text_color=color.white, text_size=size.normal)
+    table.cell(pnl, 0, 2, "Por que", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, 2, why, bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
+    table.cell(pnl, 0, 3, "Falta", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, 3, str.tostring(gates_set) + " de 4 puestas: " + missing, bgcolor=PANEL_BG, text_color=color.white, text_size=size.tiny)
 
-    table.cell(pnl, 0, 3, "Entrada", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 3, str.tostring(close, format.mintick), bgcolor=PANEL_BG, text_color=color.white, text_size=size.tiny)
-    table.cell(pnl, 0, 4, "Stop (1R)", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 4, str.tostring(sl_px, format.mintick) + "  (" + str.tostring((sl_px - close) / close * 100, "#.##") + "%)", bgcolor=PANEL_BG, text_color=color.white, text_size=size.tiny)
-    table.cell(pnl, 0, 5, "TP1 / TP2", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 5, str.tostring(tp1_px, format.mintick) + "  /  " + str.tostring(tp2_px, format.mintick), bgcolor=PANEL_BG, text_color=color.white, text_size=size.tiny)
-    table.cell(pnl, 0, 6, "Aciertos p/ no perder", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 6, str.tostring(be_lo * 100, "#.#") + "% - " + str.tostring(be_hi * 100, "#.#") + "%", bgcolor=PANEL_BG, text_color=color.orange, text_size=size.tiny)
+    string arm_txt = state == "ENVIADA" ? "ahora" : na(trigger_px) ? "-" : str.tostring(trigger_px, format.mintick) + "  (" + str.tostring(trigger_dist, "#.#") + "% de aqui, aprox)"
+    table.cell(pnl, 0, 4, "Se arma cerca de", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, 4, arm_txt, bgcolor=PANEL_BG, text_color=armed ? color.orange : color.silver, text_size=size.tiny)
+    table.cell(pnl, 0, 5, "Ultima senal aqui", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, 5, f_ago(bar_index - last_fire_bar) + "  (normal: ~1/semana entre 6 simbolos)", bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
 
-    int ctx_row = show_record ? 12 : 7
+    table.cell(pnl, 0, 6, "SI ENTRA", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
+    table.cell(pnl, 1, 6, is_long ? "LONG" : "SHORT", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
+    table.cell(pnl, 0, 7, "Entrada", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, 7, str.tostring(close, format.mintick), bgcolor=PANEL_BG, text_color=color.white, text_size=size.tiny)
+    table.cell(pnl, 0, 8, "Stop (1R)", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, 8, str.tostring(sl_px, format.mintick) + "  (" + str.tostring((sl_px - close) / close * 100, "#.##") + "%)", bgcolor=PANEL_BG, text_color=color.white, text_size=size.tiny)
+    table.cell(pnl, 0, 9, "TP1 / TP2", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, 9, str.tostring(tp1_px, format.mintick) + "  /  " + str.tostring(tp2_px, format.mintick), bgcolor=PANEL_BG, text_color=color.white, text_size=size.tiny)
+    table.cell(pnl, 0, 10, "Aciertos p/ no perder", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, 10, str.tostring(be_lo * 100, "#.#") + "% - " + str.tostring(be_hi * 100, "#.#") + "%", bgcolor=PANEL_BG, text_color=color.orange, text_size=size.tiny)
+
+    int ctx_row = show_record ? 16 : 11
     if show_record
-        table.cell(pnl, 0, 7, "MEDIDO", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
-        table.cell(pnl, 1, 7, "2 anios | 6 simbolos", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
-        table.cell(pnl, 0, 8, "Pullback 1h", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-        table.cell(pnl, 1, 8, "+0.146R  n=107  IC[-0.008,+0.301]", bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
-        table.cell(pnl, 0, 9, "vs sin filtro", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-        table.cell(pnl, 1, 9, "-0.006R  |  ~1.0 alerta/sem", bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
-        table.cell(pnl, 0, 10, "En 4h / 1D", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-        table.cell(pnl, 1, 10, "-0.039R (n=32)  /  n=1", bgcolor=PANEL_BG, text_color=color.new(color.orange, 20), text_size=size.tiny)
-        table.cell(pnl, 0, 11, "Veredicto", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-        table.cell(pnl, 1, 11, "CANDIDATO, no resultado (IC cruza 0)", bgcolor=PANEL_BG, text_color=color.orange, text_size=size.tiny)
+        table.cell(pnl, 0, 11, "MEDIDO", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
+        table.cell(pnl, 1, 11, "2 anios | 6 simbolos", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
+        table.cell(pnl, 0, 12, "Pullback 1h", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+        table.cell(pnl, 1, 12, "+0.146R  n=107  IC[-0.008,+0.301]", bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
+        table.cell(pnl, 0, 13, "vs sin filtro", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+        table.cell(pnl, 1, 13, "-0.006R  |  ~1.0 alerta/sem", bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
+        table.cell(pnl, 0, 14, "En 4h / 1D", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+        table.cell(pnl, 1, 14, "-0.039R (n=32)  /  n=1", bgcolor=PANEL_BG, text_color=color.new(color.orange, 20), text_size=size.tiny)
+        table.cell(pnl, 0, 15, "Veredicto", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+        table.cell(pnl, 1, 15, "CANDIDATO, no resultado (IC cruza 0)", bgcolor=PANEL_BG, text_color=color.orange, text_size=size.tiny)
 
     string ctx = (tf_ok ? "" : "TF " + timeframe.period + " NO medido | usa 1h. ") + (in_corpus ? "" : base + " fuera del corpus (ZEC TAO BTC ETH SOL BNB).")
     table.cell(pnl, 0, ctx_row, "Contexto", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
     table.cell(pnl, 1, ctx_row, ctx == "" ? "simbolo y marco dentro de lo medido" : ctx, bgcolor=ctx == "" ? color.rgb(19, 115, 102) : color.rgb(140, 38, 45), text_color=color.white, text_size=size.tiny)
 
-f_gate_row(t, r, nm, now_s, need_s, ok) =>
+// ---------------------------------------------------------------------------
+// Las cuatro condiciones, con nombres que se leen y con CUANTO falta. "rsi_extreme
+// 73.6 <= 30 no" obliga a restar de cabeza; "le faltan 43.6 puntos" no.
+// ---------------------------------------------------------------------------
+f_gate_row(t, r, nm, now_s, need_s, gap_s, ok) =>
     table.cell(t, 0, r, nm, bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
     table.cell(t, 1, r, now_s, bgcolor=PANEL_BG, text_color=color.white, text_size=size.tiny)
     table.cell(t, 2, r, need_s, bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(t, 3, r, ok ? "OK" : "no", bgcolor=ok ? color.new(color.teal, 40) : color.new(color.red, 60), text_color=color.white, text_size=size.tiny)
+    table.cell(t, 3, r, ok ? "-" : gap_s, bgcolor=PANEL_BG, text_color=color.orange, text_size=size.tiny)
+    table.cell(t, 4, r, ok ? "OK" : "no", bgcolor=ok ? color.rgb(19, 115, 102) : color.rgb(140, 38, 45), text_color=color.white, text_size=size.tiny)
 
-var table gts = table.new(f_pos(gates_pos_in), 4, 5, border_width=1)
+var table gts = table.new(f_pos(gates_pos_in), 5, 5, border_width=1)
 if show_gates and barstate.islast
     color gh = color.rgb(0, 0, 0)
-    table.cell(gts, 0, 0, "GATE",  bgcolor=gh, text_color=color.white, text_size=size.tiny)
+    table.cell(gts, 0, 0, "CONDICION", bgcolor=gh, text_color=color.white, text_size=size.tiny)
     table.cell(gts, 1, 0, "AHORA", bgcolor=gh, text_color=color.white, text_size=size.tiny)
-    table.cell(gts, 2, 0, "PIDE",  bgcolor=gh, text_color=color.white, text_size=size.tiny)
-    table.cell(gts, 3, 0, is_long ? "LONG" : "SHORT", bgcolor=gh, text_color=color.white, text_size=size.tiny)
-    f_gate_row(gts, 1, "rsi_extreme",   str.tostring(rsi_v, "#.#"), is_long ? "<= " + str.tostring(rsi_oversold, "#") : ">= " + str.tostring(rsi_overbought, "#"), g_rsi)
-    f_gate_row(gts, 2, "bb_confluence", str.tostring(pctb, "#.##"), is_long ? "<= " + str.tostring(bb_pctb_low, "#.##") : ">= " + str.tostring(bb_pctb_high, "#.##"), g_bb)
-    f_gate_row(gts, 3, "adx_trending",  str.tostring(adx_v, "#.#"), ">= " + str.tostring(adx_min, "#"), g_adx)
-    f_gate_row(gts, 4, "atr_min",       str.tostring(atr_v / close * 100, "#.##") + "%", ">= " + str.tostring(atr_min_pct * 100, "#.##") + "%", g_atr)
+    table.cell(gts, 2, 0, "PIDE", bgcolor=gh, text_color=color.white, text_size=size.tiny)
+    table.cell(gts, 3, 0, "LE FALTA", bgcolor=gh, text_color=color.white, text_size=size.tiny)
+    table.cell(gts, 4, 0, is_long ? "LONG" : "SHORT", bgcolor=gh, text_color=color.white, text_size=size.tiny)
+    f_gate_row(gts, 1, "RSI estirado", str.tostring(rsi_v, "#.#"), is_long ? "<= " + str.tostring(rsi_oversold, "#") : ">= " + str.tostring(rsi_overbought, "#"), str.tostring(math.abs(rsi_v - (is_long ? rsi_oversold : rsi_overbought)), "#.#") + " pts", g_rsi)
+    f_gate_row(gts, 2, "Toca la banda", str.tostring(pctb, "#.##"), is_long ? "<= " + str.tostring(bb_pctb_low, "#.##") : ">= " + str.tostring(bb_pctb_high, "#.##"), na(trigger_dist) ? "-" : str.tostring(trigger_dist, "#.#") + "% de precio", g_bb)
+    f_gate_row(gts, 3, "Hay tendencia", str.tostring(adx_v, "#.#"), ">= " + str.tostring(adx_min, "#"), str.tostring(math.max(0, adx_min - adx_v), "#.#") + " pts", g_adx)
+    f_gate_row(gts, 4, "Se mueve", str.tostring(atr_v / close * 100, "#.##") + "%", ">= " + str.tostring(atr_min_pct * 100, "#.##") + "%", str.tostring(math.max(0, atr_min_pct * 100 - atr_v / close * 100), "#.##") + "%", g_atr)
+
+// La banda que hay que tocar se engrosa cuando el contexto YA esta puesto y lo unico
+// que falta es que el precio venga. Deja de ser una linea de adorno y pasa a ser el
+// nivel al que hay que volver a mirar.
+plot(armed ? trigger_px : na, "Zona de armado", color=color.new(color.orange, 0), linewidth=3, style=plot.style_linebr)
 
 // =============================================================================
 // ALERTA -- mismos nombres de campo que la fila de `signals` del instrumento,
