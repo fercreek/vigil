@@ -1,10 +1,20 @@
+from pathlib import Path
 import sys, warnings, pickle
 warnings.filterwarnings("ignore")
 sys.path.insert(0, ".")
-sys.path.insert(0, "/private/tmp/claude-501/-Users-fernandocastaneda-Documents-ideas-scalp-bot/0acb6807-3a0d-4478-820e-4d398ce00750/scratchpad")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import yfinance as yf
 from instrument.resolver import Candle
 from geom_lab import run, report
+
+# El cache vive junto a estos scripts, no en un directorio de la maquina que los
+# escribio. La version anterior guardaba rutas absolutas del scratchpad: los
+# scripts se commitearon diciendo que servian para re-correr los numeros, y no
+# corrian en ninguna otra maquina.
+_HERE = Path(__file__).resolve().parent
+_CACHE = _HERE / "_cache"
+_CACHE.mkdir(exist_ok=True)
+
 
 STOCKS = ["NVDA","TSLA","AAPL","COIN","HOOD","IONQ","OKLO","SMR","RKLB","IREN","XLE","SOFI",
           "MP","CRWV","AMD","PLTR","MSTR","SOUN","RGTI","UUUU","ASTS","CLSK","CORZ","XOM",
@@ -24,7 +34,7 @@ for s in STOCKS:
     except Exception as e:
         print(f"  {s}: {e}")
 
-pickle.dump((series, dayof), open("/private/tmp/claude-501/-Users-fernandocastaneda-Documents-ideas-scalp-bot/0acb6807-3a0d-4478-820e-4d398ce00750/scratchpad/stocks.pkl", "wb"))
+pickle.dump((series, dayof), open(str(_CACHE / "stocks.pkl"), "wb"))
 total = sum(len(v) for v in series.values())
 print(f"ACCIONES: {len(series)} tickers, {total:,} velas horarias (2 anios)\n")
 for v in ("V0_actual", "V1_gap", "V2_intradia"):

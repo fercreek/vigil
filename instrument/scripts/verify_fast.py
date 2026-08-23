@@ -1,10 +1,11 @@
 """Antes de creerle un solo numero al evaluador rapido: que produzca EXACTAMENTE
 los mismos disparos que rules.evaluate vela por vela. Si difiere en uno, no sirve.
 """
+from pathlib import Path
 import sys, warnings
 warnings.filterwarnings("ignore")
 sys.path.insert(0, ".")
-sys.path.insert(0, "/private/tmp/claude-501/-Users-fernandocastaneda-Documents-ideas-scalp-bot/0acb6807-3a0d-4478-820e-4d398ce00750/scratchpad")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import yfinance as yf
 from instrument import rules
 from instrument.resolver import Candle

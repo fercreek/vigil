@@ -1,14 +1,24 @@
 """Lo mismo en cripto, con el feed del propio bot. Si el SHORT tampoco aporta
 alla, el cambio es una regla del sistema y no un parche para acciones.
 """
+from pathlib import Path
 import sys, math, statistics, pickle, time, warnings
 warnings.filterwarnings("ignore")
 sys.path.insert(0, ".")
-sys.path.insert(0, "/private/tmp/claude-501/-Users-fernandocastaneda-Documents-ideas-scalp-bot/0acb6807-3a0d-4478-820e-4d398ce00750/scratchpad")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from instrument.feed import fetch_ohlcv
 from instrument.resolver import resolve
 from geom_lab import signals, geometry
 from instrument import ta, rules
+
+# El cache vive junto a estos scripts, no en un directorio de la maquina que los
+# escribio. La version anterior guardaba rutas absolutas del scratchpad: los
+# scripts se commitearon diciendo que servian para re-correr los numeros, y no
+# corrian en ninguna otra maquina.
+_HERE = Path(__file__).resolve().parent
+_CACHE = _HERE / "_cache"
+_CACHE.mkdir(exist_ok=True)
+
 
 SYMS = ["ZEC", "TAO", "BTC", "ETH", "SOL", "BNB"]
 H = 72
@@ -33,7 +43,7 @@ for s in SYMS:
         series[s] = uniq
     print(f"  {s}: {len(uniq)} velas")
 
-pickle.dump(series, open("/private/tmp/claude-501/-Users-fernandocastaneda-Documents-ideas-scalp-bot/0acb6807-3a0d-4478-820e-4d398ce00750/scratchpad/crypto.pkl", "wb"))
+pickle.dump(series, open(str(_CACHE / "crypto.pkl"), "wb"))
 
 def show(tag, rs):
     n = len(rs)

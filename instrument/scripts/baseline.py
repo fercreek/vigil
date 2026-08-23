@@ -5,16 +5,26 @@ ningun gate. Si el baseline da lo mismo, el filtro no esta haciendo nada y lo qu
 se ve es la deriva del mercado. Es la comparacion que rules.py ya documenta haber
 hecho en cripto, aplicada aqui.
 """
+from pathlib import Path
 import sys, math, statistics, pickle, warnings
 warnings.filterwarnings("ignore")
 sys.path.insert(0, ".")
-sys.path.insert(0, "/private/tmp/claude-501/-Users-fernandocastaneda-Documents-ideas-scalp-bot/0acb6807-3a0d-4478-820e-4d398ce00750/scratchpad")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from instrument import ta, rules
 from instrument.geometry import Geometry
 from instrument.resolver import resolve
 from geom_lab import signals, geometry, run
 
-series, dayof = pickle.load(open("/private/tmp/claude-501/-Users-fernandocastaneda-Documents-ideas-scalp-bot/0acb6807-3a0d-4478-820e-4d398ce00750/scratchpad/stocks.pkl", "rb"))
+# El cache vive junto a estos scripts, no en un directorio de la maquina que los
+# escribio. La version anterior guardaba rutas absolutas del scratchpad: los
+# scripts se commitearon diciendo que servian para re-correr los numeros, y no
+# corrian en ninguna otra maquina.
+_HERE = Path(__file__).resolve().parent
+_CACHE = _HERE / "_cache"
+_CACHE.mkdir(exist_ok=True)
+
+
+series, dayof = pickle.load(open(str(_CACHE / "stocks.pkl"), "rb"))
 MAX_HOLD = 72
 
 def stats(rs):

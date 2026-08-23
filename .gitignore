@@ -44,3 +44,4 @@ phase.txt
 # instrument corpus: regenerable with instrument/scripts/fetch_corpus.py
 corpus/
 instrument/**/__pycache__/
+instrument/scripts/_cache/
