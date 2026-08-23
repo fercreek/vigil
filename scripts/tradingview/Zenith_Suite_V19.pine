@@ -63,7 +63,10 @@ fomc_hrs  = input.int(24, "Ventana +/- horas", group=g_evt)
 
 g_vis = "Visual"
 show_panel      = input.bool(true, "Panel del instrumento", group=g_vis)
+show_record     = input.bool(true, "Incluir el historial medido", group=g_vis, tooltip="Apagarlo deja solo estado y geometria: el panel pasa de 13 filas a 8 y tapa menos precio. Los numeros siguen en docs/PINE_SCRIPT_GUIDE.md.")
 show_gates      = input.bool(true, "Panel de gates",        group=g_vis)
+panel_pos_in    = input.string("Arriba derecha", "Donde va el panel", options=["Arriba derecha", "Arriba izquierda", "Abajo derecha", "Abajo izquierda", "Media derecha", "Media izquierda"], group=g_vis)
+gates_pos_in    = input.string("Abajo derecha",  "Donde van los gates", options=["Abajo derecha", "Abajo izquierda", "Arriba derecha", "Arriba izquierda", "Media derecha", "Media izquierda"], group=g_vis)
 show_levels     = input.bool(true, "Dibujar SL/TP",         group=g_vis)
 show_suppressed = input.bool(true, "Marcar SUPRIMIDAS",     group=g_vis)
 
@@ -210,13 +213,18 @@ float be_lo = 1.0 / (1.0 + won + (1.0 - partial_tp1) * tp2_r)
 
 color PANEL_BG = color.rgb(14, 17, 24)   // solido: el panel se lee sobre las velas
 
-var table pnl = table.new(position.top_right, 2, 13, border_width=1, bgcolor=PANEL_BG)
+// Cualquier posicion tapa velas -- el panel vive sobre el grafico. Se elige, no
+// se adivina: donde estorbe menos depende de por donde ande el precio ese dia.
+f_pos(sel) =>
+    sel == "Arriba izquierda" ? position.top_left : sel == "Abajo derecha" ? position.bottom_right : sel == "Abajo izquierda" ? position.bottom_left : sel == "Media derecha" ? position.middle_right : sel == "Media izquierda" ? position.middle_left : position.top_right
+
+var table pnl = table.new(f_pos(panel_pos_in), 2, 13, border_width=1)
 if show_panel and barstate.islast
     color hdr = color.rgb(0, 0, 0)
     table.cell(pnl, 0, 0, "ZENITH V19 | INSTRUMENTO", bgcolor=hdr, text_color=color.white, text_size=size.small)
     table.cell(pnl, 1, 0, base + " | " + timeframe.period, bgcolor=hdr, text_color=color.white, text_size=size.small)
 
-    color st_c = state == "ENVIADA" ? color.new(color.teal, 20) : state == "BLOQUEADA" ? color.new(color.red, 30) : color.new(color.gray, 30)
+    color st_c = state == "ENVIADA" ? color.rgb(19, 115, 102) : state == "BLOQUEADA" ? color.rgb(140, 38, 45) : color.rgb(62, 68, 82)
     table.cell(pnl, 0, 1, "Estado", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
     table.cell(pnl, 1, 1, state + (state == "ENVIADA" ? (is_long ? " LONG" : " SHORT") : ""), bgcolor=st_c, text_color=color.white, text_size=size.small)
     table.cell(pnl, 0, 2, "Motivo", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
@@ -231,20 +239,22 @@ if show_panel and barstate.islast
     table.cell(pnl, 0, 6, "Aciertos p/ no perder", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
     table.cell(pnl, 1, 6, str.tostring(be_lo * 100, "#.#") + "% - " + str.tostring(be_hi * 100, "#.#") + "%", bgcolor=PANEL_BG, text_color=color.orange, text_size=size.tiny)
 
-    table.cell(pnl, 0, 7, "MEDIDO", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
-    table.cell(pnl, 1, 7, "2 anios | 6 simbolos", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
-    table.cell(pnl, 0, 8, "Pullback 1h", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 8, "+0.146R  n=107  IC[-0.008,+0.301]", bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
-    table.cell(pnl, 0, 9, "vs sin filtro", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 9, "-0.006R  |  ~1.0 alerta/sem", bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
-    table.cell(pnl, 0, 10, "En 4h / 1D", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 10, "-0.039R (n=32)  /  n=1", bgcolor=PANEL_BG, text_color=color.new(color.orange, 20), text_size=size.tiny)
-    table.cell(pnl, 0, 11, "Veredicto", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 11, "CANDIDATO, no resultado (IC cruza 0)", bgcolor=PANEL_BG, text_color=color.orange, text_size=size.tiny)
+    int ctx_row = show_record ? 12 : 7
+    if show_record
+        table.cell(pnl, 0, 7, "MEDIDO", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
+        table.cell(pnl, 1, 7, "2 anios | 6 simbolos", bgcolor=color.rgb(48, 54, 66), text_color=color.white, text_size=size.tiny)
+        table.cell(pnl, 0, 8, "Pullback 1h", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+        table.cell(pnl, 1, 8, "+0.146R  n=107  IC[-0.008,+0.301]", bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
+        table.cell(pnl, 0, 9, "vs sin filtro", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+        table.cell(pnl, 1, 9, "-0.006R  |  ~1.0 alerta/sem", bgcolor=PANEL_BG, text_color=color.silver, text_size=size.tiny)
+        table.cell(pnl, 0, 10, "En 4h / 1D", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+        table.cell(pnl, 1, 10, "-0.039R (n=32)  /  n=1", bgcolor=PANEL_BG, text_color=color.new(color.orange, 20), text_size=size.tiny)
+        table.cell(pnl, 0, 11, "Veredicto", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+        table.cell(pnl, 1, 11, "CANDIDATO, no resultado (IC cruza 0)", bgcolor=PANEL_BG, text_color=color.orange, text_size=size.tiny)
 
     string ctx = (tf_ok ? "" : "TF " + timeframe.period + " NO medido | usa 1h. ") + (in_corpus ? "" : base + " fuera del corpus (ZEC TAO BTC ETH SOL BNB).")
-    table.cell(pnl, 0, 12, "Contexto", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
-    table.cell(pnl, 1, 12, ctx == "" ? "simbolo y marco dentro de lo medido" : ctx, bgcolor=ctx == "" ? color.new(color.teal, 70) : color.new(color.red, 60), text_color=color.white, text_size=size.tiny)
+    table.cell(pnl, 0, ctx_row, "Contexto", bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
+    table.cell(pnl, 1, ctx_row, ctx == "" ? "simbolo y marco dentro de lo medido" : ctx, bgcolor=ctx == "" ? color.rgb(19, 115, 102) : color.rgb(140, 38, 45), text_color=color.white, text_size=size.tiny)
 
 f_gate_row(t, r, nm, now_s, need_s, ok) =>
     table.cell(t, 0, r, nm, bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
@@ -252,7 +262,7 @@ f_gate_row(t, r, nm, now_s, need_s, ok) =>
     table.cell(t, 2, r, need_s, bgcolor=PANEL_BG, text_color=color.gray, text_size=size.tiny)
     table.cell(t, 3, r, ok ? "OK" : "no", bgcolor=ok ? color.new(color.teal, 40) : color.new(color.red, 60), text_color=color.white, text_size=size.tiny)
 
-var table gts = table.new(position.bottom_right, 4, 5, border_width=1, bgcolor=PANEL_BG)
+var table gts = table.new(f_pos(gates_pos_in), 4, 5, border_width=1)
 if show_gates and barstate.islast
     color gh = color.rgb(0, 0, 0)
     table.cell(gts, 0, 0, "GATE",  bgcolor=gh, text_color=color.white, text_size=size.tiny)
