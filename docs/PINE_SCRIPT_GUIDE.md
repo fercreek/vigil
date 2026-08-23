@@ -69,10 +69,22 @@ indicador lo dice en pantalla.
 
 El panel se pinta **rojo** cuando el símbolo o el marco temporal están fuera de lo medido.
 
+## Mover el panel
+
+Los dos paneles eligen esquina desde **Entradas de datos → Visual**: seis posiciones cada
+uno. Y **"Incluir el historial medido"** pliega el bloque de +0.146R / IC / 4h — el panel
+pasa de 13 filas a 8 cuando solo quieres estado y geometria.
+
+Hace falta porque TradingView dibuja las velas **encima** de las tablas de Pine: el fondo
+opaco no evita que el precio cruce las filas. La salida es mover el panel a una esquina
+tranquila o plegarle el historial, no pelearse con el color.
+
 ## Instalar
 
 1. Copiar `scripts/tradingview/Zenith_Suite_V19.pine`.
 2. Pine Editor → nombre del script → **Crear nuevo → Indicador** → pegar → **Añadir al gráfico**.
+   Guardar el script **no** actualiza una copia ya aplicada al gráfico: hay que quitarla y
+   volverla a añadir, o recargar la página, para que tome la version nueva.
 3. Usar **1h**. En 4h la estrategia midió negativo.
 
 > ⚠️ El plan Basic de TradingView permite **2 indicadores por gráfico**. Hay que liberar un
