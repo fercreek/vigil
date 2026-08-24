@@ -87,9 +87,12 @@ está. El lado se decide en `main.py`, por la misma razón que el calendario FOM
 Y en cripto siguen operándose los dos lados: allí la muestra por lado es n=26 y
 recortar uno con esa evidencia sería el ajuste a ojo que ya falló tres veces.
 
-**Criterio de retiro, escrito antes de la primera señal:** si el LONG en acciones
-acumula 100 señales resueltas en vivo y el borde superior del IC de la expectancy
-sigue por debajo de cero, se retira el universo de acciones.
+**Criterio de retiro, escrito antes de la primera señal y cableado el mismo día:**
+si un universo acumula 100 señales resueltas y el borde superior del IC de su
+expectancy sigue bajo cero, `kill_rule.py` lo retira, lo escribe en la tabla
+`retirements` con la aritmética que lo decidió, y avisa una vez por Telegram. Deja
+de emitir pero sigue evaluando. Los dos universos mueren por separado, y reactivar
+uno es borrar su fila a mano — el código nunca lo hace.
 
 ## Frontera — abierta
 

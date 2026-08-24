@@ -53,6 +53,12 @@ def cooldown_hours(symbol: str, bars: int) -> float:
     return sessions * (DAYS_PER_WEEK / SESSIONS_PER_WEEK) * 24.0
 
 
+def universe_of(symbol: str) -> str:
+    """El nombre que usan scoreboard.py y kill_rule.py. Vive aqui para que la
+    pertenencia a un universo se decida en un solo sitio."""
+    return "equities" if is_equity(symbol) else "crypto"
+
+
 def side_allowed(symbol: str, side: str) -> bool:
     """False solo para el caso que la medicion descarto: SHORT en acciones."""
     return not (is_equity(symbol) and side == "SHORT")

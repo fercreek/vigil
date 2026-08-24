@@ -289,3 +289,123 @@ class TestMarcadorPorUniverso:
         with self._conn() as conn:
             with pytest.raises(ValueError):
                 scoreboard.build_report(conn, universe="stocks")
+
+
+class TestKillRule:
+    """El criterio se escribio antes de la primera senal. Estos tests son lo que
+    lo separa de una intencion: prueban que se APLICA, no que este redactado."""
+
+    def _conn(self):
+        from instrument.store import connect
+        return connect(":memory:")
+
+    def _resueltas(self, conn, symbol, n, r):
+        from instrument.store import insert_signal, insert_resolution
+        for i in range(n):
+            sid = insert_signal(
+                conn, ruleset_version="v1", emitted_at=f"2026-01-01T{i % 24:02d}:00:00Z",
+                bar_ts=f"2026-0{1 + i // 28}-{1 + i % 28:02d}T{i % 24:02d}:00:00Z",
+                symbol=symbol, timeframe="1h", side="LONG", decision="SENT",
+                decision_reason="prueba", gates_passed=["rsi_extreme"], gates_failed=[],
+                trigger={"rsi": 28.0}, regime="TREND_PULLBACK", entry_price=100.0,
+                sl_price=98.0, tp1_price=101.4, tp2_price=102.6, r_unit=2.0,
+                rr_tp1=0.7, rr_tp2=1.3, breakeven_wr=0.74)
+            insert_resolution(conn, signal_id=sid, resolver_version="v1",
+                              resolved_at="2026-08-24T10:00:00Z", outcome="SL",
+                              exit_price=98.0, exit_bar_ts="2026-08-24T10:00:00Z",
+                              bars_held=5, tp1_hit=False, tp1_bar_ts=None, mae_r=-1.0,
+                              mfe_r=0.1, r_realized=r, r_if_tp1_only=r,
+                              r_if_no_partial=r, same_bar_ambiguous=False,
+                              resolution_source="BARS")
+        conn.commit()
+
+    def test_con_poca_muestra_no_retira_nada(self):
+        """El modo de fallo que importa es apagar el bot por un calculo flojo."""
+        from instrument import kill_rule
+        with self._conn() as conn:
+            self._resueltas(conn, "NVDA", 20, -1.0)      # pesimo, pero n=20
+            assert kill_rule.evaluate(conn) == []
+            assert not kill_rule.is_retired(conn, "equities")
+
+    def test_con_muestra_y_evidencia_adversa_retira(self):
+        from instrument import kill_rule, scoreboard
+        with self._conn() as conn:
+            self._resueltas(conn, "NVDA", scoreboard.KILL_RULE_N, -1.0)
+            nuevos = kill_rule.evaluate(conn)
+        assert [e["universe"] for e in nuevos] == ["equities"]
+        assert nuevos[0]["ci_upper"] < 0
+
+    def test_un_universo_no_arrastra_al_otro(self):
+        """Retirar los dos porque uno fallo es el promedio que el marcador ya
+        dejo de hacer."""
+        from instrument import kill_rule, scoreboard
+        with self._conn() as conn:
+            self._resueltas(conn, "NVDA", scoreboard.KILL_RULE_N, -1.0)
+            self._resueltas(conn, "ZEC", scoreboard.KILL_RULE_N, +1.0)
+            kill_rule.evaluate(conn)
+            assert kill_rule.is_retired(conn, "equities")
+            assert not kill_rule.is_retired(conn, "crypto")
+
+    def test_solo_avisa_una_vez(self):
+        from instrument import kill_rule, scoreboard
+        with self._conn() as conn:
+            self._resueltas(conn, "NVDA", scoreboard.KILL_RULE_N, -1.0)
+            assert len(kill_rule.evaluate(conn)) == 1
+            assert kill_rule.evaluate(conn) == [], "volveria a avisar en cada ciclo"
+
+    def test_un_universo_retirado_deja_de_emitir(self):
+        from instrument import kill_rule, main, scoreboard
+        from instrument.resolver import Candle
+        velas = [Candle(ts=f"2026-08-2{i}T10:00:00Z", open=100, high=101, low=99, close=100)
+                 for i in (0, 1)]
+
+        class Dispara:
+            @staticmethod
+            def evaluate(symbol, timeframe, candles, index, suppressions=None):
+                bar = candles[index]
+                return {"ruleset_version": "v2", "emitted_at": bar.ts, "bar_ts": bar.ts,
+                        "symbol": symbol, "timeframe": timeframe, "side": "LONG",
+                        "decision": "SENT", "decision_reason": "prueba",
+                        "gates_passed": ["rsi_extreme"], "gates_failed": [],
+                        "trigger": {"rsi": 28.0}, "regime": "TREND_PULLBACK",
+                        "entry_price": 100.0, "sl_price": 98.0, "tp1_price": 101.4,
+                        "tp2_price": 102.6, "r_unit": 2.0, "rr_tp1": 0.7,
+                        "rr_tp2": 1.3, "breakeven_wr": 0.74}
+
+        with self._conn() as conn:
+            self._resueltas(conn, "NVDA", scoreboard.KILL_RULE_N, -1.0)
+            kill_rule.evaluate(conn)
+            main._evaluate_and_store(conn, Dispara, "TSLA", velas, None, send=False)
+            fila = conn.execute(
+                "SELECT decision, decision_reason FROM signals WHERE symbol='TSLA'").fetchone()
+        assert fila["decision"] == "SUPPRESSED"
+        assert "universo retirado" in fila["decision_reason"]
+
+    def test_la_evaluacion_se_sigue_guardando_despues_del_retiro(self):
+        """Retirado no es ciego: sin las evaluaciones no hay forma de comprobar
+        despues si retirarlo fue correcto."""
+        from instrument import kill_rule, scoreboard
+        with self._conn() as conn:
+            self._resueltas(conn, "NVDA", scoreboard.KILL_RULE_N, -1.0)
+            kill_rule.evaluate(conn)
+            n = conn.execute("SELECT COUNT(*) FROM signals WHERE symbol='NVDA'").fetchone()[0]
+        assert n == scoreboard.KILL_RULE_N
+
+    def test_el_aviso_trae_los_numeros_que_lo_decidieron(self):
+        from instrument import kill_rule, scoreboard
+        with self._conn() as conn:
+            self._resueltas(conn, "NVDA", scoreboard.KILL_RULE_N, -1.0)
+            texto = kill_rule.announcement(kill_rule.evaluate(conn)[0])
+        assert "100 señales resueltas" in texto
+        assert "acciones" in texto and "retirements" in texto
+
+    def test_el_retiro_queda_con_su_aritmetica_para_auditarlo(self):
+        from instrument import kill_rule, scoreboard
+        with self._conn() as conn:
+            self._resueltas(conn, "NVDA", scoreboard.KILL_RULE_N, -1.0)
+            kill_rule.evaluate(conn)
+            fila = kill_rule.retirement(conn, "equities")
+        assert fila["n_resolved"] == scoreboard.KILL_RULE_N
+        assert fila["ci_upper"] < 0
+        assert fila["threshold"] == scoreboard.KILL_RULE_N
+        assert "IC95" in fila["note"]

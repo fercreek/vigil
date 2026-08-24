@@ -61,8 +61,18 @@ el ajuste a ojo que ya fallo tres veces en este repo.
 El gate de lado vive **solo en el indicador** (`Zenith_Suite_V19.pine`), con
 auto-deteccion por `syminfo.type`: restringe a LONG en acciones, no toca cripto.
 
-## Criterio de retiro, escrito antes
+## Criterio de retiro, escrito antes y CABLEADO
 
 Los dos anios medidos son de mercado alcista. Si el LONG en acciones acumula
 **100 senales resueltas en vivo** y el borde superior del IC de la expectancy sigue
-por debajo de cero, se retira. Escrito ahora, no despues de ver el resultado.
+por debajo de cero, se retira. Escrito antes de la primera senal, no despues de ver
+el resultado.
+
+Desde 2026-08-23 no es prosa: lo aplica `kill_rule.py` en cada ciclo, contra la tabla
+`retirements`. Un universo retirado deja de emitir (`main.py::_evaluate_and_store`)
+pero **sigue evaluando y guardando** -- sin esas filas no habria forma de comprobar
+despues si retirarlo fue correcto. El aviso por Telegram sale una sola vez y trae las
+cifras que lo decidieron.
+
+Cripto y acciones se retiran **por separado**. Reactivar un universo es una decision
+humana: borrar su fila de `retirements`. El codigo nunca la borra.

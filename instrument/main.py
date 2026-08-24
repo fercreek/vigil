@@ -15,7 +15,7 @@ import argparse
 import time
 from datetime import datetime, timedelta, timezone
 
-from . import breakout, equities, llm_note, notify, rules, telegram_poll, watch
+from . import breakout, equities, kill_rule, llm_note, notify, rules, telegram_poll, watch
 from .feed import FeedUnavailable, fetch_ohlcv
 from .geometry import InvalidGeometry, assert_geometry
 from . import knowledge_clock
@@ -120,6 +120,14 @@ def _evaluate_and_store(conn, strategy, symbol: str, candles, suppressions, send
                             suppressions=suppressions)
     if row is None:
         return False
+    # La kill-rule, aplicada. Va antes que todo lo demas porque un universo
+    # retirado no emite, punto -- y la evaluacion se sigue guardando, que es lo
+    # que permite comprobar despues si retirarlo fue correcto.
+    if row.get("decision") == "SENT" and kill_rule.is_retired(conn, equities.universe_of(symbol)):
+        row["decision"] = "SUPPRESSED"
+        fila = kill_rule.retirement(conn, equities.universe_of(symbol))
+        row["decision_reason"] = (f"universo retirado el {fila['retired_at'][:10]}: "
+                                  f"{fila['note']}")
     # El lado se decide aqui y no en rules.py, por la misma razon que el calendario
     # FOMC: es contexto del universo, no parte de la regla. rules.py sigue siendo
     # una funcion pura de sus argumentos.
@@ -258,6 +266,14 @@ def run_forever(db_path: str | None = None) -> None:
             try:
                 sent = scan_once(conn)
                 resolved = resolve_pending(conn)
+                # Despues de resolver, no antes: la kill-rule mide sobre resueltas,
+                # y evaluarla primero la dejaria siempre una pasada por detras.
+                for entry in kill_rule.evaluate(conn):
+                    notify.send_telegram(kill_rule.announcement(entry))
+                    watch.record(conn, f"kill_rule:{entry['universe']}", "retired",
+                                 f"n={entry['n_resolved']} ci_upper={entry['ci_upper']:+.3f}",
+                                 _now())
+                    conn.commit()
                 refreshed = knowledge_clock.refresh_if_due(conn, _now())
                 print(f"[{_now()}] sent={sent} resolved={resolved} knowledge={refreshed}")
             except FeedUnavailable as exc:

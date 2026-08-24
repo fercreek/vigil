@@ -137,3 +137,24 @@ CREATE TABLE IF NOT EXISTS legacy_trades (
   sl_side_valid INTEGER,   -- 0 = would be rejected by stop_on_right_side
   import_note   TEXT
 );
+
+-- ── retirements: la kill-rule, ejecutada y no solo escrita.
+-- El criterio ("si tras N senales resueltas el borde superior del IC sigue bajo
+-- cero, se retira") vivia en dos .md desde el 2026-08-23. Un criterio que solo
+-- existe en prosa se renegocia justo cuando toca aplicarlo, que es el momento en
+-- que menos ganas dan de aplicarlo. Esta tabla lo vuelve un hecho con fecha.
+--
+-- Una fila por universo retirado, con las cifras que lo decidieron: quien lo lea
+-- dentro de un anio puede comprobar la aritmetica en vez de creerle a la fila.
+-- Sin DELETE en el codigo: reactivar es una decision humana y explicita.
+CREATE TABLE IF NOT EXISTS retirements (
+  universe    TEXT PRIMARY KEY,
+  retired_at  TIMESTAMPTZ NOT NULL,
+  n_resolved  INTEGER NOT NULL,
+  ci_upper    NUMERIC(10,4) NOT NULL,
+  expectancy  NUMERIC(10,4) NOT NULL,
+  threshold   INTEGER NOT NULL,
+  note        TEXT,
+  CHECK (n_resolved >= 0),
+  CHECK (ci_upper < 0)          -- una fila aqui SIEMPRE describe evidencia adversa
+);
