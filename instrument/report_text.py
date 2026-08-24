@@ -41,8 +41,17 @@ def _outcome_breakdown(counts: dict[str, int]) -> str:
     return ", ".join(f"{n} {_OUTCOME_ES.get(k, k.lower())}" for k, n in counts.items())
 
 
-def _header(ruleset: str | None, empty: bool) -> str:
+_UNIVERSE_LABEL = {"crypto": "cripto", "equities": "acciones"}
+
+
+def _header(ruleset: str | None, empty: bool, universe: str | None = None) -> str:
+    """El universo va en el encabezado porque las dos poblaciones no comparten
+    evidencia: la regla se midio sobre n=138 y solo LONG en acciones, y sobre n=26
+    con los dos lados en cripto. Un marcador sin etiqueta invita a leer la cifra de
+    uno como si valiera para el otro."""
     tag = f" ({ruleset})" if ruleset else ""
+    quien = _UNIVERSE_LABEL.get(universe)
+    tag = f" · {quien}{tag}" if quien else tag
     return f"📊 Marcador{tag} — todavía sin resultados" if empty else f"📊 Marcador{tag}"
 
 
@@ -125,9 +134,11 @@ def render_report(report: dict[str, Any]) -> str:
     r = report
 
     if r["n_resolved"] == 0:
-        return "\n".join([_header(r["ruleset"], True)] + _empty_summary(r, MIN_N_FOR_WR, MAX_HOLD_HOURS))
+        return "\n".join([_header(r["ruleset"], True, r.get("universe"))]
+                         + _empty_summary(r, MIN_N_FOR_WR, r.get("max_hold_hours", MAX_HOLD_HOURS)))
 
-    lines = [_header(r["ruleset"], False)] + _summary_lines(r, MAX_HOLD_HOURS)
+    lines = [_header(r["ruleset"], False, r.get("universe"))] \
+            + _summary_lines(r, r.get("max_hold_hours", MAX_HOLD_HOURS))
     warning = _suspended_line(r, TAKEN_RATE_FLOOR)
     if warning:
         lines.append(warning)

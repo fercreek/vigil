@@ -177,6 +177,10 @@ def _scoreboard_per_ruleset(conn) -> str:
         "SELECT DISTINCT ruleset_version FROM signals WHERE decision = 'SENT' "
         "ORDER BY ruleset_version")]
     if not versions:
-        return scoreboard.render_report(scoreboard.build_report(conn))
+        # Un marcador por universo. Antes de que existieran las acciones esto
+        # devolvia uno solo; con las dos poblaciones dentro, una sola cifra
+        # promedia n=138 con n=26 y no describe a ninguna de las dos.
+        return "\n\n".join(scoreboard.render_report(r)
+                            for r in scoreboard.build_reports_by_universe(conn))
     return "\n\n".join(
         scoreboard.render_report(scoreboard.build_report(conn, ruleset=v)) for v in versions)

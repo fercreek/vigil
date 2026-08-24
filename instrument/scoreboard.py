@@ -38,9 +38,14 @@ if __package__ in (None, ""):  # `python instrument/scoreboard.py` needs the rep
 
 from instrument.report_text import render_report  # noqa: F401 -- re-exported, callers import it from here
 from instrument.stats import build_equity_curve, calculate_max_drawdown, calculate_profit_factor
+from instrument import equities
 from instrument.store import connect
 
 MAX_HOLD_HOURS = 72.0     # a SENT signal older than this with no resolution is orphaned, not late
+# ...pero 72 horas solo son 72 velas donde el mercado no cierra. En acciones son 14,
+# asi que una senal viva y sana se contaria como muerta a los tres dias. El mismo
+# desajuste que main.py::_in_cooldown tenia antes de cablear acciones.
+MAX_HOLD_HOURS_EQUITY = equities.cooldown_hours("NVDA", 72)   # ~372 h
 MIN_N_FOR_WR = 30         # below this a win rate is noise, not a verdict
 KILL_RULE_N = 100         # the sample the kill-rule waits for before it can fire
 TAKEN_RATE_FLOOR = 0.60   # below this, signal quality and execution quality are unseparable
@@ -81,31 +86,54 @@ def kill_rule_verdict(n_resolved: int, ci_upper: float, threshold: int = KILL_RU
     return "RETIRAR" if ci_upper < 0 else "VIVO"
 
 
-def _where(ruleset: str | None) -> tuple[str, list[Any]]:
-    return (" AND s.ruleset_version = ?", [ruleset]) if ruleset else ("", [])
+UNIVERSES = ("crypto", "equities")
 
 
-def _counts_by_decision(conn: sqlite3.Connection, ruleset: str | None) -> dict[str, int]:
-    clause, params = _where(ruleset)
+def _where(ruleset: str | None, universe: str | None = None) -> tuple[str, list[Any]]:
+    """Clausula AND acumulada. `universe` parte la tabla en dos poblaciones que no
+    deben promediarse: en acciones la regla se midio sobre n=138 y solo LONG; en
+    cripto sobre n=26 y los dos lados. Una sola cifra sobre las dos no describe
+    ninguna -- y el numero resultante se lee como si describiera ambas."""
+    clauses, params = [], []
+    if ruleset:
+        clauses.append("s.ruleset_version = ?")
+        params.append(ruleset)
+    if universe in UNIVERSES:
+        marks = ",".join("?" * len(equities.EQUITY_SYMBOLS))
+        op = "IN" if universe == "equities" else "NOT IN"
+        clauses.append(f"s.symbol {op} ({marks})")
+        params.extend(equities.EQUITY_SYMBOLS)
+    elif universe is not None:
+        raise ValueError(f"universe debe ser uno de {UNIVERSES} o None, no {universe!r}")
+    return ("".join(f" AND {c}" for c in clauses), params)
+
+
+def _counts_by_decision(conn: sqlite3.Connection, ruleset: str | None,
+                        universe: str | None = None) -> dict[str, int]:
+    clause, params = _where(ruleset, universe)
     clause = ("WHERE 1=1" + clause) if clause else ""
     rows = conn.execute(f"SELECT decision, COUNT(*) AS n FROM signals s {clause} "
                         "GROUP BY decision", params).fetchall()
     return {row["decision"]: row["n"] for row in rows}
 
 
-def _fetch_resolved(conn: sqlite3.Connection, ruleset: str | None) -> list[sqlite3.Row]:
-    clause, params = _where(ruleset)
+def _fetch_resolved(conn: sqlite3.Connection, ruleset: str | None,
+                    universe: str | None = None) -> list[sqlite3.Row]:
+    clause, params = _where(ruleset, universe)
     sql = ("SELECT s.id, s.breakeven_wr, r.r_realized, r.mfe_r, r.mae_r FROM signals s "
           "JOIN resolutions r ON r.signal_id = s.id WHERE s.decision = 'SENT'" + clause)
     return conn.execute(sql, params).fetchall()
 
 
 def _count_orphans(conn: sqlite3.Connection, ruleset: str | None,
-                    max_hold_hours: float = MAX_HOLD_HOURS, now: datetime | None = None) -> int:
+                    max_hold_hours: float | None = None, now: datetime | None = None,
+                    universe: str | None = None) -> int:
     """SENT, unresolved, and older than the max-hold: not late, dead."""
     now = now or datetime.now(timezone.utc)
+    if max_hold_hours is None:
+        max_hold_hours = MAX_HOLD_HOURS_EQUITY if universe == "equities" else MAX_HOLD_HOURS
     cutoff = (now - timedelta(hours=max_hold_hours)).isoformat()
-    clause, params = _where(ruleset)
+    clause, params = _where(ruleset, universe)
     sql = ("SELECT COUNT(*) AS n FROM signals s LEFT JOIN resolutions r ON r.signal_id = s.id "
           "WHERE s.decision = 'SENT' AND r.signal_id IS NULL AND s.emitted_at < ?" + clause)
     return conn.execute(sql, [cutoff] + params).fetchone()["n"]
@@ -138,12 +166,13 @@ def _taken_feedback(conn: sqlite3.Connection, resolved_rows: Sequence[sqlite3.Ro
         f"WHERE s.id IN ({placeholders}) AND m.taken = 1", ids).fetchall()
 
 
-def build_report(conn: sqlite3.Connection, ruleset: str | None = None) -> dict[str, Any]:
-    emitted = _counts_by_decision(conn, ruleset)
+def build_report(conn: sqlite3.Connection, ruleset: str | None = None,
+                 universe: str | None = None) -> dict[str, Any]:
+    emitted = _counts_by_decision(conn, ruleset, universe)
     total_emitted = sum(emitted.values())
-    resolved = _fetch_resolved(conn, ruleset)
+    resolved = _fetch_resolved(conn, ruleset, universe)
     n_resolved = len(resolved)
-    orphans = _count_orphans(conn, ruleset)
+    orphans = _count_orphans(conn, ruleset, universe=universe)
 
     r_values = [row["r_realized"] for row in resolved]
     mfe_values = [row["mfe_r"] for row in resolved]
@@ -172,7 +201,8 @@ def build_report(conn: sqlite3.Connection, ruleset: str | None = None) -> dict[s
     profit_factor = calculate_profit_factor(r_values) if r_values else 0.0
 
     return {
-        "ruleset": ruleset,
+        "ruleset": ruleset, "universe": universe,
+        "max_hold_hours": MAX_HOLD_HOURS_EQUITY if universe == "equities" else MAX_HOLD_HOURS,
         "emitted_by_decision": emitted, "total_emitted": total_emitted,
         "n_resolved": n_resolved, "orphans": orphans,
         "expectancy_r": expectancy, "expectancy_ci": (ci_lo, ci_hi),
@@ -191,15 +221,34 @@ def build_report(conn: sqlite3.Connection, ruleset: str | None = None) -> dict[s
     }
 
 
+def build_reports_by_universe(conn: sqlite3.Connection,
+                              ruleset: str | None = None) -> list[dict[str, Any]]:
+    """Un marcador por universo, nunca uno solo encima de los dos.
+
+    Devuelve solo los universos que tienen algo que contar: al arrancar acciones
+    el 2026-08-23 su marcador esta vacio durante semanas, y una seccion vacia al
+    lado de una llena invita a leerlas juntas."""
+    reportes = [build_report(conn, ruleset, u) for u in UNIVERSES]
+    vivos = [r for r in reportes if r["total_emitted"] > 0]
+    return vivos or reportes[:1]
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Scoreboard for the Zenith instrument.")
     parser.add_argument("--db", required=True, help="path to the sqlite instrument db")
     parser.add_argument("--ruleset", default=None, help="filter to one ruleset_version")
+    parser.add_argument("--universe", default=None, choices=[*UNIVERSES, "all"],
+                        help="crypto | equities | all (por defecto: cada uno por separado)")
     args = parser.parse_args(argv)
 
     with connect(args.db) as conn:
-        report = build_report(conn, args.ruleset)
-    print(render_report(report))
+        if args.universe == "all":
+            print(render_report(build_report(conn, args.ruleset)))
+        elif args.universe:
+            print(render_report(build_report(conn, args.ruleset, args.universe)))
+        else:
+            print("\n\n".join(render_report(r)
+                               for r in build_reports_by_universe(conn, args.ruleset)))
 
 
 if __name__ == "__main__":

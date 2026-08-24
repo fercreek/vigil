@@ -200,3 +200,92 @@ class TestEsperaAdaptativa:
             main.scan_once(conn, symbols=["NVDA"], send=False)   # deja la espera puesta
             main.scan_once(conn, symbols=["NVDA"], send=False)   # este debe saltarse
         assert len(pedidos) == 2, f"se pidio el feed {len(pedidos)} veces, esperaba 2"
+
+
+class TestMarcadorPorUniverso:
+    """Las dos poblaciones no comparten evidencia -- n=138 y solo LONG en acciones,
+    n=26 y los dos lados en cripto. Una sola cifra encima de ambas no describe a
+    ninguna, y se lee como si describiera a las dos."""
+
+    def _conn(self):
+        from instrument.store import connect
+        return connect(":memory:")
+
+    def _senal(self, conn, symbol, r_realized):
+        from instrument.store import insert_signal, insert_resolution
+        sid = insert_signal(
+            conn, ruleset_version="v1", emitted_at="2026-08-23T10:00:00Z",
+            bar_ts=f"2026-08-23T10:00:00Z", symbol=symbol, timeframe="1h", side="LONG",
+            decision="SENT", decision_reason="prueba", gates_passed=["rsi_extreme"],
+            gates_failed=[], trigger={"rsi": 28.0}, regime="TREND_PULLBACK",
+            entry_price=100.0, sl_price=98.0, tp1_price=101.4, tp2_price=102.6,
+            r_unit=2.0, rr_tp1=0.7, rr_tp2=1.3, breakeven_wr=0.74)
+        insert_resolution(conn, signal_id=sid, resolver_version="v1",
+                          resolved_at="2026-08-24T10:00:00Z", outcome="TP1_THEN_TP2",
+                          exit_price=102.6, exit_bar_ts="2026-08-24T10:00:00Z", bars_held=5,
+                          tp1_hit=True, tp1_bar_ts="2026-08-23T14:00:00Z", mae_r=-0.2,
+                          mfe_r=1.3, r_realized=r_realized, r_if_tp1_only=0.7,
+                          r_if_no_partial=1.3, same_bar_ambiguous=False,
+                          resolution_source="BARS")
+        return sid
+
+    def test_cada_universo_cuenta_solo_lo_suyo(self):
+        from instrument import scoreboard
+        with self._conn() as conn:
+            self._senal(conn, "NVDA", 1.0)
+            self._senal(conn, "ZEC", -1.0)
+            acc = scoreboard.build_report(conn, universe="equities")
+            cri = scoreboard.build_report(conn, universe="crypto")
+        assert acc["n_resolved"] == 1 and acc["expectancy_r"] == 1.0
+        assert cri["n_resolved"] == 1 and cri["expectancy_r"] == -1.0
+
+    def test_la_media_conjunta_borra_a_las_dos(self):
+        """Sin separar, +1R y -1R se promedian a cero: el numero no describe ni al
+        universo que gano ni al que perdio."""
+        from instrument import scoreboard
+        with self._conn() as conn:
+            self._senal(conn, "NVDA", 1.0)
+            self._senal(conn, "ZEC", -1.0)
+            junto = scoreboard.build_report(conn)
+        assert junto["expectancy_r"] == 0.0
+
+    def test_el_marcador_por_defecto_entrega_uno_por_universo(self):
+        from instrument import scoreboard
+        with self._conn() as conn:
+            self._senal(conn, "NVDA", 1.0)
+            self._senal(conn, "ZEC", -1.0)
+            reportes = scoreboard.build_reports_by_universe(conn)
+        assert {r["universe"] for r in reportes} == {"crypto", "equities"}
+
+    def test_un_universo_sin_datos_no_ocupa_espacio(self):
+        """Acciones arranca vacio y tarda semanas. Una seccion vacia al lado de una
+        llena invita a leerlas juntas."""
+        from instrument import scoreboard
+        with self._conn() as conn:
+            self._senal(conn, "ZEC", -1.0)
+            reportes = scoreboard.build_reports_by_universe(conn)
+        assert [r["universe"] for r in reportes] == ["crypto"]
+
+    def test_el_encabezado_dice_de_quien_habla(self):
+        from instrument import scoreboard
+        with self._conn() as conn:
+            self._senal(conn, "NVDA", 1.0)
+            texto = scoreboard.render_report(scoreboard.build_report(conn, universe="equities"))
+        assert "acciones" in texto.splitlines()[0]
+
+    def test_una_senal_de_acciones_no_se_declara_muerta_a_las_72_horas(self):
+        """El reloj otra vez: en acciones 72 horas son 14 velas, y una senal viva
+        y sana quedaria contada como huerfana a los tres dias."""
+        from instrument import scoreboard
+        assert scoreboard.MAX_HOLD_HOURS_EQUITY > 360
+        with self._conn() as conn:
+            r = scoreboard.build_report(conn, universe="equities")
+        assert r["max_hold_hours"] > 360
+
+    def test_un_universo_inventado_falla_en_vez_de_devolver_todo(self):
+        """Un typo que se traga el filtro devuelve la tabla entera con la etiqueta
+        equivocada -- el peor resultado posible para este cambio."""
+        from instrument import scoreboard
+        with self._conn() as conn:
+            with pytest.raises(ValueError):
+                scoreboard.build_report(conn, universe="stocks")
