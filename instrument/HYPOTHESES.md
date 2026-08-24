@@ -247,3 +247,66 @@ una sola vez en dos años. La ruptura sigue indistinguible de cero en los tres.
 en marcos vecinos; que se evapore en 4h es señal de que el +0.146R con n=107 puede ser
 suerte. No lo invalida —el IC en 4h es enorme con n=32— pero es una razón concreta para
 tratarlo como candidato y no como resultado.
+
+## Por qué el pullback casi no dispara — medido 2026-08-24
+
+El scoreboard del 21-ago reportó **18 señales emitidas, 18 `SUPPRESSED`**, con
+`última señal: nunca`. Esto mide de dónde sale ese 18/18. No es una calibración
+suelta: es la forma de la regla.
+
+**Método.** 60 días de velas 1h de BTC, ETH, SOL, BNB y ZEC — **6,170 barras
+evaluables** tras el warmup de EMA200. Cada gate de `rules.py` se contó por separado
+sobre las mismas barras, con el `side` resuelto igual que en producción
+(`close > ema200` → LONG). TAO quedó fuera: no está en la fuente usada, así que son
+**5 de los 6 símbolos**.
+
+| Gate | Pasa | Umbral |
+|---|---:|---|
+| `rsi_extreme` | **0.4%** | RSI ≤30 en LONG · ≥70 en SHORT |
+| `bb_confluence` | 11.6% | %B ≤0.2 · ≥0.8 |
+| `adx_trending` | 43.4% | ADX ≥25 |
+| `atr_min` | 77.2% | ATR/close ≥0.4% |
+| **los cuatro** | **11 de 6,170** | = 1 cada 560 barras |
+
+**El cuello es `rsi_extreme`, y es estructural.** El lado sale de la tendencia
+(`close > ema200` → LONG) y ese gate exige el extremo contrario: precio **arriba** de
+la EMA200 y RSI **≤30** a la vez. Un activo en tendencia alcista rara vez está en
+sobreventa profunda, así que el 0.4% no es un umbral mal puesto — es la definición de
+`REGIME = "TREND_PULLBACK"` encontrándose consigo misma en 1h.
+
+**Concuerda con la medición de 2 años de este mismo archivo.** Arriba, "Timeframes 4h
+y 1D" reporta el pullback en 1h a **1.0 señal/semana**. Estas 11 señales en ~8.5
+semanas dan **1.3/semana**, con otro corpus y otra fuente de datos. Los dos números
+se sostienen: la regla dispara así de poco por construcción, no por una regresión.
+
+### Sensibilidad del umbral
+
+Mismas 6,170 barras, moviendo sólo `RSI_OVERSOLD` (y su espejo `100−x`):
+
+| RSI oversold | con `bb_confluence` | sin él |
+|---:|---:|---:|
+| **30 (hoy)** | **11** | 11 |
+| 35 | 41 | 42 |
+| 40 | 88 | 117 |
+| 45 | 130 | 210 |
+| 50 | 172 | 383 |
+
+🟡 **`bb_confluence` hoy no filtra nada.** A RSI 30 quitarlo deja las mismas 11
+señales, y a 35 la diferencia es de una (41 vs 42). RSI ≤30 ya implica %B bajo: los
+dos gates miden sobreventa, así que el segundo es redundante donde está puesto el
+primero. Sólo empieza a morder desde RSI 40. Como está, es un gate que aparece en
+`gates_passed` sin haber decidido nada.
+
+🔴 **Lo que esto le hace al kill-rule.** El criterio pre-registrado retira un universo
+al llegar a **100 señales resueltas** con el intervalo de expectancy por debajo de
+cero. A 1.0–1.3 señales/semana, juntar esas 100 toma **entre 15 y 19 meses**. El
+kill-rule está bien construido y no se puede aplicar: no es que vaya a tardar en dar
+veredicto, es que no va a llegar al umbral en un horizonte útil. O baja el umbral de
+n, o la regla tiene que disparar más seguido, o el criterio no es ejecutable — pero
+eso es una decisión, no un ajuste.
+
+**Caveat de la fuente:** las velas salieron de yfinance, no del feed de producción del
+instrumento. Los porcentajes por gate pueden moverse unas décimas; la conclusión —
+`rsi_extreme` a 0.4% domina la conjunción — no depende de esa precisión. Nada de esto
+toca umbrales: es medición, y aflojar cualquiera de los cuatro cambia el riesgo, que
+es decisión de quien opera.
