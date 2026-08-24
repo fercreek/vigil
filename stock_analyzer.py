@@ -236,6 +236,30 @@ def _clear_alert(ticker: str) -> None:
         _alert_cache.pop(ticker, None)
         _save_alert_cache()
 
+def _close_alert(ticker: str, terminal: str) -> None:
+    """Cierra el trade: tira las marcas intermedias y CONSERVA la terminal.
+
+    Esto era `_clear_alert`, que hacia pop del ticker entero — y con eso borraba la
+    marca que `_mark_alert` acababa de poner una linea arriba. El guard
+    `"SL_ALERT" not in _alert_cache.get(t, [])` volvia a pasar en el siguiente ciclo
+    y la alerta se reemitia. IREN salio 26 veces el 21-ago, una cada 15 min.
+    """
+    _alert_cache[ticker] = [terminal]
+    _save_alert_cache()
+
+
+def _exit_pnl_pct(direction: str, entry: float, exit_price: float) -> float:
+    """PnL de una salida, con su signo real. Positivo = se cerro ganando.
+
+    La formula vieja era `-abs(sl - entry) / entry`, que forzaba el signo a negativo:
+    daba -26.05% para un stop que estaba ARRIBA de la entrada en un LONG, o sea una
+    salida en verde reportada como perdida.
+    """
+    if not entry:
+        return 0.0
+    delta = (exit_price - entry) if direction == "LONG" else (entry - exit_price)
+    return round(delta / entry * 100, 2)
+
 def _is_nyse_market_open() -> bool:
     """True solo Mon-Fri 09:30-16:00 ET. NYSE holidays NO chequeados (acepta ~10 días/año noise)."""
     try:
@@ -560,14 +584,14 @@ def stock_watchdog():
                 # Check 3: TAKE PROFIT
                 if tp and "TP_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p <= tp) or (direction == "LONG" and p >= tp):
-                        pnl_pct = round(abs(tp - entry) / entry * 100, 2) if entry else 0
+                        pnl_pct = _exit_pnl_pct(direction, entry, tp)
                         entry_line = f"📥 Entrada: ${entry:.2f}\n" if entry else ""
                         msg_tp = (
                             f"🎯 <b>TAKE PROFIT HIT: {t}</b>\n"
                             f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
                             f"{entry_line}"
                             f"✅ Target alcanzado: <b>${tp:.2f}</b>\n"
-                            f"💰 PnL potencial: <b>+{pnl_pct:.2f}%</b>\n"
+                            f"💰 PnL potencial: <b>{pnl_pct:+.2f}%</b>\n"
                             f"Cierra posición completa o parcial."
                         )
                         kb = _mgmt_kb(t, direction)
@@ -577,29 +601,45 @@ def stock_watchdog():
                             _send_alert(msg_tp)
                         _mark_alert(t, "TP_ALERT")
                         _em.fill_outcome_by_symbol(t, "STOCK", "WIN", pnl_pct)
-                        _clear_alert(t)  # trade cerrado en TP, liberar memoria
+                        _close_alert(t, "TP_ALERT")  # cerrado: la marca terminal se queda
 
-                # Check 4: STOP LOSS
+                # Check 4: STOP — no siempre es una perdida. Cuando el stop se movio
+                # a ganancia (trailing tras superar un target), cruzarlo cierra en verde:
+                # RKLB entro en 74.90 con el stop en 91. El nombre del evento sigue al
+                # numero, no al reves.
                 if sl and "SL_ALERT" not in _alert_cache.get(t, []):
                     if (direction == "SHORT" and p >= sl) or (direction == "LONG" and p <= sl):
-                        pnl_pct = round(-abs(sl - entry) / entry * 100, 2) if entry else 0
+                        pnl_pct = _exit_pnl_pct(direction, entry, sl)
+                        in_profit = pnl_pct > 0
                         entry_line = f"📥 Entrada: ${entry:.2f}\n" if entry else ""
-                        msg_sl = (
-                            f"🛑 <b>STOP LOSS HIT: {t}</b>\n"
-                            f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
-                            f"{entry_line}"
-                            f"❌ SL tocado: <b>${sl:.2f}</b>\n"
-                            f"💸 PnL: <b>{pnl_pct:.2f}%</b>\n"
-                            f"Cierra posición para proteger capital."
-                        )
+                        if in_profit:
+                            msg_sl = (
+                                f"🟢 <b>SALIDA EN GANANCIA: {t}</b>\n"
+                                f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
+                                f"{entry_line}"
+                                f"🛡️ Stop en ganancia tocado: <b>${sl:.2f}</b>\n"
+                                f"💰 PnL: <b>{pnl_pct:+.2f}%</b>\n"
+                                f"Cierra posición: el stop hizo su trabajo."
+                            )
+                        else:
+                            msg_sl = (
+                                f"🛑 <b>STOP LOSS HIT: {t}</b>\n"
+                                f"📌 {direction} — Precio: <b>${p:.2f}</b>\n"
+                                f"{entry_line}"
+                                f"❌ SL tocado: <b>${sl:.2f}</b>\n"
+                                f"💸 PnL: <b>{pnl_pct:.2f}%</b>\n"
+                                f"Cierra posición para proteger capital."
+                            )
                         kb = _mgmt_kb(t, direction)
                         if kb:
                             _send_alert_with_kb(msg_sl, kb)
                         else:
                             _send_alert(msg_sl)
                         _mark_alert(t, "SL_ALERT")
-                        _em.fill_outcome_by_symbol(t, "STOCK", "LOSS", pnl_pct)
-                        _clear_alert(t)  # trade cerrado en SL, liberar memoria
+                        _em.fill_outcome_by_symbol(
+                            t, "STOCK", "WIN" if in_profit else "LOSS", pnl_pct
+                        )
+                        _close_alert(t, "SL_ALERT")  # cerrado: la marca terminal se queda
 
             # Safety cap: si _alert_cache crece >100 keys (no debería con cleanup TP/SL), reset
             if len(_alert_cache) > 100:
