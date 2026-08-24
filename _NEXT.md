@@ -1,7 +1,39 @@
 # _NEXT.md — Scalp Bot / Zenith
 
-> Update: 2026-08-20 · Último commit: `f1caa33` (pusheado + deployado Railway `229620ff`)
-> **Sesión 07-21: Snapshot mercado 8n (BTC 64.9k bear confirmado, TSLA/GOOGL earnings 22-Jul, FOMC 07-28) + FIX macro feed SPY/TLT/HYG $0.00 (yf.download→Ticker().history, feed re-encendido, verificado en prod SPY $745.55) + gitignore data artifacts. ⚠️ Railway NO auto-deploya: deploy = `railway up` manual.**
+> Update: 2026-08-23 · Último commit: `7863f0b` (pusheado + deployado Railway `355d76c7`)
+> **Sesión 08-23: el instrumento pasó de 6 a 35 símbolos.** Indicador `Zenith V19 | Instrument`
+> en TradingView (espejo 1:1 de `rules.py`, con veredicto de operador y estado VIGILA) · 29
+> acciones cableadas al bot tras medir +0.216R con n=138 solo LONG · marcador separado por
+> universo · kill-rule ejecutándose contra la tabla `retirements`. 184 tests.
+> ⚠️ Railway NO auto-deploya: deploy = `railway up` manual + verificar timestamp.
+
+---
+
+## ⚡ RETOMAR AQUÍ (P0)
+
+- [ ] **Lunes 24-ago, bolsa abierta — primera corrida real.** Todo lo de la sesión del 23 se
+  verificó en **domingo con el mercado cerrado**. Nunca han corrido con la bolsa abierta: el
+  backoff adaptativo (`main.py::IDLE_BACKOFF_MAX_SECONDS`), el enfriamiento de 372h de
+  acciones (`equities.cooldown_hours`) ni el feed de yfinance bajo carga. `FOCUS-1728`.
+- [ ] **2 alertas sin resolver desde el 21-ago** — ETH LONG @2513.24 y SOL LONG @93.74.
+  Necesitan 72 velas; si el bot estuvo caído parte del tiempo quedan huérfanas y el marcador
+  no lo dice. `FOCUS-1729`.
+- [ ] **Rotar `GROQ_API_KEY`** — salió en texto plano en la salida de `railway variables`
+  durante la sesión. `FOCUS-1730`.
+
+## 📍 Dónde quedó cada pieza
+
+| Pieza | Dónde | Estado |
+|---|---|---|
+| Indicador TradingView | `scripts/tradingview/Zenith_Suite_V19.pine` · guardado en TV como `Zenith V19 \| Instrument` v5 ("BUENA") | ✅ corriendo |
+| Medición en acciones | `instrument/EQUITIES.md` + `instrument/scripts/*.py` (re-corribles) | ✅ |
+| Universo de acciones | `instrument/equities.py` — 29 tickers, solo LONG | ✅ en prod |
+| Marcador por universo | `instrument/scoreboard.py::build_reports_by_universe` | ✅ en prod |
+| Kill-rule | `instrument/kill_rule.py` + tabla `retirements` | ✅ armada, sin disparar (n=0/100) |
+
+> ⚠️ En el historial de versiones del script en TradingView, la **v3 está rota** (se pegó una
+> URL por contaminación del portapapeles). No se puede borrar; quedó etiquetada
+> `ROTA - no restaurar`. La buena es la **v5**, etiquetada `BUENA - esta es la que sirve`.
 
 ---
 
