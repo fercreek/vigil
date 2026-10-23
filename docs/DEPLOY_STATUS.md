@@ -168,8 +168,8 @@ Bot Zenith corriendo 24/7 en Railway. Laptop ya NO es single point of failure. W
 8. `curl https://<url>/api/stats` → 200
 
 **TV secrets (generados, pegar tal cual en Railway):**
-- `TV_WEBHOOK_SECRET=7fc04b8d5a93aedb594ff0158636016d172330cf4c8159ec3c5ea96cf84e2400`
-- `TV_WEBHOOK_TOKEN=yYlPKWkhgVN0SzOIn_F3IWxwOs87W1LN`
+- `TV_WEBHOOK_SECRET=<TV_WEBHOOK_SECRET>`
+- `TV_WEBHOOK_TOKEN=<TV_WEBHOOK_TOKEN>`
 
 **Estado código:** 5 commits pushed a `fercreek/vigil@main` (cde0b3d). Bot local tiene vars completas en memoria — no lo reinicies antes de deploy remoto.
 
@@ -237,8 +237,8 @@ GEMINI_API_KEY=<pegar>
 CHECK_INTERVAL=35
 
 # Webhook TradingView (generados 2026-04-21 — guardar en password manager)
-TV_WEBHOOK_SECRET=7fc04b8d5a93aedb594ff0158636016d172330cf4c8159ec3c5ea96cf84e2400
-TV_WEBHOOK_TOKEN=yYlPKWkhgVN0SzOIn_F3IWxwOs87W1LN
+TV_WEBHOOK_SECRET=<TV_WEBHOOK_SECRET>
+TV_WEBHOOK_TOKEN=<TV_WEBHOOK_TOKEN>
 ENFORCE_HMAC=false
 TV_RATE_LIMIT_PER_MIN=10
 ```
@@ -267,7 +267,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(24))"  # TV_WEBHOOK_TOKE
    ```
 7. Test webhook TV (con token path, porque Pine no puede HMAC):
    ```bash
-   curl -X POST https://<url>/webhook/tradingview/yYlPKWkhgVN0SzOIn_F3IWxwOs87W1LN \
+   curl -X POST https://<url>/webhook/tradingview/<TV_WEBHOOK_TOKEN> \
      -H "Content-Type: application/json" \
      -d '{"symbol":"BTC","direction":"LONG","rsi":28,"price":60000,"strategy":"test","confidence":0.9}'
    # Expect: 200 + alerta llega a Telegram
@@ -304,14 +304,14 @@ curl -X POST https://<url>/webhook/tradingview \
   -d '{"symbol":"BTC","direction":"LONG","rsi":28,"price":60000,"strategy":"test"}'
 
 # Con HMAC válido
-SECRET="7fc04b8d..."
+SECRET="<TV_WEBHOOK_SECRET>"
 PAYLOAD='{"symbol":"BTC","direction":"LONG","rsi":28,"price":60000,"strategy":"test"}'
 SIG=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
 curl -X POST https://<url>/webhook/tradingview \
   -H "X-TV-Signature: $SIG" -H "Content-Type: application/json" -d "$PAYLOAD"
 
 # Con token path (Pine)
-curl -X POST "https://<url>/webhook/tradingview/yYlPKWkhg..." \
+curl -X POST "https://<url>/webhook/tradingview/<TV_WEBHOOK_TOKEN>" \
   -H "Content-Type: application/json" -d "$PAYLOAD"
 
 # Rate limit
@@ -428,7 +428,7 @@ Resolver corre **antes** de cualquier `import` que lea `os.getenv("TELEGRAM_TOKE
 
 **F4/F5 (post-deploy):**
 - [ ] Pegar Pine V18 en TradingView (ver `docs/zenith_indicator.pine` v4.3)
-- [ ] Crear alertas: webhook URL `https://<url>/webhook/tradingview/yYlPKWkhg...`
+- [ ] Crear alertas: webhook URL `https://<url>/webhook/tradingview/<TV_WEBHOOK_TOKEN>`
 - [ ] Instalar tradingview-mcp en `~/.claude/settings.json`
 
 ---
